@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import sqrt
 
+from core.object.paschen_back import PaschenBackEigenvalues
 from core.utility.constant import mu0, h, c
 from core.utility.python import range_inclusive
 
@@ -46,8 +47,9 @@ def paschen_back_diagonalization(l, s, b, e: dict):
     e[j] is a dict of energies for different J in cm-1.
     e[j] can be found in NIST tables.
     """
+    eigenvalues = PaschenBackEigenvalues()
     all_coefficients = dict()
-    all_lambdas = dict()
+    # all_lambdas = dict()
     j_max = l + s
     j_min = abs(l - s)
     for m in range_inclusive(-j_max, j_max):
@@ -95,19 +97,17 @@ def paschen_back_diagonalization(l, s, b, e: dict):
                 )
                 matrix[i, i + 1] = value
                 matrix[i + 1, i] = value
-        eigenvalues, eigenvectors = np.linalg.eig(matrix)
+        eig_values, eig_vectors = np.linalg.eig(matrix)
 
         c_coefficient = dict()
-        lambda_coefficient = dict()
         # eigenvectors is a matrix where columns are eigenvectors => column number is j_small
         # row number is index of j; j = j_max - row_number
         for j_small in range(block_size):
-            c_coefficient = dict()
-            lambda_coefficient[j_small] = eigenvalues[j_small]
+            eigenvalues.set(m=m, j_small=j_small, value=eig_values[j_small])
+            c_coefficient[j_small] = dict()
             for j in range(block_size):
-                c_coefficient[j_small][j] = eigenvectors[j, j_small]
+                c_coefficient[j_small][j] = eig_vectors[j, j_small]
 
-        all_lambdas[m] = lambda_coefficient
         all_coefficients[m] = c_coefficient
 
-    return all_lambdas, all_coefficients
+    return eigenvalues, all_coefficients
