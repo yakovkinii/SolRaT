@@ -1,153 +1,406 @@
-import numpy as np
-from numpy import sqrt, exp, pi
+import logging
 
-from core.tensors.t_k_q import t_k_q
-from core.utility.constant import kB, h, sqrt3, c, atomic_mass_unit, e_0, m_e
-from core.utility.einstein_coefficients import (
-    b_lu_from_b_ul_two_level_atom,
-    b_ul_from_a_ul_two_level_atom,
+import numpy as np
+from typing import Dict
+
+from numpy import pi, sqrt
+
+from core.utility.math import m1p, delta
+from core.utility.python import range_inclusive
+from core.utility.wigner_3j_6j_9j import w9j, w6j, w3j
+from pipeline.two_term_atom.object import (
+    Rhos,
+    Transitions,
+    Term,
+    Transition,
+    MatrixBuilder,
 )
-from core.utility.math import m1p
-from core.utility.voigt import voigt
-from core.utility.wigner_3j_6j_9j import w6j
 
 
 class TwoTermAtom:
-    def __init__(self, chi=0, theta=0, gamma=0):
-        """
-        theta, chi - direction of LOS wrt local coordinates
-        gamma defines Q/U.
-        """
+    def __init__(self):
+        self.rhos = Rhos()
+        self.terms = [
+            Term(id="2p_2P0.5", l=1, s=0.5, j=0.5, energy=82258.9191133),
+            Term(id="2p_2P1.5", l=1, s=0.5, j=1.5, energy=82259.2850014),
+            Term(id="3s_2S0.5", l=0, s=0.5, j=0.5, energy=97492.221701),
+        ]
+        self.terms: Dict[str, Term] = {term.id: term for term in self.terms}
 
-    #     self.j_l = 2
-    #     self.j_u = 3
-    #     self.nu = (5579183 - 5069095) * 1e9  # Hz
-    #     self.n = 1e1  # 1/cm3
-    #     self.a_ul = 0.7e8  # 1/s
-    #     self.temperature = 7000
-    #     self.delta_nu_D = self.get_delta_nu_D()
-    #     self.b_ul = b_ul_from_a_ul_two_level_atom(self.a_ul, nu=self.nu)
-    #     self.b_lu = b_lu_from_b_ul_two_level_atom(self.b_ul, j_u=self.j_u, j_l=self.j_l)
-    #     self.rho_l = dict()
-    #     for k in [0, 1, 2]:
-    #         self.rho_l[k] = dict()
-    #
-    #     self.rho_u = dict()
-    #     for k in [0, 1, 2]:
-    #         self.rho_u[k] = dict()
-    #
-    #     self.t_k_q = dict()
-    #     for k in [0, 1, 2]:
-    #         self.t_k_q[k] = dict()
-    #         for q in range(-k, k + 1):
-    #             self.t_k_q[k][q] = dict()
-    #             for i in [0, 1, 2, 3]:
-    #                 self.t_k_q[k][q][i] = t_k_q(k=k, q=q, i=i, chi=chi, theta=theta, gamma=gamma)
-    #
-    # def get_delta_nu_D(self, atomic_mass=4, xi=0):
-    #     return sqrt(2 * kB * self.temperature / atomic_mass / atomic_mass_unit + xi**2) * self.nu / c
-    #
-    # def _get_rho_u_k_q(self, k, q, j_k_q: dict):
-    #     return (
-    #         sqrt(3 * (2 * self.j_l + 1))
-    #         * self.b_lu
-    #         / self.a_ul
-    #         * m1p(1 + self.j_l + self.j_u + q)
-    #         * w6j(1, 1, k, self.j_u, self.j_u, self.j_l)
-    #         * j_k_q[k][-q]
-    #     )
-    #
-    # def get_j_k_q_1d(self, stokes, nus):
-    #     j_k_q = dict()
-    #     for k in [0, 1, 2]:
-    #         j_k_q[k] = dict()
-    #
-    #     index = np.argmax(nus > self.nu)
-    #     s_vector = stokes[index, :]
-    #     for k in [0, 1, 2]:
-    #         for q in range(-k, k + 1):
-    #             sum_i = 0
-    #             for i in [0, 1, 2, 3]:
-    #                 sum_i += s_vector[i] * self.t_k_q[k][q][i]
-    #             j_k_q[k][q] = sum_i
-    #     return j_k_q
-    #
-    # def _get_rho_u_k_q_lte(self, k, q):
-    #     if k == 0 and q == 0:
-    #         return exp(-(h * self.nu) / kB / self.temperature)
-    #     else:
-    #         return 0
-
-    def calculate_rhos(self, j_k_q: dict = None, lte=False):
-        for k in [1, 2]:
-            for q in range(-k, k + 1):
-                self.rho_l[k][q] = 0
-        self.rho_l[0][0] = 1
-
-        for k in [0, 1, 2]:
-            for q in range(-k, k + 1):
-                if lte:
-                    self.rho_u[k][q] = self._get_rho_u_k_q_lte(k, q)
-                else:
-                    self.rho_u[k][q] = self._get_rho_u_k_q(k, q, j_k_q)
-
-        scale_factor = sqrt(2 * self.j_u + 1) * self.rho_u[0][0] + sqrt(
-            2 * self.j_l + 1
+        self.transitions = Transitions()
+        self.transitions.add(
+            Transition(
+                term_upper=self.terms["3s_2S0.5"],
+                term_lower=self.terms["2p_2P0.5"],
+                einstein_a=0.1,
+            )
         )
-
-        for k in [0, 1, 2]:
-            for q in range(-k, k + 1):
-                self.rho_u[k][q] /= scale_factor
-                self.rho_l[k][q] /= scale_factor
+        self.transitions.add(
+            Transition(
+                term_upper=self.terms["3s_2S0.5"],
+                term_lower=self.terms["2p_2P1.5"],
+                einstein_a=0.1,
+            )
+        )
+        self.matrix_builder = MatrixBuilder(terms=list(self.terms.values()))
 
     @staticmethod
-    def get_Gamma(nu):
-        gamma = 8 * pi**2 / 3 * e_0**2 / m_e / c**3 * nu**2
-        return gamma / 3 / pi
+    def j_tensor(k: int, q: int, transition: Transition):
+        if k > 2:
+            return 0
+        if abs(q) > k:
+            return 0
+        _ = transition
+        logging.warning('Using mock radiation tensor.')
+        return 1 * delta(k, 0) * delta(q, 0)  # todo
 
-    # def get_k_matrix(self, nu):
+    def add_all_equations(self):
+        """
+        Loops through all equations.
+
+        Reference: (7.38)
+        """
+        self.matrix_builder.reset_matrix()
+
+        for term in self.terms.values():
+            # J, J' = L+S ... |L-S|
+            j_max = term.l + term.s
+            j_min = abs(term.l - term.s)
+            for j in range_inclusive(j_min, j_max):
+                for j_prime in range_inclusive(j_min, j_max):
+                    # K = J + J' ... |J - J'|
+                    k_max = j + j_prime
+                    k_min = abs(j - j_prime)
+                    for k in range_inclusive(k_min, k_max):
+                        # Q = -K ... K
+                        for q in range_inclusive(-k, k):
+                            self.add_single_equation(
+                                term=term, k=k, q=q, j=j, j_prime=j_prime
+                            )
+
+    def add_single_equation(self, term: Term, k: int, q: int, j: float, j_prime: float):
+        """
+        Adds single equation to the rho matrix
+
+        Reference: (7.38)
+
+        Expressions like
+
+        d/dt rho(K0, Q0, ...) = sum_{K,Q}(
+            A(K, Q, ...) * rho(K, Q, ...)
+        )
+
+        should be written as
+
+        for K in <relevant range>:
+            for Q in <relevant range>:
+                add_coefficient(
+                    K0, Q0, ...,
+                    K, Q, ...,
+                    coefficient = A(K, Q, ...)
+                )
+
+        """
+
+        self.matrix_builder.select_equation(
+            term=term,
+            k=k,
+            q=q,
+            j=j,
+            j_prime=j_prime,
+        )
+
+        # Coherence relaxation
+        # for k_prime in range_inclusive():
+        #     for q_prime in range_inclusive(-k_prime, k_prime):
+        #         for j_prime_prime in range_inclusive():
+        #             for j_prime_prime_prime in range_inclusive():
+        #                 add_coefficient(
+        #                     term_id_1=term_id,
+        #                     k_1=k_prime,
+        #                     q_1=q_prime,
+        #                     j_1=j_prime_prime,
+        #                     j_prime_1=j_prime_prime_prime,
+        #                     coefficient=-2 * pi * 1j * self.n(...),
+        #                 )
+
+        # Absorption
+        for transition in self.transitions.transitions_from_lower[term.id]:
+            term_lower = transition.term_lower
+            if term_lower.s != term.s:
+                continue
+            s = term.s
+            l_l = term_lower.l
+            for k_l in range_inclusive(k + 2):  # (7.45a, 3j). Kr is always <= 2
+                for q_l in range_inclusive(-k_l, k_l):
+                    for j_l in range_inclusive(l_l + s):  # (7.45a, 1st 6j)
+                        for j_prime_l in range_inclusive(l_l + s):  # (7.45a, 2nd 6j)
+                            coefficient = self.t_a(
+                                transition=transition,
+                                term=term,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                                term_lower=term_lower,
+                                k_l=k_l,
+                                q_l=q_l,
+                                j_l=j_l,
+                                j_prime_l=j_prime_l,
+                            )
+                            self.matrix_builder.add_coefficient(
+                                term=term_lower,
+                                k=k_l,
+                                q=q_l,
+                                j=j_l,
+                                j_prime=j_prime_l,
+                                coefficient=coefficient,
+                            )
+
+        # Emission
+        for transition in self.transitions.transitions_from_upper[term.id]:
+            term_upper = transition.term_upper
+            if term_upper.s != term.s:
+                continue
+            s = term.s
+            l_u = term_upper.l
+            for k_u in range_inclusive(k + 2):
+                for q_u in range_inclusive(-k_u, k_u):
+                    for j_u in range_inclusive(l_u + s):
+                        for j_prime_u in range_inclusive(l_u + s):
+                            coefficient_t_e = self.t_e(
+                                transition=transition,
+                                term=term,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                                term_upper=term_upper,
+                                k_u=k_u,
+                                q_u=q_u,
+                                j_u=j_u,
+                                j_prime_u=j_prime_u,
+                            )
+                            coefficient_t_s = self.t_s(
+                                transition=transition,
+                                term=term,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                                term_upper=term_upper,
+                                k_u=k_u,
+                                q_u=q_u,
+                                j_u=j_u,
+                                j_prime_u=j_prime_u,
+                            )
+                            self.matrix_builder.add_coefficient(
+                                term=term_upper,
+                                k=k_u,
+                                q=q_u,
+                                j=j_u,
+                                j_prime=j_prime_u,
+                                coefficient=coefficient_t_e + coefficient_t_s,
+                            )
+
+        # Relaxation
+        # for k_prime in range_inclusive():
+        #     for q_prime in range_inclusive(-k_prime, k_prime):
+        #         for j_prime_prime in range_inclusive():
+        #             for j_prime_prime_prime in range_inclusive():
+        #                 add_coefficient(
+        #                     term_id_1=term_id,
+        #                     k_1=k_prime,
+        #                     q_1=q_prime,
+        #                     j_1=j_prime_prime,
+        #                     j_prime_1=j_prime_prime_prime,
+        #                     coefficient=-(
+        #                         self.r_a(...) + self.r_e(...) + self.r_s(...)
+        #                     ),
+        #                 )
+
+    def t_a(
+        self,
+        transition: Transition,
+        term: Term,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        term_lower: Term,
+        k_l: int,
+        q_l: int,
+        j_l: float,
+        j_prime_l: float,
+    ):
+        """
+        Reference: (7.45a)
+        """
+        s = term.s
+        l = term_lower.l
+        l_l = term_lower.l
+
+        if (
+            s != term_lower.s
+        ):  # This is already treated in add_coefficient(), but adding just in case
+            return 0
+
+        m0 = (2 * l_l + 1) * transition.einstein_b_lu
+        result = 0
+        for k_r in [0, 1, 2]:
+            for q_r in range_inclusive(-k_r, k_r):
+                m1 = sqrt(
+                    3
+                    * (2 * j + 1)
+                    * (2 * j_prime + 1)
+                    * (2 * j_l + 1)
+                    * (2 * j_prime_l + 1)
+                    * (2 * k + 1)
+                    * (2 * k_l + 1)
+                    * (2 * k_r + 1)
+                )
+                m2 = m1p(k_l + q_l + j_prime_l - j_l)
+                m3 = w9j(j, j_l, 1, j_prime, j_prime_l, 1, k, k_l, k_r)
+                m4 = w6j(l, l_l, 1, j_l, j, s)
+                m5 = w6j(l, l_l, 1, j_prime_l, j_prime, s)
+                m6 = w3j(k, k_l, k_r, -q, q_l, -q_r)
+                m7 = self.j_tensor(k=k_r, q=q_r, transition=transition)
+                result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
+        return result
+
+    @staticmethod
+    def t_e(
+        transition: Transition,
+        term: Term,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        term_upper: Term,
+        k_u: int,
+        q_u: int,
+        j_u: float,
+        j_prime_u: float,
+    ):
+        """
+        Reference: (7.45b)
+        """
+        s = term.s
+        l = term.l
+        l_u = term_upper.l
+
+        if s != term_upper.s:
+            return 0
+        if k != k_u:
+            return 0
+        if q != q_u:
+            return 0
+
+        m0 = (2 * l_u + 1) * transition.einstein_a
+        m1 = sqrt((2 * j + 1) * (2 * j_prime + 1) * (2 * j_u + 1) * (2 * j_prime_u + 1))
+        m2 = m1p(1 + k + j_prime + j_prime_u)
+        m3 = w6j(j, j_prime, k, j_prime_u, j_u, 1)
+        m4 = w6j(l_u, l, 1, j, j_u, s)
+        m5 = w6j(l_u, l, 1, j_prime, j_prime_u, s)
+        result = m0 * m1 * m2 * m3 * m4 * m5
+        return result
+
+    def t_s(
+        self,
+        transition: Transition,
+        term: Term,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        term_upper: Term,
+        k_u: int,
+        q_u: int,
+        j_u: float,
+        j_prime_u: float,
+    ):
+        """
+        Reference: (7.45c)
+        """
+        s = term.s
+        l = term.l
+        l_u = term_upper.l
+
+        if s != term_upper.s:
+            return 0
+
+        m0 = (2 * l_u + 1) * transition.einstein_b_ul
+        result = 0
+        for k_r in [0, 1, 2]:
+            for q_r in range_inclusive(-k_r, k_r):
+                m1 = sqrt(
+                    3
+                    * (2 * j + 1)
+                    * (2 * j_prime + 1)
+                    * (2 * j_u + 1)
+                    * (2 * j_prime_u + 1)
+                    * (2 * k + 1)
+                    * (2 * k_u + 1)
+                    * (2 * k_r + 1)
+                )
+                m2 = m1p(k_r + k_u + q_u + j_prime_u - j_u)
+                m3 = w9j(j, j_u, 1, j_prime, j_prime_u, 1, k, k_u, k_r)
+                m4 = w6j(l_u, l, 1, j, j_u, s)
+                m5 = w6j(l_u, l, 1, j_prime, j_prime_u, s)
+                m6 = w3j(k, k_u, k_r, -q, q_u, -q_r)
+                m7 = self.j_tensor(k=k_r, q=q_r, transition=transition)
+                result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
+        return result
+
+    # def r_a(
+    #     self,
+    #     term_id,
+    #     k,
+    #     q,
+    #     j,
+    #     j_prime,
+    #     k_prime,
+    #     q_prime,
+    #     j_prime_prime,
+    #     j_prime_prime_prime,
+    # ):
     #     """
-    #     7.16
-    #     nu: vector l_nu
-    #     nu is REGULAR frequency, not reduced
+    #     (7.46a)
     #     """
-    #     voigt_complex = voigt(nu=(self.nu - nu) / self.delta_nu_D, a=self.get_Gamma(nu) / self.delta_nu_D)
-    #     voigt_phi = np.real(voigt(nu=(self.nu - nu) / self.delta_nu_D, a=self.get_Gamma(nu) / self.delta_nu_D))
-    #     voigt_psi = np.imag(voigt(nu=(self.nu - nu) / self.delta_nu_D, a=self.get_Gamma(nu) / self.delta_nu_D))
-    #     # import matplotlib.pyplot as plt; plt.plot(); plt.show()
-    #     k_matrix = np.empty((len(nu), 5, 4))  # l_nu x [eta_a, rho_a, eta_s, rho_s, eps] x [I, Q, U, V]
+    #     s = self.terms[term_id].s
+    #     l = self.terms[term_id].l
     #
-    #     for i in [0, 1, 2, 3]:
-    #         sum_k_q = 0
-    #         for k in [0, 1, 2]:
-    #             for q in range(-k, k + 1):
-    #                 aaa = (
-    #                     (sqrt3 * m1p(1 + self.j_l + self.j_u + k) * w6j(1, 1, k, self.j_l, self.j_l, self.j_u))
-    #                     * self.t_k_q[k][q][i]
-    #                     * self.rho_l[k][q]
+    #     _a0 = 2 * l + 1
+    #     result = 0
+    #     for term_id_upper in self.transitions.transitions_from_upper[term_id]:
+    #         l_u = self.terms[term_id_upper].l
+    #         _a1 = self.einstein_b_lu(lower_term_id=term_id, upper_term_id=term_id_upper)
+    #         for k_r in range_inclusive():
+    #             for q_r in range_inclusive(-k_r, k_r):
+    #                 _a2 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
+    #                 _a3 = m1p(1 + l_u - s + j + q_prime)
+    #                 _a4 = w6j(l, l, k_r, 1, 1, l_u)
+    #                 _a5 = w3j(k, k_prime, k_r, q, -q_prime, q_r)
+    #                 _a6 = 0.5
+    #                 _a7 = self.j_tensor(
+    #                     k=k_r, q=q_r, lower_term_id=term_id, upper_term_id=term_id_upper
     #                 )
-    #                 sum_k_q += aaa
-    #         k_matrix[:, 0, i] = (
-    #             h * nu / 4 / pi * self.n * (2 * self.j_l + 1) * self.b_lu * np.real(sum_k_q * voigt_complex)
-    #         )  # eta a
-    #         k_matrix[:, 1, i] = (
-    #             h * nu / 4 / pi * self.n * (2 * self.j_l + 1) * self.b_lu * np.imag(sum_k_q * voigt_complex)
-    #         )  # rho a
     #
-    #         sum_k_q = 0
-    #         for k in [0, 1, 2]:
-    #             for q in range(-k, k + 1):
-    #                 aaa = (
-    #                     (sqrt3 * m1p(1 + self.j_l + self.j_u) * w6j(1, 1, k, self.j_u, self.j_u, self.j_l))
-    #                     * self.t_k_q[k][q][i]
-    #                     * self.rho_u[k][q]
-    #                 )
-    #                 sum_k_q += aaa
-    #         k_matrix[:, 2, i] = (
-    #             h * nu / 4 / pi * self.n * (2 * self.j_u + 1) * self.b_ul * np.real(sum_k_q * voigt_complex)
-    #         )  # eta s
-    #         k_matrix[:, 3, i] = (
-    #             h * nu / 4 / pi * self.n * (2 * self.j_u + 1) * self.b_ul * np.imag(sum_k_q * voigt_complex)
-    #         )  # rho s
-    #         k_matrix[:, 4, i] = 2 * h * nu**3 / c**2 * k_matrix[:, 2, i]  # eps
-    #     return k_matrix
+    #                 _b0 = delta(j, j_prime_prime)
+    #                 _b1 = sqrt((2 * j_prime + 1) * (2 * j_prime_prime_prime + 1))
+    #                 _b2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
+    #                 _b3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
+    #
+    #                 _c0 = delta(j_prime, j_prime_prime_prime)
+    #                 _c1 = sqrt((2 * j + 1) * (2 * j_prime_prime + 1))
+    #                 _c2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
+    #                 _c3 = w6j(l, l, k_r, j_prime_prime, j, s)
+    #                 _c4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
+    #
+    #                 _a = _a0 * _a1 * _a2 * _a3 * _a4 * _a5 * _a6 * _a7
+    #                 _b = _b0 * _b1 * _b2 * _b3
+    #                 _c = _c0 * _c1 * _c2 * _c3 * _c4
+    #
+    #                 result += _a * (_b + _c)
+    #
+    #     return result

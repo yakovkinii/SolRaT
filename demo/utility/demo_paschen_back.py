@@ -25,14 +25,15 @@ class TestDemoPaschenBack(unittest.TestCase):
         magnetic_fields = [_ for _ in range_inclusive(0, 30000, 10)]
 
         for magnetic_field in magnetic_fields:  # Gauss
-            eigenvalues, eigenvectors = paschen_back_diagonalization(l=1, s=0.5, b=magnetic_field,
-                                                                     e=unperturbed_energies)
+            eigenvalues, eigenvectors = paschen_back_diagonalization(
+                l=1, s=0.5, b=magnetic_field, e=unperturbed_energies
+            )
             energies.append(sorted(eigenvalues.data.values()))
 
         plt.plot(magnetic_fields, np.array(energies))
-        plt.xlabel('Magnetic field (G)')
-        plt.ylabel('Energy (cm$^{-1}$)')
-        plt.title('Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects')
+        plt.xlabel("Magnetic field (G)")
+        plt.ylabel("Energy (cm$^{-1}$)")
+        plt.title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")
         plt.show()
 
 

@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 from numpy import cos, sin, pi, exp, sqrt, log10
 import matplotlib.gridspec as gridspec
 
@@ -14,28 +14,28 @@ from pipeline.two_level_atom_resonance_polarization.atom import TwoLevelAtom
 logging_config.init(logging.INFO)
 
 
-# fig = plt.figure(figsize=(10, 10))
-# gs = gridspec.GridSpec(3, 2)
-# axTau = fig.add_subplot(gs[0, :])
-# axI = fig.add_subplot(gs[1, 0])
-# axQ = fig.add_subplot(gs[1, 1])
-# axU = fig.add_subplot(gs[2, 0])
-# axV = fig.add_subplot(gs[2, 1])
-# axTau.set_ylabel("Atmospheric parameters")
-# axTau.set_xlabel("log10(tau_c) [local continuum]")
-# axTau.tick_params(axis="x", labelrotation=20)
-# axI.set_ylabel("I / Ic")
-# axI.set_xlabel("lambda (A)")
-# axI.tick_params(axis="x", labelrotation=20)
-# axQ.set_ylabel("Q / Ic")
-# axQ.set_xlabel("lambda (A)")
-# axQ.tick_params(axis="x", labelrotation=20)
-# axU.set_ylabel("U / Ic")
-# axU.set_xlabel("lambda (A)")
-# axU.tick_params(axis="x", labelrotation=20)
-# axV.set_ylabel("V / Ic")
-# axV.set_xlabel("lambda (A)")
-# axV.tick_params(axis="x", labelrotation=20)
+fig = plt.figure(figsize=(10, 10))
+gs = gridspec.GridSpec(3, 2)
+axTau = fig.add_subplot(gs[0, :])
+axI = fig.add_subplot(gs[1, 0])
+axQ = fig.add_subplot(gs[1, 1])
+axU = fig.add_subplot(gs[2, 0])
+axV = fig.add_subplot(gs[2, 1])
+axTau.set_ylabel("Atmospheric parameters")
+axTau.set_xlabel("log10(tau_c) [local continuum]")
+axTau.tick_params(axis="x", labelrotation=20)
+axI.set_ylabel("I / Ic")
+axI.set_xlabel("lambda (A)")
+axI.tick_params(axis="x", labelrotation=20)
+axQ.set_ylabel("Q / Ic")
+axQ.set_xlabel("lambda (A)")
+axQ.tick_params(axis="x", labelrotation=20)
+axU.set_ylabel("U / Ic")
+axU.set_xlabel("lambda (A)")
+axU.tick_params(axis="x", labelrotation=20)
+axV.set_ylabel("V / Ic")
+axV.set_xlabel("lambda (A)")
+axV.tick_params(axis="x", labelrotation=20)
 
 
 def step(stokes, nu, k_matrix, temperature, dtau, kappa_l):
@@ -85,7 +85,7 @@ def get_BP(nu, T):
 
 
 def main():
-    atom = TwoLevelAtom(theta=pi / 2, gamma=0, chi=0)
+    atom = TwoLevelAtom(theta=pi / 2, gamma=1, chi=1)
     nus = np.linspace(atom.nu - 1e11, atom.nu + 1e11, 1000)
 
     lambdas = get_lambda_from_nu(nus)
@@ -97,22 +97,22 @@ def main():
 
     stokes0 = stokes.copy()
 
-    stokes = stokes * 0
-    #
-    # axI.plot(lambdas, stokes[:, 0] / norm, label="I0")
-    # axQ.plot(lambdas, stokes[:, 1] / norm, label="Q0")
-    # axU.plot(lambdas, stokes[:, 2] / norm, label="U0")
-    # axV.plot(lambdas, stokes[:, 3] / norm, label="V0")
+    # stokes = stokes * 0
+
+    axI.plot(lambdas, stokes[:, 0] / norm, label="I0")
+    axQ.plot(lambdas, stokes[:, 1] / norm, label="Q0")
+    axU.plot(lambdas, stokes[:, 2] / norm, label="U0")
+    axV.plot(lambdas, stokes[:, 3] / norm, label="V0")
 
     tau_values = []
     b_values = []
     t_values = []
     kappa_l_values = []
-    tau = np.array(0.1)
-    d_tau_max = -0.0001
+    tau = np.array(1)
+    d_tau_max = -0.01
     kappa_l = 1000
     i = 1
-    while tau > 0.0001:
+    while tau > 0.001:
         tau_values.append(log10(tau))
         b_values.append(0)
         t_values.append(atom.temperature)
@@ -126,24 +126,24 @@ def main():
         k_mat = atom.get_k_matrix(nus)
 
         stokes = step(stokes, nus, k_mat, atom.temperature, dtau_true, kappa_l)
-        # if i % 20 == 0:
-        #     axI.plot(lambdas, stokes[:, 0] / norm, label=f"tau={tau.round(5)}")
-        #     axQ.plot(lambdas, stokes[:, 1] / norm, label=f"tau={tau.round(5)}")
-        #     axU.plot(lambdas, stokes[:, 2] / norm, label=f"tau={tau.round(5)}")
-        #     axV.plot(lambdas, stokes[:, 3] / norm, label=f"tau={tau.round(5)}")
+        if i % 20 == 0:
+            axI.plot(lambdas, stokes[:, 0] / norm, label=f"tau={tau.round(5)}")
+            axQ.plot(lambdas, stokes[:, 1] / norm, label=f"tau={tau.round(5)}")
+            axU.plot(lambdas, stokes[:, 2] / norm, label=f"tau={tau.round(5)}")
+            axV.plot(lambdas, stokes[:, 3] / norm, label=f"tau={tau.round(5)}")
         i = i + 1
 
-    # axTau.plot(tau_values, np.array(b_values) / 1000, label="B (kG)")
-    # axTau.plot(tau_values, np.array(t_values) / 10000, label="T (*10000 K)")
-    # axTau.plot(tau_values, kappa_l_values, label="kappa_L")
-    # axI.plot(lambdas, stokes[:, 0] / norm, label="I")
-    # axQ.plot(lambdas, stokes[:, 1] / norm, label="Q")
-    # axU.plot(lambdas, stokes[:, 2] / norm, label="U")
-    # axV.plot(lambdas, stokes[:, 3] / norm, label="V")
-    # axTau.legend()
-    # axI.legend()
-    # plt.tight_layout()
-    # plt.show()
+    axTau.plot(tau_values, np.array(b_values) / 1000, label="B (kG)")
+    axTau.plot(tau_values, np.array(t_values) / 10000, label="T (*10000 K)")
+    axTau.plot(tau_values, kappa_l_values, label="kappa_L")
+    axI.plot(lambdas, stokes[:, 0] / norm, label="I")
+    axQ.plot(lambdas, stokes[:, 1] / norm, label="Q")
+    axU.plot(lambdas, stokes[:, 2] / norm, label="U")
+    axV.plot(lambdas, stokes[:, 3] / norm, label="V")
+    axTau.legend()
+    axI.legend()
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":

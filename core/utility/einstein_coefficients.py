@@ -1,7 +1,7 @@
 from core.utility.constant import h, c
 
 
-def b_ul_from_a_ul_two_level_atom(a_ul, nu):
+def b_ul_from_a_two_level_atom(a_ul, nu):
     """
     real B(alpha_u J_u -> alpha_l J_l)
 
@@ -13,7 +13,7 @@ def b_ul_from_a_ul_two_level_atom(a_ul, nu):
     return a_ul / factor
 
 
-def a_ul_from_b_ul_two_level_atom(b_ul, nu):
+def a_from_b_ul_two_level_atom(b_ul, nu):
     """
     real A(alpha_u J_u -> alpha_l J_l)
 

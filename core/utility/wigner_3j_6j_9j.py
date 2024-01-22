@@ -223,5 +223,15 @@ w6j_doubled = np.vectorize(_w6j)
 w9j_doubled = np.vectorize(_w9j)
 
 
+def w3j(j1, j2, j3, m1, m2, m3):
+    return w3j_doubled(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
+
+
 def w6j(j1, j2, j3, l1, l2, l3):
     return w6j_doubled(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
+
+
+def w9j(j1, j2, j3, j4, j5, j6, j7, j8, j9):
+    return w9j_doubled(
+        j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2
+    )

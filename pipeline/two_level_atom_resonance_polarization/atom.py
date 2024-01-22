@@ -1,11 +1,11 @@
 import numpy as np
 from numpy import sqrt, exp, pi
 
-from core.tensors.t_k_q import t_k_q
+from core.tensor.t_k_q import t_k_q
 from core.utility.constant import kB, h, sqrt3, c, atomic_mass_unit, e_0, m_e
 from core.utility.einstein_coefficients import (
     b_lu_from_b_ul_two_level_atom,
-    b_ul_from_a_ul_two_level_atom,
+    b_ul_from_a_two_level_atom,
 )
 from core.utility.math import m1p
 from core.utility.voigt import voigt
@@ -25,7 +25,7 @@ class TwoLevelAtom:
         self.a_ul = 0.7e8  # 1/s
         self.temperature = 7000
         self.delta_nu_D = self.get_delta_nu_D()
-        self.b_ul = b_ul_from_a_ul_two_level_atom(self.a_ul, nu=self.nu)
+        self.b_ul = b_ul_from_a_two_level_atom(self.a_ul, nu=self.nu)
         self.b_lu = b_lu_from_b_ul_two_level_atom(self.b_ul, j_u=self.j_u, j_l=self.j_l)
         self.rho_l = dict()
         for k in [0, 1, 2]:
