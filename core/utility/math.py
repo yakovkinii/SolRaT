@@ -24,7 +24,7 @@ def fact(a):
     0!=1
     """
     result = 1
-    for i in range(1, a + 1):
+    for i in range(1, int(a) + 1):
         result *= i
     return result
 
@@ -35,4 +35,4 @@ def fact2(a):
     a is doubled integer
     Input integrity assumed
     """
-    return fact(a // 2)
+    return fact(int(a) // 2)

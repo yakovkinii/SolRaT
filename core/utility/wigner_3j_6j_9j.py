@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import numpy as np
 from numpy import abs, sqrt
 
@@ -46,7 +48,7 @@ def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled)
     h = j2_doubled + m2_doubled
     z_max = min(g, h, c)
     result = 0.0
-    for z in range(z_min, z_max + 1, 2):
+    for z in range(int(z_min), int(z_max) + 1, 2):
         denominator = (
             fact2(z)
             * fact2(g - z)
@@ -123,7 +125,7 @@ def _w6j(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled)
     w_max = min(i, j, k)
 
     result = 0.0
-    for w in range(w_min, w_max + 1, 2):
+    for w in range(int(w_min), int(w_max) + 1, 2):
         denominator = (
             fact2(w - sum_1)
             * fact2(w - sum_2)
@@ -207,31 +209,32 @@ def _w9j(
         abs(j2_doubled + j6_doubled),
     )
     result = 0
-    for k in range(k_min, k_max + 1, 2):
+    for k in range(int(k_min), int(k_max) + 1, 2):
         s = -1 if k % 2 != 0 else 1
-        x1 = w6j_doubled(j1_doubled, j9_doubled, k, j8_doubled, j4_doubled, j7_doubled)
-        x2 = w6j_doubled(j2_doubled, j6_doubled, k, j4_doubled, j8_doubled, j5_doubled)
-        x3 = w6j_doubled(j1_doubled, j9_doubled, k, j6_doubled, j2_doubled, j3_doubled)
+        x1 = _w6j(j1_doubled, j9_doubled, k, j8_doubled, j4_doubled, j7_doubled)
+        x2 = _w6j(j2_doubled, j6_doubled, k, j4_doubled, j8_doubled, j5_doubled)
+        x3 = _w6j(j1_doubled, j9_doubled, k, j6_doubled, j2_doubled, j3_doubled)
         result += s * x1 * x2 * x3 * (k + 1)
     return result
 
 
 # TODO: pre-calculating first can improve performance:
 # TODO: pre-calculate for common inputs -> map -> vectorize -> wrap: apply map, then fill NA by calling explicitly
-w3j_doubled = np.vectorize(_w3j)
-w6j_doubled = np.vectorize(_w6j)
-w9j_doubled = np.vectorize(_w9j)
+# w3j_doubled = np.vectorize(_w3j)
+# w6j_doubled = np.vectorize(_w6j)
+# w9j_doubled = np.vectorize(_w9j)
 
 
+@lru_cache(maxsize=None)
 def w3j(j1, j2, j3, m1, m2, m3):
-    return w3j_doubled(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
+    return _w3j(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
 
 
+@lru_cache(maxsize=None)
 def w6j(j1, j2, j3, l1, l2, l3):
-    return w6j_doubled(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
+    return _w6j(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
 
 
+@lru_cache(maxsize=None)
 def w9j(j1, j2, j3, j4, j5, j6, j7, j8, j9):
-    return w9j_doubled(
-        j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2
-    )
+    return _w9j(j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2)
