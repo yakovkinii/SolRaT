@@ -67,6 +67,7 @@ class Transition:
         einstein_b_ul: float,
         einstein_b_lu: float,
     ):
+        assert level_lower.s == level_lower.s
         self.transition_id = transition_id
         self.level_upper: Level = level_upper
         self.level_lower: Level = level_lower

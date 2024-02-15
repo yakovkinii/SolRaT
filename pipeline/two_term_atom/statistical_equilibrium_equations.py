@@ -39,7 +39,7 @@ class TwoTermAtom:
         if abs(q) > k:
             return 0
         _ = transition
-        return 1 * delta(k, 0) * delta(q, 0)  # todo
+        return 0 * delta(k, 0) * delta(q, 0)  # todo
         # return 1e2
 
     def add_all_equations(self):
@@ -55,7 +55,35 @@ class TwoTermAtom:
                 for j_prime in triangular(level.l, level.s):
                     for k in triangular(j, j_prime):
                         for q in projection(k):
-                            self.add_single_equation(
+                            self.matrix_builder.select_equation(
+                                level=level,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                            )
+                            self.add_coherence_decay(
+                                level=level,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                            )
+                            self.add_absorption(
+                                level=level,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                            )
+                            self.add_emission(
+                                level=level,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                            )
+                            self.add_relaxation(
                                 level=level,
                                 k=k,
                                 q=q,
@@ -63,44 +91,12 @@ class TwoTermAtom:
                                 j_prime=j_prime,
                             )
 
-    def add_single_equation(
+    def add_coherence_decay(
         self, level: Level, k: int, q: int, j: float, j_prime: float
     ):
         """
-        Adds single equation to the rho matrix
-
         Reference: (7.38)
-
-        Expressions like
-
-        d/dt rho(K0, Q0, ...) = sum_{K,Q}(
-            A(K, Q, ...) * rho(K, Q, ...)
-        )
-
-        should be written as
-
-        for K in <relevant range>:
-            for Q in <relevant range>:
-                add_coefficient(
-                    K0, Q0, ...,
-                    K, Q, ...,
-                    coefficient = A(K, Q, ...)
-                )
-
         """
-
-        print(f"EQUATION: {level.level_id=} {k=} {q=} {j=} {j_prime=}")
-
-        # Select row (coherence) in the rho matrix
-        self.matrix_builder.select_equation(
-            level=level,
-            k=k,
-            q=q,
-            j=j,
-            j_prime=j_prime,
-        )
-
-        # Coherence decay
         for k_prime in triangular(k, 1):
             for q_prime in projection(k_prime):
                 for j_prime_prime in intersection(
@@ -109,7 +105,7 @@ class TwoTermAtom:
                     for j_prime_prime_prime in intersection(
                         triangular(j, 1), triangular(level.l, level.s)
                     ):
-                        coefficient = (-2 * pi * 1j) * self.n(
+                        n = self.n(
                             level=level,
                             k=k,
                             q=q,
@@ -120,18 +116,19 @@ class TwoTermAtom:
                             j_prime_prime=j_prime_prime,
                             j_prime_prime_prime=j_prime_prime_prime,
                         )
-                        print(
-                            f"{k_prime=} {q_prime=} {j_prime_prime=} {j_prime_prime_prime} {coefficient=}"
-                        )
                         self.matrix_builder.add_coefficient(
                             level=level,
                             k=k_prime,
                             q=q_prime,
                             j=j_prime_prime,
                             j_prime=j_prime_prime_prime,
-                            coefficient=coefficient,
+                            coefficient=-2 * pi * 1j * n,
                         )
 
+    def add_absorption(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        """
+        Reference: (7.38)
+        """
         # Absorption toward selected coherence
         for level_lower in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(
@@ -144,7 +141,7 @@ class TwoTermAtom:
                         triangular_with_kr(k), triangular(j_l, j_prime_l)
                     ):
                         for q_l in projection(k_l):
-                            coefficient = self.t_a(
+                            t_a = self.t_a(
                                 level=level,
                                 k=k,
                                 q=q,
@@ -156,18 +153,19 @@ class TwoTermAtom:
                                 j_l=j_l,
                                 j_prime_l=j_prime_l,
                             )
-                            print(
-                                f"{level_lower.level_id=} {j_l=} {j_prime_l=} {k_l=} {q_l=} {coefficient=}"
-                            )
                             self.matrix_builder.add_coefficient(
                                 level=level_lower,
                                 k=k_l,
                                 q=q_l,
                                 j=j_l,
                                 j_prime=j_prime_l,
-                                coefficient=coefficient,
+                                coefficient=t_a,
                             )
 
+    def add_emission(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        """
+        Reference: (7.38)
+        """
         # Emission toward selected coherence
         for level_upper in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(
@@ -180,7 +178,7 @@ class TwoTermAtom:
                         triangular_with_kr(k), triangular(j_u, j_prime_u)
                     ):
                         for q_u in projection(k_u):
-                            coefficient_t_e = self.t_e(
+                            t_e = self.t_e(
                                 level=level,
                                 k=k,
                                 q=q,
@@ -192,7 +190,7 @@ class TwoTermAtom:
                                 j_u=j_u,
                                 j_prime_u=j_prime_u,
                             )
-                            coefficient_t_s = self.t_s(
+                            t_s = self.t_s(
                                 level=level,
                                 k=k,
                                 q=q,
@@ -203,9 +201,6 @@ class TwoTermAtom:
                                 q_u=q_u,
                                 j_u=j_u,
                                 j_prime_u=j_prime_u,
-                            )
-                            print(
-                                f"{level_upper.level_id=} {j_u=} {j_prime_u=} {k_u=} {q_u=} {coefficient_t_s=} {coefficient_t_e=}"
                             )
                             self.matrix_builder.add_coefficient(
                                 level=level_upper,
@@ -213,68 +208,187 @@ class TwoTermAtom:
                                 q=q_u,
                                 j=j_u,
                                 j_prime=j_prime_u,
-                                coefficient=coefficient_t_e + coefficient_t_s,
+                                coefficient=t_e + t_s,
                             )
 
+    def add_relaxation(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        """
+        Reference: (7.38)
+        """
         # Relaxation from selected coherence
-        # for k_prime in triangular(j, j_prime):
-        #     for q_prime in projection(k_prime):
-        #
-        #
-        #
-        #
-        #
-        # for level_lower in self.term_registry.levels.values():
-        #     if not self.transition_registry.is_transition_registered(
-        #             level_upper=level, level_lower=level_lower
-        #     ):
-        #         continue
-        #     if level_lower.s != level.s:
-        #         continue
-        #     for j_l in triangular(level_lower.l, level_lower.s):
-        #         for j_prime_l in triangular(level_lower.l, level_lower.s):
-        #             for k_l in intersection(
-        #                     triangular_with_kr(k), triangular(j_l, j_prime_l)
-        #             ):
-        #                 for q_l in projection(k_l):
-        #                     coefficient = self.t_a(
-        #                         level=level,
-        #                         k=k,
-        #                         q=q,
-        #                         j=j,
-        #                         j_prime=j_prime,
-        #                         level_lower=level_lower,
-        #                         k_l=k_l,
-        #                         q_l=q_l,
-        #                         j_l=j_l,
-        #                         j_prime_l=j_prime_l,
-        #                     )
-        #                     print(
-        #                         f"{level_lower.level_id=} {j_l=} {j_prime_l=} {k_l=} {q_l=} {coefficient=}"
-        #                     )
-        #                     self.matrix_builder.add_coefficient(
-        #                         level=level_lower,
-        #                         k=k_l,
-        #                         q=q_l,
-        #                         j=j_l,
-        #                         j_prime=j_prime_l,
-        #                         coefficient=coefficient,
-        #                     )
-        # Relaxation
-        # for k_prime in range_inclusive():
-        #     for q_prime in range_inclusive(-k_prime, k_prime):
-        #         for j_prime_prime in range_inclusive():
-        #             for j_prime_prime_prime in range_inclusive():
-        #                 add_coefficient(
-        #                     term_id_1=term_id,
-        #                     k_1=k_prime,
-        #                     q_1=q_prime,
-        #                     j_1=j_prime_prime,
-        #                     j_prime_1=j_prime_prime_prime,
-        #                     coefficient=-(
-        #                         self.r_a(...) + self.r_e(...) + self.r_s(...)
-        #                     ),
-        #                 )
+        for k_prime in triangular(j, j_prime):
+            for q_prime in projection(k_prime):
+                for j_prime_prime in triangular(level.l, level.s):  # todo
+                    for j_prime_prime_prime in triangular(level.l, level.s):  # todo
+                        r_a = self.r_a(
+                            level=level,
+                            k=k,
+                            q=q,
+                            j=j,
+                            j_prime=j_prime,
+                            k_prime=k_prime,
+                            q_prime=q_prime,
+                            j_prime_prime=j_prime_prime,
+                            j_prime_prime_prime=j_prime_prime_prime,
+                        )
+                        r_e = self.r_e(
+                            level=level,
+                            k=k,
+                            q=q,
+                            j=j,
+                            j_prime=j_prime,
+                            k_prime=k_prime,
+                            q_prime=q_prime,
+                            j_prime_prime=j_prime_prime,
+                            j_prime_prime_prime=j_prime_prime_prime,
+                        )
+                        r_s = self.r_s(
+                            level=level,
+                            k=k,
+                            q=q,
+                            j=j,
+                            j_prime=j_prime,
+                            k_prime=k_prime,
+                            q_prime=q_prime,
+                            j_prime_prime=j_prime_prime,
+                            j_prime_prime_prime=j_prime_prime_prime,
+                        )
+                        self.matrix_builder.add_coefficient(
+                            level=level,
+                            k=k_prime,
+                            q=q_prime,
+                            j=j_prime_prime,
+                            j_prime=j_prime_prime_prime,
+                            coefficient=-(r_a + r_e + r_s),
+                        )
+
+    def r_a(
+        self,
+        level: Level,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        k_prime: int,
+        q_prime: int,
+        j_prime_prime: float,
+        j_prime_prime_prime: float,
+    ):
+        l = level.l
+        s = level.s
+        result = 0
+        for level_upper in self.term_registry.levels.values():
+            if not self.transition_registry.is_transition_registered(
+                level_upper=level_upper, level_lower=level
+            ):
+                continue
+            transition = self.transition_registry.get_transition(
+                level_upper=level_upper, level_lower=level
+            )
+            m0 = (2 * l + 1) * transition.einstein_b_lu
+            l_u = level_upper.l
+            for k_r in [0, 1, 2]:
+                for q_r in projection(k_r):
+                    m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
+                    m2 = m1p(1 + l_u - s + j + q_prime)
+                    m3 = w6j(l, l, k_r, 1, 1, l_u) * w3j(
+                        k, k_prime, k_r, q, -q_prime, q_r
+                    )
+                    m4 = 0.5 * self.j_tensor(k=k_r, q=q_r, transition=transition)
+                    a1 = delta(j, j_prime_prime) * sqrt(
+                        (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
+                    )
+                    a2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
+                    a3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
+                    b1 = delta(j_prime, j_prime_prime_prime) * sqrt(
+                        (2 * j + 1) * (2 * j_prime_prime + 1)
+                    )
+                    b2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
+                    b3 = w6j(l, l, k_r, j_prime_prime, j, s)
+                    b4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
+                    result += (
+                        m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
+                    )
+        return result
+
+    def r_e(
+        self,
+        level: Level,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        k_prime: int,
+        q_prime: int,
+        j_prime_prime: float,
+        j_prime_prime_prime: float,
+    ):
+        result = 0
+        m0 = (
+            delta(k, k_prime)
+            * delta(q, q_prime)
+            * delta(j, j_prime_prime)
+            * delta(j_prime, j_prime_prime_prime)
+        )
+        for level_lower in self.term_registry.levels.values():
+            if not self.transition_registry.is_transition_registered(
+                level_upper=level, level_lower=level_lower
+            ):
+                continue
+            transition = self.transition_registry.get_transition(
+                level_upper=level, level_lower=level_lower
+            )
+            result += m0 * transition.einstein_a_ul
+        return result
+
+    def r_s(
+        self,
+        level: Level,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        k_prime: int,
+        q_prime: int,
+        j_prime_prime: float,
+        j_prime_prime_prime: float,
+    ):
+        l = level.l
+        s = level.s
+        result = 0
+        for level_lower in self.term_registry.levels.values():
+            if not self.transition_registry.is_transition_registered(
+                level_upper=level, level_lower=level_lower
+            ):
+                continue
+            transition = self.transition_registry.get_transition(
+                level_upper=level, level_lower=level_lower
+            )
+            m0 = (2 * l + 1) * transition.einstein_b_ul
+            l_l = level_lower.l
+            for k_r in [0, 1, 2]:
+                for q_r in projection(k_r):
+                    m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
+                    m2 = m1p(1 + l_l - s + j + k_r + q_prime)
+                    m3 = w6j(l, l, k_r, 1, 1, l_l) * w3j(
+                        k, k_prime, k_r, q, -q_prime, q_r
+                    )
+                    m4 = 0.5 * self.j_tensor(k=k_r, q=q_r, transition=transition)
+                    a1 = delta(j, j_prime_prime) * sqrt(
+                        (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
+                    )
+                    a2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
+                    a3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
+                    b1 = delta(j_prime, j_prime_prime_prime) * sqrt(
+                        (2 * j + 1) * (2 * j_prime_prime + 1)
+                    )
+                    b2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
+                    b3 = w6j(l, l, k_r, j_prime_prime, j, s)
+                    b4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
+                    result += (
+                        m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
+                    )
+        return result
 
     @staticmethod
     def gamma(
