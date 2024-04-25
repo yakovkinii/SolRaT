@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from core.utility.paschen_back import paschen_back_diagonalization
-from core.utility.python import range_inclusive
 import unittest
 
 
@@ -22,15 +21,14 @@ class TestDemoPaschenBack(unittest.TestCase):
         unperturbed_energies = energies_hydrogen_2p()
 
         energies = []
-        magnetic_fields = [_ for _ in range_inclusive(0, 30000, 10)]
-
+        magnetic_fields = [_ for _ in range(0, 20001, 10)]
         for magnetic_field in magnetic_fields:  # Gauss
             eigenvalues, eigenvectors = paschen_back_diagonalization(
                 l=1, s=0.5, b=magnetic_field, e=unperturbed_energies
             )
             energies.append(sorted(eigenvalues.data.values()))
 
-        plt.plot(magnetic_fields, np.array(energies))
+        plt.plot(magnetic_fields, np.array(energies), "k")
         plt.xlabel("Magnetic field (G)")
         plt.ylabel("Energy (cm$^{-1}$)")
         plt.title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")

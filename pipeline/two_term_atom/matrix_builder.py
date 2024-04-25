@@ -1,6 +1,8 @@
+import logging
 from typing import List
 
 import numpy as np
+from numpy import sqrt
 
 from core.utility.python import (
     half_int_to_str,
@@ -19,7 +21,8 @@ class MatrixBuilder:
         # Create mapping [level_id, K, Q, J, J'] <-> matrix index
         self.index_to_parameters = dict()
         self.coherence_id_to_index = dict()
-
+        self.trace_indexes = []
+        self.trace_weights = []
         index = 0
         for level in levels:
             for j in triangular(level.l, level.s):
@@ -37,6 +40,9 @@ class MatrixBuilder:
                                 j,
                                 j_prime,
                             )
+                            if k == 0 and q == 0 and j == j_prime:
+                                self.trace_indexes.append(index)
+                                self.trace_weights.append(sqrt(2 * j + 1))
                             index += 1
         # create the matrix
         matrix_size = index
@@ -89,5 +95,5 @@ class MatrixBuilder:
             f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
         )
         index1 = self.coherence_id_to_index[coherence_id]
-        print(f"=== {index0} {index1} += {coefficient}")
+        logging.info(f"=== {index0=} {index1=} += {coefficient}")
         self.rho_matrix[index0, index1] += coefficient

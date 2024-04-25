@@ -8,9 +8,11 @@ import matplotlib.gridspec as gridspec
 import core.utility.voigt as v
 
 # SGS
-from voigt import Voigt
-
+# from voigt import Voigt
+#
 from yatools import logging_config
+
+from core.utility.constant import c, h, kB, e_0, m_e
 
 logging_config.init(logging.INFO)
 

@@ -1,12 +1,19 @@
 import logging
+from typing import List
 
 import numpy as np
 
 from numpy import pi, sqrt
 
-from core.utility.constant import h
+from core.tensor.atmosphere_parameters import AtmosphereParameters
+from core.tensor.radiation_tensor import RadiationTensor
+from core.utility.black_body import get_BP
+from core.utility.constant import h, c
+from core.utility.einstein_coefficients import (
+    b_ul_from_a_two_level_atom,
+    b_lu_from_b_ul_two_level_atom,
+)
 from core.utility.math import m1p, delta
-from core.utility.misc import nu_larmor
 from core.utility.python import triangular, intersection, projection, triangular_with_kr
 from core.utility.wigner_3j_6j_9j import w9j, w6j, w3j
 from pipeline.two_term_atom.matrix_builder import (
@@ -22,25 +29,17 @@ class TwoTermAtom:
         self,
         term_registry: TermRegistry,
         transition_registry: TransitionRegistry,
-        atmosphere_parameters=None,
-        radiation_tensor=None,
+        atmosphere_parameters: AtmosphereParameters,
+        radiation_tensor: RadiationTensor,
     ):
         self.term_registry: TermRegistry = term_registry
         self.transition_registry: TransitionRegistry = transition_registry
-        self.matrix_builder = MatrixBuilder(
+        self.matrix_builder: MatrixBuilder = MatrixBuilder(
             levels=list(self.term_registry.levels.values())
         )
-        self.nu_larmor = nu_larmor(magnetic_field_gauss=0)  # todo remove
-
-    @staticmethod
-    def j_tensor(k: int, q: int, transition: Transition):  # todo remove
-        if k > 2:
-            return 0
-        if abs(q) > k:
-            return 0
-        _ = transition
-        return 0 * delta(k, 0) * delta(q, 0)  # todo
-        # return 1e2
+        self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
+        self.radiation_tensor: RadiationTensor = radiation_tensor
+        self.options: List[str] = []  # Todo
 
     def add_all_equations(self):
         """
@@ -94,6 +93,7 @@ class TwoTermAtom:
     def add_coherence_decay(
         self, level: Level, k: int, q: int, j: float, j_prime: float
     ):
+        logging.info("add_coherence_decay")
         """
         Reference: (7.38)
         """
@@ -126,6 +126,7 @@ class TwoTermAtom:
                         )
 
     def add_absorption(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        logging.info("add_absorption")
         """
         Reference: (7.38)
         """
@@ -163,6 +164,7 @@ class TwoTermAtom:
                             )
 
     def add_emission(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        logging.info("add_emission")
         """
         Reference: (7.38)
         """
@@ -212,6 +214,7 @@ class TwoTermAtom:
                             )
 
     def add_relaxation(self, level: Level, k: int, q: int, j: float, j_prime: float):
+        logging.info("add_relaxation")
         """
         Reference: (7.38)
         """
@@ -242,17 +245,20 @@ class TwoTermAtom:
                             j_prime_prime=j_prime_prime,
                             j_prime_prime_prime=j_prime_prime_prime,
                         )
-                        r_s = self.r_s(
-                            level=level,
-                            k=k,
-                            q=q,
-                            j=j,
-                            j_prime=j_prime,
-                            k_prime=k_prime,
-                            q_prime=q_prime,
-                            j_prime_prime=j_prime_prime,
-                            j_prime_prime_prime=j_prime_prime_prime,
-                        )
+                        if "disable_r_s" in self.options:
+                            r_s = 0
+                        else:
+                            r_s = self.r_s(
+                                level=level,
+                                k=k,
+                                q=q,
+                                j=j,
+                                j_prime=j_prime,
+                                k_prime=k_prime,
+                                q_prime=q_prime,
+                                j_prime_prime=j_prime_prime,
+                                j_prime_prime_prime=j_prime_prime_prime,
+                            )
                         self.matrix_builder.add_coefficient(
                             level=level,
                             k=k_prime,
@@ -288,13 +294,15 @@ class TwoTermAtom:
             m0 = (2 * l + 1) * transition.einstein_b_lu
             l_u = level_upper.l
             for k_r in [0, 1, 2]:
-                for q_r in projection(k_r):
+                for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
                     m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
                     m2 = m1p(1 + l_u - s + j + q_prime)
                     m3 = w6j(l, l, k_r, 1, 1, l_u) * w3j(
                         k, k_prime, k_r, q, -q_prime, q_r
                     )
-                    m4 = 0.5 * self.j_tensor(k=k_r, q=q_r, transition=transition)
+                    m4 = 0.5 * self.radiation_tensor.get(
+                        transition=transition, k=k_r, q=q_r
+                    )
                     a1 = delta(j, j_prime_prime) * sqrt(
                         (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
                     )
@@ -353,6 +361,7 @@ class TwoTermAtom:
         j_prime_prime: float,
         j_prime_prime_prime: float,
     ):
+        # Todo all relaxation rates can be simplified (7.46)
         l = level.l
         s = level.s
         result = 0
@@ -367,13 +376,15 @@ class TwoTermAtom:
             m0 = (2 * l + 1) * transition.einstein_b_ul
             l_l = level_lower.l
             for k_r in [0, 1, 2]:
-                for q_r in projection(k_r):
+                for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
                     m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
                     m2 = m1p(1 + l_l - s + j + k_r + q_prime)
                     m3 = w6j(l, l, k_r, 1, 1, l_l) * w3j(
                         k, k_prime, k_r, q, -q_prime, q_r
                     )
-                    m4 = 0.5 * self.j_tensor(k=k_r, q=q_r, transition=transition)
+                    m4 = 0.5 * self.radiation_tensor.get(
+                        transition=transition, k=k_r, q=q_r
+                    )
                     a1 = delta(j, j_prime_prime) * sqrt(
                         (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
                     )
@@ -435,7 +446,7 @@ class TwoTermAtom:
 
         result += (
             delta(q, q_prime)
-            * self.nu_larmor
+            * self.atmosphere_parameters.nu_larmor
             * m1p(j + j_prime - q)
             * sqrt((2 * k + 1) * (2 * k_prime + 1))
             * w3j(k, k_prime, 1, -q, q, 0)
@@ -478,7 +489,7 @@ class TwoTermAtom:
         m0 = (2 * l_l + 1) * transition.einstein_b_lu
         result = 0
         for k_r in [0, 1, 2]:
-            for q_r in projection(k_r):
+            for q_r in projection(k_r):  # todo: no need to sum: q_r = q_l - q
                 m1 = sqrt(
                     3
                     * (2 * j + 1)
@@ -494,7 +505,7 @@ class TwoTermAtom:
                 m4 = w6j(l, l_l, 1, j_l, j, s)
                 m5 = w6j(l, l_l, 1, j_prime_l, j_prime, s)
                 m6 = w3j(k, k_l, k_r, -q, q_l, -q_r)
-                m7 = self.j_tensor(k=k_r, q=q_r, transition=transition)
+                m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
                 result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
         return result
 
@@ -566,7 +577,7 @@ class TwoTermAtom:
         m0 = (2 * l_u + 1) * transition.einstein_b_ul
         result = 0
         for k_r in [0, 1, 2]:
-            for q_r in projection(k_r):
+            for q_r in projection(k_r):  # todo: no need to sum: q_r = q_u - q
                 m1 = sqrt(
                     3
                     * (2 * j + 1)
@@ -582,107 +593,29 @@ class TwoTermAtom:
                 m4 = w6j(l_u, l, 1, j, j_u, s)
                 m5 = w6j(l_u, l, 1, j_prime, j_prime_u, s)
                 m6 = w3j(k, k_u, k_r, -q, q_u, -q_r)
-                m7 = self.j_tensor(k=k_r, q=q_r, transition=transition)
+                m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
                 result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
         return result
 
-    # def r_a(
-    #     self,
-    #     term_id,
-    #     k,
-    #     q,
-    #     j,
-    #     j_prime,
-    #     k_prime,
-    #     q_prime,
-    #     j_prime_prime,
-    #     j_prime_prime_prime,
-    # ):
-    #     """
-    #     (7.46a)
-    #     """
-    #     s = self.terms[term_id].s
-    #     l = self.terms[term_id].l
-    #
-    #     _a0 = 2 * l + 1
-    #     result = 0
-    #     for term_id_upper in self.transitions.transitions_from_upper[term_id]:
-    #         l_u = self.terms[term_id_upper].l
-    #         _a1 = self.einstein_b_lu(lower_term_id=term_id, upper_term_id=term_id_upper)
-    #         for k_r in range_inclusive():
-    #             for q_r in range_inclusive(-k_r, k_r):
-    #                 _a2 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
-    #                 _a3 = m1p(1 + l_u - s + j + q_prime)
-    #                 _a4 = w6j(l, l, k_r, 1, 1, l_u)
-    #                 _a5 = w3j(k, k_prime, k_r, q, -q_prime, q_r)
-    #                 _a6 = 0.5
-    #                 _a7 = self.j_tensor(
-    #                     k=k_r, q=q_r, lower_term_id=term_id, upper_term_id=term_id_upper
-    #                 )
-    #
-    #                 _b0 = delta(j, j_prime_prime)
-    #                 _b1 = sqrt((2 * j_prime + 1) * (2 * j_prime_prime_prime + 1))
-    #                 _b2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
-    #                 _b3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
-    #
-    #                 _c0 = delta(j_prime, j_prime_prime_prime)
-    #                 _c1 = sqrt((2 * j + 1) * (2 * j_prime_prime + 1))
-    #                 _c2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
-    #                 _c3 = w6j(l, l, k_r, j_prime_prime, j, s)
-    #                 _c4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
-    #
-    #                 _a = _a0 * _a1 * _a2 * _a3 * _a4 * _a5 * _a6 * _a7
-    #                 _b = _b0 * _b1 * _b2 * _b3
-    #                 _c = _c0 * _c1 * _c2 * _c3 * _c4
-    #
-    #                 result += _a * (_b + _c)
-    #
-    #     return result
+    def get_solution_direct(self):
+        # A x = 0
+        # let x[0] = 1 (it is always rho_0_0 of some kind, so it is unlikely to be exactly zero)
+        # A[1:] x = 0
+        # A[1:, 1:] x[1:] = -A[1:, 0]
+        sol = np.linalg.solve(
+            self.matrix_builder.rho_matrix[1:, 1:],
+            -self.matrix_builder.rho_matrix[1:, 0],
+        )
+        sol = np.insert(sol, 0, 1.0, 0)
 
-
-if __name__ == "__main__":
-    term_registry = TermRegistry()
-    term_registry.register_term(
-        beta="1s",
-        l=0,
-        s=0,
-        j=0,
-        energy=80000,
-    )
-    term_registry.register_term(
-        beta="2p",
-        l=1,
-        s=0,
-        j=1,
-        energy=82000,
-    )
-    term_registry.validate()
-
-    transition_registry = TransitionRegistry()
-    transition_registry.register_transition(
-        level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-        level_lower=term_registry.get_level(beta="1s", l=0, s=0),
-        einstein_a_ul=0.1,
-        einstein_b_ul=0.1,
-        einstein_b_lu=0.1,
-    )
-    atom = TwoTermAtom(
-        term_registry=term_registry, transition_registry=transition_registry
-    )
-    atom.add_all_equations()
-
-    rho_matrix = atom.matrix_builder.rho_matrix
-    rho_matrix_abs = np.abs(rho_matrix)
-    import pandas as pd
-
-    mat = pd.DataFrame(rho_matrix_abs)
-    mat.index = atom.matrix_builder.coherence_id_to_index.keys()
-    mat.columns = atom.matrix_builder.coherence_id_to_index.keys()
-    U, S, VT = np.linalg.svd(atom.matrix_builder.rho_matrix)
-    index_min_singular_value = np.argmin(S)
-
-    # The corresponding vector in V^T (hence, V since we're using Python) is our solution
-    solution_vector = VT[index_min_singular_value, :]
-
-    print("Solution vector: ", solution_vector)
-    ...
+        # Sum sqrt(2J+1) rho00(J, J) = 1
+        trace = sum(
+            [
+                sol[index] * weight
+                for (index, weight) in zip(
+                    self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights
+                )
+            ]
+        )
+        solution_vector = sol / trace
+        return solution_vector
