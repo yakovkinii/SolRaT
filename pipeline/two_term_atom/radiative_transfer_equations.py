@@ -3,7 +3,7 @@ from numpy import pi, sqrt
 
 from core.utility.constant import h
 from core.utility.math import m1p
-from core.utility.python import projection
+from core.utility.python import projection, range_inclusive
 from pipeline.two_term_atom.transition_registry import TransitionRegistry
 
 
@@ -25,7 +25,7 @@ class RadiativeTransferCoefficients:
             s = level_lower.s
 
             m1 = (2 * l_l + 1) * transition.einstein_b_lu
-            for k in ...:
+            for k in range_inclusive(0, 2):
                 for q in projection(k):
                     for k_l in ...:
                         for q_l in projection(k_l):

@@ -13,6 +13,7 @@ from core.utility.einstein_coefficients import (
     b_ul_from_a_two_level_atom,
     b_lu_from_b_ul_two_level_atom,
 )
+from core.utility.generator import nested_loops
 from core.utility.math import m1p, delta
 from core.utility.python import triangular, intersection, projection, triangular_with_kr
 from core.utility.wigner_3j_6j_9j import w9j, w6j, w3j
@@ -219,54 +220,58 @@ class TwoTermAtom:
         Reference: (7.38)
         """
         # Relaxation from selected coherence
-        for k_prime in triangular(j, j_prime):
-            for q_prime in projection(k_prime):
-                for j_prime_prime in triangular(level.l, level.s):  # todo
-                    for j_prime_prime_prime in triangular(level.l, level.s):  # todo
-                        r_a = self.r_a(
-                            level=level,
-                            k=k,
-                            q=q,
-                            j=j,
-                            j_prime=j_prime,
-                            k_prime=k_prime,
-                            q_prime=q_prime,
-                            j_prime_prime=j_prime_prime,
-                            j_prime_prime_prime=j_prime_prime_prime,
-                        )
-                        r_e = self.r_e(
-                            level=level,
-                            k=k,
-                            q=q,
-                            j=j,
-                            j_prime=j_prime,
-                            k_prime=k_prime,
-                            q_prime=q_prime,
-                            j_prime_prime=j_prime_prime,
-                            j_prime_prime_prime=j_prime_prime_prime,
-                        )
-                        if "disable_r_s" in self.options:
-                            r_s = 0
-                        else:
-                            r_s = self.r_s(
-                                level=level,
-                                k=k,
-                                q=q,
-                                j=j,
-                                j_prime=j_prime,
-                                k_prime=k_prime,
-                                q_prime=q_prime,
-                                j_prime_prime=j_prime_prime,
-                                j_prime_prime_prime=j_prime_prime_prime,
-                            )
-                        self.matrix_builder.add_coefficient(
-                            level=level,
-                            k=k_prime,
-                            q=q_prime,
-                            j=j_prime_prime,
-                            j_prime=j_prime_prime_prime,
-                            coefficient=-(r_a + r_e + r_s),
-                        )
+        for k_prime, q_prime, j_prime_prime, j_prime_prime_prime in nested_loops(
+            {
+                "k_prime": f"triangular({j}, {j_prime})",
+                "q_prime": f"projection(k_prime)",
+                "j_prime_prime": f"triangular({level.l}, {level.s})",
+                "j_prime_prime_prime": f"triangular({level.l}, {level.s})",
+            }
+        ):
+            r_a = self.r_a(
+                level=level,
+                k=k,
+                q=q,
+                j=j,
+                j_prime=j_prime,
+                k_prime=k_prime,
+                q_prime=q_prime,
+                j_prime_prime=j_prime_prime,
+                j_prime_prime_prime=j_prime_prime_prime,
+            )
+            r_e = self.r_e(
+                level=level,
+                k=k,
+                q=q,
+                j=j,
+                j_prime=j_prime,
+                k_prime=k_prime,
+                q_prime=q_prime,
+                j_prime_prime=j_prime_prime,
+                j_prime_prime_prime=j_prime_prime_prime,
+            )
+            if "disable_r_s" in self.options:
+                r_s = 0
+            else:
+                r_s = self.r_s(
+                    level=level,
+                    k=k,
+                    q=q,
+                    j=j,
+                    j_prime=j_prime,
+                    k_prime=k_prime,
+                    q_prime=q_prime,
+                    j_prime_prime=j_prime_prime,
+                    j_prime_prime_prime=j_prime_prime_prime,
+                )
+            self.matrix_builder.add_coefficient(
+                level=level,
+                k=k_prime,
+                q=q_prime,
+                j=j_prime_prime,
+                j_prime=j_prime_prime_prime,
+                coefficient=-(r_a + r_e + r_s),
+            )
 
     def r_a(
         self,
