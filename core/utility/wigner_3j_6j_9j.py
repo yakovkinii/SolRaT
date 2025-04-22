@@ -226,12 +226,12 @@ def _w9j(
 
 
 @lru_cache(maxsize=None)
-def w3j(j1, j2, j3, m1, m2, m3):
+def wigner_3j(j1, j2, j3, m1, m2, m3):
     return _w3j(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
 
 
 @lru_cache(maxsize=None)
-def w6j(j1, j2, j3, l1, l2, l3):
+def wigner_6j(j1, j2, j3, l1, l2, l3):
     return _w6j(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
 
 

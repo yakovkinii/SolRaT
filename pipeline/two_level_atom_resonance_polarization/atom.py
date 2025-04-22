@@ -9,7 +9,7 @@ from core.utility.einstein_coefficients import (
 )
 from core.utility.math import m1p
 from core.utility.voigt import voigt
-from core.utility.wigner_3j_6j_9j import w6j
+from core.utility.wigner_3j_6j_9j import wigner_6j
 
 
 class TwoLevelAtom:
@@ -54,12 +54,12 @@ class TwoLevelAtom:
 
     def _get_rho_u_k_q(self, k, q, j_k_q: dict):
         return (
-            sqrt(3 * (2 * self.j_l + 1))
-            * self.b_lu
-            / self.a_ul
-            * m1p(1 + self.j_l + self.j_u + q)
-            * w6j(1, 1, k, self.j_u, self.j_u, self.j_l)
-            * j_k_q[k][-q]
+                sqrt(3 * (2 * self.j_l + 1))
+                * self.b_lu
+                / self.a_ul
+                * m1p(1 + self.j_l + self.j_u + q)
+                * wigner_6j(1, 1, k, self.j_u, self.j_u, self.j_l)
+                * j_k_q[k][-q]
         )
 
     def get_j_k_q_1d(self, stokes, nus):
@@ -139,9 +139,9 @@ class TwoLevelAtom:
                 for q in range(-k, k + 1):
                     aaa = (
                         (
-                            sqrt3
-                            * m1p(1 + self.j_l + self.j_u + k)
-                            * w6j(1, 1, k, self.j_l, self.j_l, self.j_u)
+                                sqrt3
+                                * m1p(1 + self.j_l + self.j_u + k)
+                                * wigner_6j(1, 1, k, self.j_l, self.j_l, self.j_u)
                         )
                         * self.t_k_q[k][q][i]
                         * self.rho_l[k][q]
@@ -173,9 +173,9 @@ class TwoLevelAtom:
                 for q in range(-k, k + 1):
                     aaa = (
                         (
-                            sqrt3
-                            * m1p(1 + self.j_l + self.j_u)
-                            * w6j(1, 1, k, self.j_u, self.j_u, self.j_l)
+                                sqrt3
+                                * m1p(1 + self.j_l + self.j_u)
+                                * wigner_6j(1, 1, k, self.j_u, self.j_u, self.j_l)
                         )
                         * self.t_k_q[k][q][i]
                         * self.rho_u[k][q]

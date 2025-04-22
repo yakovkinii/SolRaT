@@ -85,7 +85,7 @@ def get_BP(nu, T):
 
 
 def main():
-    atom = TwoLevelAtom(theta=pi / 2, gamma=1, chi=1)
+    atom = TwoLevelAtom(theta=pi / 4, gamma=1, chi=1)
     nus = np.linspace(atom.nu - 1e11, atom.nu + 1e11, 1000)
 
     lambdas = get_lambda_from_nu(nus)
@@ -110,7 +110,7 @@ def main():
     kappa_l_values = []
     tau = np.array(1)
     d_tau_max = -0.01
-    kappa_l = 1000
+    kappa_l = 10
     i = 1
     while tau > 0.001:
         tau_values.append(log10(tau))

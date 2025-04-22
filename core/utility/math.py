@@ -9,12 +9,18 @@ def m1p(a):
     return 1 - 2 * (a % 2)
 
 
+ᐨ1ˆ = m1p
+
+
 def delta(a, b):
     """
     real delta_ab
     a, b: integer
     """
     return 1 if a == b else 0
+
+
+δ = delta
 
 
 @lru_cache(maxsize=None)

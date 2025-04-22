@@ -13,10 +13,10 @@ from core.utility.einstein_coefficients import (
     b_ul_from_a_two_level_atom,
     b_lu_from_b_ul_two_level_atom,
 )
-from core.utility.generator import nested_loops
-from core.utility.math import m1p, delta
+from core.utility.generator import nested_loops, multiply, n_proj
+from core.utility.math import m1p, delta, δ, ᐨ1ˆ
 from core.utility.python import triangular, intersection, projection, triangular_with_kr
-from core.utility.wigner_3j_6j_9j import w9j, w6j, w3j
+from core.utility.wigner_3j_6j_9j import w9j, wigner_6j, wigner_3j
 from pipeline.two_term_atom.matrix_builder import (
     MatrixBuilder,
     Level,
@@ -302,7 +302,7 @@ class TwoTermAtom:
                 for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
                     m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
                     m2 = m1p(1 + l_u - s + j + q_prime)
-                    m3 = w6j(l, l, k_r, 1, 1, l_u) * w3j(
+                    m3 = wigner_6j(l, l, k_r, 1, 1, l_u) * wigner_3j(
                         k, k_prime, k_r, q, -q_prime, q_r
                     )
                     m4 = 0.5 * self.radiation_tensor.get(
@@ -311,14 +311,14 @@ class TwoTermAtom:
                     a1 = delta(j, j_prime_prime) * sqrt(
                         (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
                     )
-                    a2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
-                    a3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
+                    a2 = wigner_6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
+                    a3 = wigner_6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
                     b1 = delta(j_prime, j_prime_prime_prime) * sqrt(
                         (2 * j + 1) * (2 * j_prime_prime + 1)
                     )
                     b2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
-                    b3 = w6j(l, l, k_r, j_prime_prime, j, s)
-                    b4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
+                    b3 = wigner_6j(l, l, k_r, j_prime_prime, j, s)
+                    b4 = wigner_6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
                     result += (
                         m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
                     )
@@ -384,7 +384,7 @@ class TwoTermAtom:
                 for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
                     m1 = sqrt(3 * (2 * k + 1) * (2 * k_prime + 1) * (2 * k_r + 1))
                     m2 = m1p(1 + l_l - s + j + k_r + q_prime)
-                    m3 = w6j(l, l, k_r, 1, 1, l_l) * w3j(
+                    m3 = wigner_6j(l, l, k_r, 1, 1, l_l) * wigner_3j(
                         k, k_prime, k_r, q, -q_prime, q_r
                     )
                     m4 = 0.5 * self.radiation_tensor.get(
@@ -393,14 +393,14 @@ class TwoTermAtom:
                     a1 = delta(j, j_prime_prime) * sqrt(
                         (2 * j_prime + 1) * (2 * j_prime_prime_prime + 1)
                     )
-                    a2 = w6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
-                    a3 = w6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
+                    a2 = wigner_6j(l, l, k_r, j_prime_prime_prime, j_prime, s)
+                    a3 = wigner_6j(k, k_prime, k_r, j_prime_prime_prime, j_prime, j)
                     b1 = delta(j_prime, j_prime_prime_prime) * sqrt(
                         (2 * j + 1) * (2 * j_prime_prime + 1)
                     )
                     b2 = m1p(j_prime_prime - j_prime + k + k_prime + k_r)
-                    b3 = w6j(l, l, k_r, j_prime_prime, j, s)
-                    b4 = w6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
+                    b3 = wigner_6j(l, l, k_r, j_prime_prime, j, s)
+                    b4 = wigner_6j(k, k_prime, k_r, j_prime_prime, j, j_prime)
                     result += (
                         m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
                     )
@@ -416,9 +416,9 @@ class TwoTermAtom:
         l = level.l
         result = delta(j, j_prime) * sqrt(j * (j + 1) * (2 * j + 1))
         result += (
-            m1p(1 + l + s + j)
-            * sqrt((2 * j + 1) * (2 * j_prime + 1) * s * (s + 1) * (2 * s + 1))
-            * w6j(j, j_prime, 1, s, s, l)
+                m1p(1 + l + s + j)
+                * sqrt((2 * j + 1) * (2 * j_prime + 1) * s * (s + 1) * (2 * s + 1))
+                * wigner_6j(j, j_prime, 1, s, s, l)
         )
         return result
 
@@ -450,18 +450,18 @@ class TwoTermAtom:
         )
 
         result += (
-            delta(q, q_prime)
-            * self.atmosphere_parameters.nu_larmor
-            * m1p(j + j_prime - q)
-            * sqrt((2 * k + 1) * (2 * k_prime + 1))
-            * w3j(k, k_prime, 1, -q, q, 0)
-            * (
-                delta(j_prime, j_prime_prime_prime)
-                * self.gamma(level=level, j=j, j_prime=j_prime_prime)
-                * w6j(k, k_prime, 1, j_prime_prime, j, j_prime)
-                + delta(j, j_prime_prime)
-                * self.gamma(level=level, j=j_prime_prime_prime, j_prime=j_prime)
-                * w6j(k, k_prime, 1, j_prime_prime_prime, j_prime, j)
+                delta(q, q_prime)
+                * self.atmosphere_parameters.nu_larmor
+                * m1p(j + j_prime - q)
+                * sqrt((2 * k + 1) * (2 * k_prime + 1))
+                * wigner_3j(k, k_prime, 1, -q, q, 0)
+                * (
+                        delta(j_prime, j_prime_prime_prime)
+                        * self.gamma(level=level, j=j, j_prime=j_prime_prime)
+                        * wigner_6j(k, k_prime, 1, j_prime_prime, j, j_prime)
+                        + delta(j, j_prime_prime)
+                        * self.gamma(level=level, j=j_prime_prime_prime, j_prime=j_prime)
+                        * wigner_6j(k, k_prime, 1, j_prime_prime_prime, j_prime, j)
             )
         )
         return result
@@ -507,9 +507,9 @@ class TwoTermAtom:
                 )
                 m2 = m1p(k_l + q_l + j_prime_l - j_l)
                 m3 = w9j(j, j_l, 1, j_prime, j_prime_l, 1, k, k_l, k_r)
-                m4 = w6j(l, l_l, 1, j_l, j, s)
-                m5 = w6j(l, l_l, 1, j_prime_l, j_prime, s)
-                m6 = w3j(k, k_l, k_r, -q, q_l, -q_r)
+                m4 = wigner_6j(l, l_l, 1, j_l, j, s)
+                m5 = wigner_6j(l, l_l, 1, j_prime_l, j_prime, s)
+                m6 = wigner_3j(k, k_l, k_r, -q, q_l, -q_r)
                 m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
                 result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
         return result
@@ -547,10 +547,58 @@ class TwoTermAtom:
         m0 = (2 * l_u + 1) * transition.einstein_a_ul
         m1 = sqrt((2 * j + 1) * (2 * j_prime + 1) * (2 * j_u + 1) * (2 * j_prime_u + 1))
         m2 = m1p(1 + k + j_prime + j_prime_u)
-        m3 = w6j(j, j_prime, k, j_prime_u, j_u, 1)
-        m4 = w6j(l_u, l, 1, j, j_u, s)
-        m5 = w6j(l_u, l, 1, j_prime, j_prime_u, s)
+        m3 = wigner_6j(j, j_prime, k, j_prime_u, j_u, 1)
+        m4 = wigner_6j(l_u, l, 1, j, j_u, s)
+        m5 = wigner_6j(l_u, l, 1, j_prime, j_prime_u, s)
         result = m0 * m1 * m2 * m3 * m4 * m5
+        return result
+
+    def t_e_short(
+        self,
+        level: Level,
+        k: int,
+        q: int,
+        j: float,
+        j_prime: float,
+        level_upper: Level,
+        k_u: int,
+        q_u: int,
+        j_u: float,
+        j_prime_u: float,
+    ):
+        """
+        Reference: (7.45b)
+        """
+
+        # rename
+        K = k
+        Q = q
+        J = j
+        Jʹ = j_prime
+        Ku = k_u
+        Qu = q_u
+        Ju = j_u
+        Jʹu = j_prime_u
+
+        S = level.s
+        L = level.l
+        Lu = level_upper.l
+
+        transition = self.transition_registry.get_transition(
+            level_upper=level_upper, level_lower=level
+        )
+
+        result = multiply(
+            lambda: δ(S, level_upper.s) * δ(K, Ku) * δ(Q, Qu),
+            lambda: (2 * Lu + 1) * transition.einstein_a_ul,
+            lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu)),
+            lambda: ᐨ1ˆ(1 + K + Jʹ + Jʹu),
+            lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
+            lambda: wigner_6j(Lu, L, 1, J, Ju, S),
+            lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
+        )
+
+
         return result
 
     def t_s(
@@ -595,9 +643,9 @@ class TwoTermAtom:
                 )
                 m2 = m1p(k_r + k_u + q_u + j_prime_u - j_u)
                 m3 = w9j(j, j_u, 1, j_prime, j_prime_u, 1, k, k_u, k_r)
-                m4 = w6j(l_u, l, 1, j, j_u, s)
-                m5 = w6j(l_u, l, 1, j_prime, j_prime_u, s)
-                m6 = w3j(k, k_u, k_r, -q, q_u, -q_r)
+                m4 = wigner_6j(l_u, l, 1, j, j_u, s)
+                m5 = wigner_6j(l_u, l, 1, j_prime, j_prime_u, s)
+                m6 = wigner_3j(k, k_u, k_r, -q, q_u, -q_r)
                 m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
                 result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
         return result

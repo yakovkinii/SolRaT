@@ -34,7 +34,7 @@ from core.utility.einstein_coefficients import (
     b_lu_from_b_ul_two_level_atom,
 )
 from core.utility.math import m1p
-from core.utility.wigner_3j_6j_9j import w6j
+from core.utility.wigner_3j_6j_9j import wigner_6j
 from pipeline.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 from pipeline.two_term_atom.term_registry import TermRegistry
 from pipeline.two_term_atom.transition_registry import TransitionRegistry
@@ -117,15 +117,15 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         )
 
         rho_u_0_0 = (
-            N_l
-            * sqrt(3 * 3 * 3)
-            / 1
-            * b_lu
-            / a_ul
-            * m1p(1 - 0 + 0 + 1 + 0 + 0)
-            * w6j(1, 1, 0, 1, 1, 0)
-            * w6j(1, 1, 0, 1, 1, 0)
-            * rt
+                N_l
+                * sqrt(3 * 3 * 3)
+                / 1
+                * b_lu
+                / a_ul
+                * m1p(1 - 0 + 0 + 1 + 0 + 0)
+                * wigner_6j(1, 1, 0, 1, 1, 0)
+                * wigner_6j(1, 1, 0, 1, 1, 0)
+                * rt
         )
         rho_l_0_0 = N_l
         trace = rho_l_0_0 + rho_u_0_0  # this is wrong, should be weighted
