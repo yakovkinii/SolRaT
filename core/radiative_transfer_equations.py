@@ -5,19 +5,18 @@ from core.object.atmosphere_parameters import AtmosphereParameters
 from core.utility.constant import h
 from core.base.generator import summate, multiply, n_proj
 from core.base.math import m1p
-from core.steps.paschen_back import C
+from core.steps.paschen_back import C, calculate_paschen_back
 from core.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from core.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
 class RadiativeTransferCoefficients:
-    def __init__(self,atmosphere_parameters:AtmosphereParameters, transition_registry: TransitionRegistry, nu: np.ndarray):
+    def __init__(
+        self, atmosphere_parameters: AtmosphereParameters, transition_registry: TransitionRegistry, nu: np.ndarray
+    ):
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
-
-    def calculate(self):
-        ...
 
     def eta_a(self):
         """
@@ -30,18 +29,23 @@ class RadiativeTransferCoefficients:
             Ll = level_lower.l
             Lu = level_upper.l
             S = level_lower.s
-            B = self.atmosphere_parameters.magnetic_field_gauss
-            N=1 # Todo
-            T = 1 # Todo
+            lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
+                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+            )
+            upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
+                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+            )
+            N = 1  # Todo
+            T = 1  # Todo
             result = summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
                     lambda: h * self.nu / 4 / pi * N * n_proj(Ll) * transition.einstein_b_lu * sqrt(3 * n_proj(K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
-                    lambda: C(J=Jl, j=jl, level=level_lower, M=Ml, magnetic_field_gauss=B),
-                    lambda: C(J=Jʹʹl, j=jl, level=level_lower, M=Ml, magnetic_field_gauss=B),
-                    lambda: C(J=Ju, j=ju, level=level_upper, M=Mu, magnetic_field_gauss=B),
-                    lambda: C(J=Jʹu, j=ju, level=level_upper, M=Mu, magnetic_field_gauss=B),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, level=level_lower, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, level=level_upper, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
