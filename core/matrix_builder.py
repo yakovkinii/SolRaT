@@ -4,12 +4,12 @@ from typing import List
 import numpy as np
 from numpy import sqrt
 
-from core.utility.python import (
+from core.base.python import (
     half_int_to_str,
     triangular,
     projection,
 )
-from pipeline.two_term_atom.term_registry import Level
+from core.terms_levels_transitions.term_registry import Level
 
 
 class MatrixBuilder:

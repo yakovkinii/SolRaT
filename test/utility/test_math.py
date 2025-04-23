@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from core.utility.math import m1p
+from core.base.math import m1p
 
 
 class TestMathUtils(unittest.TestCase):

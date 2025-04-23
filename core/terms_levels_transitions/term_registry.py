@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List
 
-from core.utility.python import half_int_to_str, triangular
+from core.base.python import half_int_to_str, triangular
 
 
 class TermRegistry:
@@ -14,7 +14,7 @@ class TermRegistry:
         self.levels: Dict[str, Level] = {}
         self.terms: Dict[str, Term] = {}
 
-    def register_term(self, beta: str, l: float, s: float, j: float, energy: float):
+    def register_term(self, beta: str, l: float, s: float, j: float, energy_cmm1: float):
         """
         beta: str - level ID
         l:half_int L
@@ -22,9 +22,9 @@ class TermRegistry:
         j:half_int J
         """
 
-        if energy < 50000 or energy > 150000:
+        if energy_cmm1 < 50000 or energy_cmm1 > 150000:
             logging.warning(
-                f"Received energy = {energy} cm^-1. Please double check if the units are correct."
+                f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct."
             )
 
         level_id = self.construct_level_id(beta=beta, l=l, s=s)
@@ -35,7 +35,7 @@ class TermRegistry:
         assert (
             term_id not in self.terms.keys()
         ), f"Term {term_id} is already registered."
-        term = Term(level=level, term_id=term_id, j=j, energy=energy)
+        term = Term(level=level, term_id=term_id, j=j, energy_cmm1=energy_cmm1)
 
         level.register_term(term)
         self.terms[term_id] = term
@@ -105,13 +105,22 @@ class Level:
         assert term not in self.terms
         self.terms.append(term)
 
+    def get_term(self, J):
+        """
+        Get the term with the given J value.
+        """
+        for term in self.terms:
+            if term.j == J:
+                return term
+        raise ValueError(f"Term with J={J} not found in level {self.level_id}.")
+
 
 class Term:
     """
     Term is {beta L S J}
     """
 
-    def __init__(self, level: "Level", term_id: str, j: float, energy: float):
+    def __init__(self, level: "Level", term_id: str, j: float, energy_cmm1: float):
         assert abs(level.l - level.s) <= j <= level.l + level.s
         assert (level.l + level.s - j) % 1 == 0
         self.term_id: str = term_id
@@ -119,5 +128,5 @@ class Term:
         self.l: float = level.l
         self.s: float = level.s
         self.j: float = j
-        self.energy: float = energy
+        self.energy_cmm1: float = energy_cmm1
         self.level: "Level" = level

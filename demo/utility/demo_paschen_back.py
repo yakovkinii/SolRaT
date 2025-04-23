@@ -1,30 +1,43 @@
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
+from yatools import logging_config
 
-from core.utility.paschen_back import paschen_back_diagonalization
+from core.steps.paschen_back import calculate_paschen_back
 import unittest
 
-
-def energies_hydrogen_2p():
-    """
-    Dictionary with energies for the 2p level of H I with different J.
-    Units: cm-1
-    """
-    return {
-        0.5: 82258.9191133,
-        1.5: 82259.2850014,
-    }
+from core.terms_levels_transitions.term_registry import TermRegistry
 
 
 class TestDemoPaschenBack(unittest.TestCase):
     def test_demo_paschen_back(self):
-        unperturbed_energies = energies_hydrogen_2p()
+        logging_config.init(logging.INFO)
+
+        term_registry = TermRegistry()
+        term_registry.register_term(
+            beta="2p",
+            l=1,
+            s=0.5,
+            j=0.5,
+            energy_cmm1=82258.9191133,
+        )
+        term_registry.register_term(
+            beta="2p",
+            l=1,
+            s=0.5,
+            j=1.5,
+            energy_cmm1=82259.2850014,
+        )
+        term_registry.validate()
+
+        level_2p = term_registry.get_level(beta="2p", l=1, s=0.5)
 
         energies = []
         magnetic_fields = [_ for _ in range(0, 20001, 10)]
         for magnetic_field in magnetic_fields:  # Gauss
-            eigenvalues, eigenvectors = paschen_back_diagonalization(
-                l=1, s=0.5, b=magnetic_field, e=unperturbed_energies
+            eigenvalues, eigenvectors = calculate_paschen_back(
+                level=level_2p, magnetic_field_gauss=magnetic_field
             )
             energies.append(sorted(eigenvalues.data.values()))
 

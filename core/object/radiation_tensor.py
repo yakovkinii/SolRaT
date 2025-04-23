@@ -1,8 +1,8 @@
 from typing import Dict
 
-from core.utility.math import delta
-from core.utility.python import projection
-from pipeline.two_term_atom.transition_registry import Transition, TransitionRegistry
+from core.base.math import delta
+from core.base.python import projection
+from core.terms_levels_transitions.transition_registry import Transition, TransitionRegistry
 
 
 class RadiationTensor:

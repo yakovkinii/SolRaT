@@ -9,9 +9,6 @@ def m1p(a):
     return 1 - 2 * (a % 2)
 
 
-ᐨ1ˆ = m1p
-
-
 def delta(a, b):
     """
     real delta_ab

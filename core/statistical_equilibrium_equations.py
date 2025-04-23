@@ -5,24 +5,19 @@ import numpy as np
 
 from numpy import pi, sqrt
 
-from core.tensor.atmosphere_parameters import AtmosphereParameters
-from core.tensor.radiation_tensor import RadiationTensor
-from core.utility.black_body import get_BP
-from core.utility.constant import h, c
-from core.utility.einstein_coefficients import (
-    b_ul_from_a_two_level_atom,
-    b_lu_from_b_ul_two_level_atom,
-)
-from core.utility.generator import nested_loops, multiply, n_proj
-from core.utility.math import m1p, delta, δ, ᐨ1ˆ
-from core.utility.python import triangular, intersection, projection, triangular_with_kr
+from core.object.atmosphere_parameters import AtmosphereParameters
+from core.object.radiation_tensor import RadiationTensor
+from core.utility.constant import h
+from core.base.generator import nested_loops, multiply, n_proj
+from core.base.math import delta, δ, m1p
+from core.base.python import triangular, intersection, projection, triangular_with_kr
 from core.utility.wigner_3j_6j_9j import w9j, wigner_6j, wigner_3j
-from pipeline.two_term_atom.matrix_builder import (
+from core.matrix_builder import (
     MatrixBuilder,
     Level,
 )
-from pipeline.two_term_atom.term_registry import TermRegistry
-from pipeline.two_term_atom.transition_registry import TransitionRegistry, Transition
+from core.terms_levels_transitions.term_registry import TermRegistry
+from core.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
 class TwoTermAtom:
@@ -439,7 +434,7 @@ class TwoTermAtom:
         """
         term = self.term_registry.get_term(level=level, j=j)
         term_prime = self.term_registry.get_term(level=level, j=j_prime)
-        nu = (term.energy - term_prime.energy) / h
+        nu = (term.energy_cmm1 - term_prime.energy_cmm1) / h
 
         result = (
             delta(k, k_prime)
@@ -592,7 +587,7 @@ class TwoTermAtom:
             lambda: δ(S, level_upper.s) * δ(K, Ku) * δ(Q, Qu),
             lambda: (2 * Lu + 1) * transition.einstein_a_ul,
             lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu)),
-            lambda: ᐨ1ˆ(1 + K + Jʹ + Jʹu),
+            lambda: m1p(1 + K + Jʹ + Jʹu),
             lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
             lambda: wigner_6j(Lu, L, 1, J, Ju, S),
             lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),

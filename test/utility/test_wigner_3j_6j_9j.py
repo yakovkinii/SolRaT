@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from core.utility.wigner_3j_6j_9j import w3j_doubled, w6j_doubled, w9j_doubled, _w9j
+# from core.utility.wigner_3j_6j_9j import w3j_doubled, w6j_doubled, w9j_doubled, _w9j
 
 
 class TestMathUtils(unittest.TestCase):

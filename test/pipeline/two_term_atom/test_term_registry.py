@@ -1,6 +1,6 @@
 import unittest
 
-from pipeline.two_term_atom.term_registry import TermRegistry
+from core.terms_levels_transitions.term_registry import TermRegistry
 
 
 class TestTermRegistry(unittest.TestCase):
@@ -11,14 +11,14 @@ class TestTermRegistry(unittest.TestCase):
             l=0,
             s=0,
             j=0,
-            energy=100,
+            energy_cmm1=100,
         )
         term_registry.register_term(
             beta="2p",
             l=1,
             s=0,
             j=1,
-            energy=100,
+            energy_cmm1=100,
         )
         term_registry.validate()
 

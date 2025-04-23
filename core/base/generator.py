@@ -1,5 +1,5 @@
-from core.utility.math import δ
-from core.utility.python import range_inclusive, triangular, projection
+from core.base.math import δ
+from core.base.python import range_inclusive, triangular, projection
 
 
 def nested_loops(variables: dict, arguments: dict = None):
@@ -51,7 +51,7 @@ def nested_loops(variables: dict, arguments: dict = None):
     return output_scope["_loop"](*arguments.values())
 
 
-def Σ(expression: callable, **kwargs):
+def summate(expression: callable, **kwargs):
     """
     :param expression: expression to sum
     :param kwargs: indexes to loop through, with iterables for their values.
@@ -59,7 +59,7 @@ def Σ(expression: callable, **kwargs):
     :return:
 
     usage:
-    R2 = Σ(
+    R2 = summate(
         lambda K, Q, Kʹ, Qʹ: K * abs(Q) + Kʹ * abs(Qʹ),
         K=f"range({p0})",
         Kʹ=f"range({p0})",
@@ -217,7 +217,7 @@ if __name__ == "__main__":
     # ======
     t0 = time.perf_counter()
 
-    R2 = Σ(
+    R2 = summate(
         lambda K, Q, Kʹ, Qʹ: K * abs(Q) + Kʹ * abs(Qʹ),
         K=f"range({p0})",
         Kʹ=f"range({p0})",

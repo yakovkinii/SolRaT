@@ -2,7 +2,7 @@ import numpy as np
 from numpy import cos, sin, exp
 
 from core.utility.constant import sqrt2, sqrt3
-from core.utility.math import m1p
+from core.base.math import m1p
 
 
 def _t_k_q(k, q, i, chi, theta, gamma):

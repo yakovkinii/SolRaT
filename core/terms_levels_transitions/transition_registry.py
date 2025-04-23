@@ -1,12 +1,6 @@
-import logging
 from typing import Dict
 
-from core.utility.constant import h
-from core.utility.einstein_coefficients import (
-    b_ul_from_a_two_level_atom,
-    b_lu_from_b_ul_two_level_atom,
-)
-from pipeline.two_term_atom.term_registry import TermRegistry, Term, Level
+from core.terms_levels_transitions.term_registry import Level
 
 
 class TransitionRegistry:

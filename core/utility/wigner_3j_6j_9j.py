@@ -1,9 +1,8 @@
 from functools import lru_cache
 
-import numpy as np
 from numpy import abs, sqrt
 
-from core.utility.math import fact2
+from core.base.math import fact2
 
 
 def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled):
