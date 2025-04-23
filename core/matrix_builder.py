@@ -4,12 +4,30 @@ from typing import List
 import numpy as np
 from numpy import sqrt
 
-from core.base.python import (
-    half_int_to_str,
-    triangular,
-    projection,
-)
+from core.base.python import half_int_to_str, projection, triangular
 from core.terms_levels_transitions.term_registry import Level
+
+
+def _construct_coherence_id(level: Level, K: float, Q: float, J: float, Jʹ: float):
+    return f"{level.level_id}_K{half_int_to_str(K)}_Q{half_int_to_str(Q)}_J{half_int_to_str(J)}_Jʹ{half_int_to_str(Jʹ)}"
+
+
+def _construct_coherence_id_from_level_id(level_id: str, K: float, Q: float, J: float, Jʹ: float):
+    return f"{level_id}_K{half_int_to_str(K)}_Q{half_int_to_str(Q)}_J{half_int_to_str(J)}_Jʹ{half_int_to_str(Jʹ)}"
+
+
+class Rho:
+    def __init__(self):
+        self.data = dict()
+
+    def set(self, level: Level, K: float, Q: float, J: float, Jʹ: float, value: float):
+        self.data[_construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
+
+    def set_from_level_id(self, level_id: str, K: float, Q: float, J: float, Jʹ: float, value: float):
+        self.data[_construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
+
+    def __call__(self, level: Level, K: float, Q: float, J: float, Jʹ: float):
+        return self.data[_construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)]
 
 
 class MatrixBuilder:
@@ -29,9 +47,7 @@ class MatrixBuilder:
                 for j_prime in triangular(level.l, level.s):
                     for k in triangular(j, j_prime):
                         for q in projection(k):
-                            coherence_id = self.construct_coherence_id(
-                                level=level, k=k, q=q, j=j, j_prime=j_prime
-                            )
+                            coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
                             self.coherence_id_to_index[coherence_id] = index
                             self.index_to_parameters[index] = (
                                 level.level_id,
@@ -49,10 +65,6 @@ class MatrixBuilder:
         self.rho_matrix = np.zeros((matrix_size, matrix_size), dtype=np.complex128)
         self.selected_coherence = None
 
-    @staticmethod
-    def construct_coherence_id(level: Level, k: int, q: int, j: float, j_prime: float):
-        return f"{level.level_id}_k{k}_q{q}_j{half_int_to_str(j)}_jp{half_int_to_str(j_prime)}"
-
     def reset_matrix(self):
         self.rho_matrix = self.rho_matrix * 0
 
@@ -67,9 +79,7 @@ class MatrixBuilder:
         """
         Selects the equation to add coefficients to.
         """
-        coherence_id = self.construct_coherence_id(
-            level=level, k=k, q=q, j=j, j_prime=j_prime
-        )
+        coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
         self.selected_coherence = coherence_id
 
     def add_coefficient(
@@ -88,9 +98,7 @@ class MatrixBuilder:
             return
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
-        coherence_id = self.construct_coherence_id(
-            level=level, k=k, q=q, j=j, j_prime=j_prime
-        )
+        coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
         assert coherence_id in self.coherence_id_to_index.keys(), (
             f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
         )

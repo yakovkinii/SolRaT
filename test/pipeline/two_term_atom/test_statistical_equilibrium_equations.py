@@ -6,15 +6,12 @@ from yatools import logging_config
 
 from core.object.atmosphere_parameters import AtmosphereParameters
 from core.object.radiation_tensor import RadiationTensor
-from core.utility.black_body import get_BP
-from core.utility.constant import c
-from core.utility.einstein_coefficients import (
-    b_ul_from_a_two_level_atom,
-    b_lu_from_b_ul_two_level_atom,
-)
 from core.statistical_equilibrium_equations import TwoTermAtom
 from core.terms_levels_transitions.term_registry import TermRegistry
 from core.terms_levels_transitions.transition_registry import TransitionRegistry
+from core.utility.black_body import get_BP
+from core.utility.constant import c
+from core.utility.einstein_coefficients import b_lu_from_b_ul_two_level_atom, b_ul_from_a_two_level_atom
 
 
 class TestStatisticalEquilibriumEquations(unittest.TestCase):
@@ -82,8 +79,12 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         trace = 1 + sqrt(3) * rho_u_0_0
         rho_l_0_0 = 1 / trace
         rho_u_0_0 = rho_u_0_0 / trace
-        assert abs(rho_l_0_0 - solution[0]) < 1e-15
-        assert abs(rho_u_0_0 - solution[1]) < 1e-15
+        assert (
+            abs(rho_l_0_0 - solution(level=term_registry.get_level(beta="1s", l=0, s=0), K=0, Q=0, J=0, Jʹ=0)) < 1e-15
+        )
+        assert (
+            abs(rho_u_0_0 - solution(level=term_registry.get_level(beta="2p", l=1, s=0), K=0, Q=0, J=1, Jʹ=1)) < 1e-15
+        )
 
 
 if __name__ == "__main__":
