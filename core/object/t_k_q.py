@@ -5,7 +5,7 @@ from core.utility.constant import sqrt2, sqrt3
 from core.base.math import m1p
 
 
-def _t_k_q(k, q, i, chi, theta, gamma):
+def calculate_T_K_Q(K, Q, stokes_component_index, chi, theta, gamma):
     """
     complex T{K, Q}(i, Omega)
 
@@ -18,25 +18,25 @@ def _t_k_q(k, q, i, chi, theta, gamma):
 
     Input integrity implied.
     """
-    if q < 0:
-        return m1p(q) * t_k_q(k, -q, i, chi, theta, gamma).conjugate()
+    if Q < 0:
+        return m1p(Q) * t_k_q(K, -Q, stokes_component_index, chi, theta, gamma).conjugate()
 
-    if i == 0:
-        if k == 0:
+    if stokes_component_index == 0:
+        if K == 0:
             return 1 + 0j
-        if k == 1:
+        if K == 1:
             return 0 + 0j
-        if q == 0:
+        if Q == 0:
             return 0.5 / sqrt2 * (3 * cos(theta) ** 2 - 1) + 0j
-        if q == 1:
+        if Q == 1:
             return -0.5 * sqrt3 * sin(theta) * cos(theta) * exp(1j * chi)
         return 0.25 * sqrt3 * sin(theta) ** 2 * exp(2j * chi)
-    if i == 1:
-        if k <= 1:
+    if stokes_component_index == 1:
+        if K <= 1:
             return 0 + 0j
-        if q == 0:
+        if Q == 0:
             return -1.5 / sqrt2 * cos(2 * gamma) * sin(theta) ** 2 + 0j
-        if q == 1:
+        if Q == 1:
             return (
                 -0.5
                 * sqrt3
@@ -53,12 +53,12 @@ def _t_k_q(k, q, i, chi, theta, gamma):
             )
             * exp(2j * chi)
         )
-    if i == 2:
-        if k <= 1:
+    if stokes_component_index == 2:
+        if K <= 1:
             return 0 + 0j
-        if q == 0:
+        if Q == 0:
             return 1.5 / sqrt2 * sin(2 * gamma) * sin(theta) ** 2 + 0j
-        if q == 1:
+        if Q == 1:
             return (
                 0.5
                 * sqrt3
@@ -75,12 +75,12 @@ def _t_k_q(k, q, i, chi, theta, gamma):
             )
             * exp(2j * chi)
         )
-    if k == 0 or k == 2:
+    if K == 0 or K == 2:
         return 0 + 0j
-    if q == 0:
+    if Q == 0:
         return sqrt3 / sqrt2 * cos(theta) + 0j
     return -0.5 * sqrt3 * sin(theta) * exp(1j * chi)
 
 
 # TODO: pre-calculating first can improve performance
-t_k_q = np.vectorize(_t_k_q)
+t_k_q = np.vectorize(calculate_T_K_Q)

@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List
 
 from core.base.python import half_int_to_str, triangular
+from core.utility.constant import h
 
 
 class TermRegistry:
@@ -23,18 +24,14 @@ class TermRegistry:
         """
 
         if energy_cmm1 < 50000 or energy_cmm1 > 150000:
-            logging.warning(
-                f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct."
-            )
+            logging.warning(f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct.")
 
         level_id = self.construct_level_id(beta=beta, l=l, s=s)
         self.add_level_if_needed(level_id=level_id, beta=beta, l=l, s=s)
         level = self.levels[level_id]
 
         term_id = self.construct_term_id(beta=beta, l=l, s=s, j=j)
-        assert (
-            term_id not in self.terms.keys()
-        ), f"Term {term_id} is already registered."
+        assert term_id not in self.terms.keys(), f"Term {term_id} is already registered."
         term = Term(level=level, term_id=term_id, j=j, energy_cmm1=energy_cmm1)
 
         level.register_term(term)
@@ -46,9 +43,7 @@ class TermRegistry:
 
     @staticmethod
     def construct_term_id(beta, l, s, j):
-        return (
-            f"{beta}_l{half_int_to_str(l)}_s{half_int_to_str(s)}_j{half_int_to_str(j)}"
-        )
+        return f"{beta}_l{half_int_to_str(l)}_s{half_int_to_str(s)}_j{half_int_to_str(j)}"
 
     def add_level_if_needed(self, level_id: str, beta: str, l: float, s: float):
         if level_id not in self.levels.keys():
@@ -62,9 +57,7 @@ class TermRegistry:
             actual_j_values = []
             for term in level.terms:
                 if term.j in actual_j_values:
-                    raise ValueError(
-                        f"Duplicate J values for level {level}: {[t.term_id for t in level.terms]}"
-                    )
+                    raise ValueError(f"Duplicate J values for level {level}: {[t.term_id for t in level.terms]}")
                 actual_j_values.append(term.j)
             expected = set(expected_j_values)
             actual = set(actual_j_values)
@@ -75,9 +68,7 @@ class TermRegistry:
 
     def get_term(self, level: "Level", j: float) -> "Term":
         term_id = self.construct_term_id(beta=level.beta, l=level.l, s=level.s, j=j)
-        assert (
-            term_id in self.terms.keys()
-        ), f"Trying to get non-registered term {term_id}"
+        assert term_id in self.terms.keys(), f"Trying to get non-registered term {term_id}"
         return self.terms[term_id]
 
     def get_level(self, beta: str, l: float, s: float):
@@ -130,3 +121,8 @@ class Term:
         self.j: float = j
         self.energy_cmm1: float = energy_cmm1
         self.level: "Level" = level
+
+
+def get_transition_frequency(energy_lower_cmm1: float, energy_upper_cmm1: float) -> float:
+    # Todo needs to be checked
+    return (energy_upper_cmm1 - energy_lower_cmm1) * h  # cm-1 -> Hz

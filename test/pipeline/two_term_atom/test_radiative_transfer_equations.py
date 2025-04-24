@@ -5,6 +5,7 @@ from yatools import logging_config
 
 from core.object.atmosphere_parameters import AtmosphereParameters
 from core.object.radiation_tensor import RadiationTensor
+from core.statistical_equilibrium_equations import TwoTermAtom
 from core.utility.black_body import get_BP
 from core.utility.constant import c
 from core.utility.einstein_coefficients import (
@@ -55,43 +56,24 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         radiation_tensor = RadiationTensor(transition_registry=transition_registry)
         I0 = get_BP(nu=nu, T=500000)
         radiation_tensor.fill_isotropic(I0)
+        atom = TwoTermAtom(
+            term_registry=term_registry,
+            transition_registry=transition_registry,
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor=radiation_tensor,
+        )
+        atom.options.append("disable_r_s")
+
+        atom.add_all_equations()
+        rho = atom.get_solution_direct()
 
         radiative_transfer_coefficients = RadiativeTransferCoefficients(
             atmosphere_parameters=atmosphere_parameters,
             transition_registry=transition_registry,
             nu=nu,
         )
-        radiative_transfer_coefficients.eta_a()
-        a=3
-
-
-        # atom = TwoTermAtom(
-        #     term_registry=term_registry,
-        #     transition_registry=transition_registry,
-        #     atmosphere_parameters=atmosphere_parameters,
-        #     radiation_tensor=radiation_tensor,
-        # )
-        # atom.options.append("disable_r_s")
-        #
-        # atom.add_all_equations()
-        # solution = atom.get_solution_direct()
-        #
-        # # Analytic:
-        # rt = radiation_tensor.get(
-        #     transition=transition_registry.get_transition(
-        #         level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-        #         level_lower=term_registry.get_level(beta="1s", l=0, s=0),
-        #     ),
-        #     k=0,
-        #     q=0,
-        # )
-        #
-        # rho_u_0_0 = b_lu / a_ul / sqrt(3) * rt
-        # trace = 1 + sqrt(3) * rho_u_0_0
-        # rho_l_0_0 = 1 / trace
-        # rho_u_0_0 = rho_u_0_0 / trace
-        # assert abs(rho_l_0_0 - solution[0]) < 1e-15
-        # assert abs(rho_u_0_0 - solution[1]) < 1e-15
+        eta_a = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=2)
+        logging.info(eta_a)
 
 
 if __name__ == "__main__":

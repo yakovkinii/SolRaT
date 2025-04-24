@@ -1,3 +1,4 @@
+import logging
 from typing import Tuple
 
 import numpy as np
@@ -16,6 +17,11 @@ class PaschenBackEigenvalues:
         self.data[(half_int_to_str(j), level.level_id, half_int_to_str(M))] = value
 
     def __call__(self, j, level: Level, M):
+        if (half_int_to_str(j), level.level_id, half_int_to_str(M)) not in self.data:
+            logging.warning(
+                f"PaschenBackEigenvalues: {half_int_to_str(j)}, {level.level_id}, {half_int_to_str(M)} not found."
+            )
+            return 0
         return self.data[(half_int_to_str(j), level.level_id, half_int_to_str(M))]
 
 
@@ -27,6 +33,14 @@ class PaschenBackCoefficients:
         self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))] = value
 
     def __call__(self, j, J, level: Level, M):
+        if (half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M)) not in self.data:
+            logging.warning(
+                f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, {level.level_id}, {half_int_to_str(M)} not found."
+            )
+            logging.info(
+                self.data.keys()
+            )
+            return 0
         return self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))]
 
 
@@ -46,6 +60,9 @@ def calculate_paschen_back(
         """
         Reference: (3.8)
         """
+        if j == 0:
+            return 1
+
         return 1 + 0.5 * (j * (j + 1) + s * (s + 1) - l * (l + 1)) / j / (j + 1)
 
     J_max = L + S
@@ -56,7 +73,9 @@ def calculate_paschen_back(
         # Also, J_min <= J <= J_max
         # Therefore coupled J are [max(J_min, |M|) ... J_max]
         # Matrix block size is therefore J_max - max(J_min, |M|) + 1
-        block_size = int(J_max - max(J_min, abs(M)) + 1)
+
+        min_J_for_M = max(J_min, abs(M))
+        block_size = int(J_max - min_J_for_M + 1)
 
         # M = const
         #
@@ -95,8 +114,8 @@ def calculate_paschen_back(
         # eigenvectors is a matrix where columns are eigenvectors => column number is j_small
         # row number is index of j; j = j_max - row_number
         for j in range(block_size):
-            eigenvalues.set(j=j, level=level, M=M, value=eig_values[j])
-            for J in range(block_size):
-                coefficients.set(j=j, level=level, M=M, J=J, value=eig_vectors[J, j])
+            eigenvalues.set(j=J_max-j, level=level, M=M, value=eig_values[j])
+            for j1 in range(block_size):
+                coefficients.set(j=J_max-j, level=level, M=M, J=J_max-j1, value=eig_vectors[j1, j])
 
     return eigenvalues, coefficients
