@@ -27,7 +27,11 @@ class Rho:
         self.data[_construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
     def __call__(self, level: Level, K: float, Q: float, J: float, Jʹ: float):
-        return self.data[_construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)]
+        coherence_id = _construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
+        if coherence_id not in self.data.keys():
+            logging.warning(f"Trying to get non-registered coherence {coherence_id}")
+            return 0
+        return self.data[coherence_id]
 
 
 class MatrixBuilder:
@@ -111,5 +115,5 @@ class MatrixBuilder:
             f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
         )
         index1 = self.coherence_id_to_index[coherence_id]
-        logging.info(f"=== {index0=} {index1=} += {coefficient}")
+        # logging.info(f"=== {index0=} {index1=} += {coefficient}")
         self.rho_matrix[:, index0, index1] += coefficient

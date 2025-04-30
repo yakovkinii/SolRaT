@@ -1,11 +1,12 @@
 import logging
 
 import numpy as np
+import pandas as pd
 from numpy import pi, real, sqrt
 
-from core.base.generator import multiply, n_proj, summate
+from core.base.generator import multiply, n_proj, summate, nested_loops
 from core.base.math import m1p
-from core.base.python import TRIANGULAR, PROJECTION, FROMTO
+from core.base.python import FROMTO, PROJECTION, TRIANGULAR
 from core.matrix_builder import Rho
 from core.object.atmosphere_parameters import AtmosphereParameters
 from core.object.t_k_q import calculate_T_K_Q
@@ -22,7 +23,7 @@ class RadiativeTransferCoefficients:
     ):
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
-        self.nu = np.array(nu)
+        self.nu = nu
 
     @staticmethod
     def phi(nui, nu):  # Implement properly
@@ -51,10 +52,9 @@ class RadiativeTransferCoefficients:
             )
 
             N = 1  # Todo
-
-            return self.nu * summate(
+            return summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
-                    lambda: h / 4 / pi * N * n_proj(Ll),
+                    lambda: self.nu * h / 4 / pi * N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(3 * n_proj(K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
@@ -126,7 +126,7 @@ class RadiativeTransferCoefficients:
             N = 1  # Todo
 
             return summate(
-                lambda K, Q, Ku, Qu, ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, q, qʹ: multiply(
+                lambda  ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml,K, Q, Ku, Qu, q, qʹ: multiply(
                     lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
                     lambda: m1p(1 + Jʹʹu - Mu + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
@@ -164,10 +164,57 @@ class RadiativeTransferCoefficients:
                 Mu=PROJECTION("Ju"),
                 Mʹu=PROJECTION("Jʹu"),
                 Ml=PROJECTION("Jl"),
-                K=TRIANGULAR(0, 2),
+                K=FROMTO(0, 2),
                 Q=PROJECTION("K"),
                 Ku=TRIANGULAR("Jʹu", "Jʹʹu"),
                 Qu=PROJECTION("Ku"),
                 q=FROMTO(-1, 1),
                 qʹ=FROMTO(-1, 1),
+            )
+
+    def eta_s_analytic_resonance(self, rho: Rho, stokes_component_index: int):
+        """
+        Reference:
+        (10.127)
+        """
+        chi = 0  # Todo
+        theta = 0  # Todo
+        gamma = 0  # Todo
+
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+            Ll = level_lower.l
+            Lu = level_upper.l
+            S = level_lower.s
+
+            N = 1  # Todo
+
+            return summate(
+                lambda  Ju, Jʹu, Jl, K, Q: multiply(
+                    lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul,
+                    lambda: m1p(1 + Jʹu + Jl),
+                    lambda: sqrt(n_proj(Jl, Jl, 1, Ju, Jʹu)),
+                    lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    lambda: wigner_6j(Lu, Ll, 1, Jl, Jʹu, S),
+                    lambda: wigner_6j(1, 1, K, Ju, Jʹu, Jl),
+                    lambda: real(
+                        multiply(
+                            lambda: calculate_T_K_Q(K, Q, stokes_component_index, chi, theta, gamma),
+                            lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
+                            lambda: self.phi(
+                                nui=get_transition_frequency(
+                                    energy_lower_cmm1=level_lower.get_term(J=Jl).energy_cmm1,
+                                    energy_upper_cmm1=level_upper.get_term(J=Ju).energy_cmm1,
+                                ),
+                                nu=self.nu,
+                            ),
+                        )
+                    ),
+                ),
+                Ju=TRIANGULAR(Lu, S),
+                Jʹu=TRIANGULAR(Lu, S),
+                Jl=TRIANGULAR(Ll, S),
+                K=FROMTO(0, 2),
+                Q=PROJECTION("K"),
             )

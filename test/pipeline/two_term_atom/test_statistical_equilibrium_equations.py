@@ -11,7 +11,6 @@ from core.statistical_equilibrium_equations import TwoTermAtom
 from core.terms_levels_transitions.term_registry import TermRegistry
 from core.terms_levels_transitions.transition_registry import TransitionRegistry
 from core.utility.black_body import get_BP
-from core.utility.constant import c
 from core.utility.einstein_coefficients import b_lu_from_b_ul_two_level_atom, b_ul_from_a_two_level_atom
 
 
@@ -37,7 +36,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         )
         term_registry.validate()
 
-        nu = np.array([6e14, 7e14])  # Hz
+        nu = np.arange(5e14, 7e14, 1e12)  # Hz
         a_ul = 0.7e8  # 1/s
         b_ul = b_ul_from_a_two_level_atom(a_ul=a_ul, nu=nu)
         b_lu = b_lu_from_b_ul_two_level_atom(b_ul=b_ul, j_u=1, j_l=0)
@@ -87,6 +86,17 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         assert (
             abs(rho_u_0_0 - solution(level=term_registry.get_level(beta="2p", l=1, s=0), K=0, Q=0, J=1, Jʹ=1)) < 1e-15
         ).all()
+
+        # plot
+        import matplotlib.pyplot as plt
+
+        plt.plot(nu, np.real(rho_l_0_0), label="rho_l_0_0")
+        plt.plot(nu, np.real(rho_u_0_0), label="rho_u_0_0")
+        plt.xlabel("Frequency (Hz)")
+        plt.ylabel("Density Matrix Element")
+        plt.title("Density Matrix Elements")
+        plt.legend()
+        # plt.show()
 
 
 if __name__ == "__main__":

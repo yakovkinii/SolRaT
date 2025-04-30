@@ -63,7 +63,7 @@ def summate(expression: callable, **kwargs):
     for variable, variable_range in kwargs.items():
         code += "\t" * tabs + f"for {variable} in {variable_range}:\n"
         tabs += 1
-    code += "\t" * tabs + "result += expression(" + ", ".join([f"{key}={key}" for key in kwargs.keys()]) + ")"
+    code += "\t" * tabs + "result = result + expression(" + ", ".join([f"{key}={key}" for key in kwargs.keys()]) + ")"
 
     # code += "\n"
     # code += "\t" * tabs + "print(f'summate interm result = {result}')"
@@ -174,9 +174,10 @@ def multiply(*args, complex=False):
         else:
             value = arg
 
-        if value == 0:
-            return 0
-        result *= value
+        if not isinstance(value, np.ndarray):  # Short circuit only scalars for now
+            if value == 0:
+                return 0
+        result = result * value
     return result
 
 

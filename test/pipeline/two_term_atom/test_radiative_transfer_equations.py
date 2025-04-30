@@ -42,7 +42,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
         term_registry.validate()
 
-        nu = 6.5e14  # Hz
+        nu = np.arange(5e14, 7e14, 1e12)  # Hz
         a_ul = 0.7e8  # 1/s
         b_ul = b_ul_from_a_two_level_atom(a_ul=a_ul, nu=nu)
         b_lu = b_lu_from_b_ul_two_level_atom(b_ul=b_ul, j_u=1.5, j_l=0.5)
@@ -66,31 +66,30 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor=radiation_tensor,
             disable_r_s=True,
+            n_frequencies=len(nu),
         )
 
         atom.add_all_equations()
         rho = atom.get_solution_direct()
-        eta_a_values = []
-        eta_s_values = []
-        for nu in np.arange(5.5e14, 7e14, 1e12):
-            radiative_transfer_coefficients = RadiativeTransferCoefficients(
-                atmosphere_parameters=atmosphere_parameters,
-                transition_registry=transition_registry,
-                nu=nu,
-            )
-            eta_a = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=0)
-            eta_a_values.append(eta_a)
-            # eta_s = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
-            # eta_s_values.append(eta_s)
+        # for nu in np.arange(5.5e14, 7e14, 1e12):
+        radiative_transfer_coefficients = RadiativeTransferCoefficients(
+            atmosphere_parameters=atmosphere_parameters,
+            transition_registry=transition_registry,
+            nu=nu,
+        )
+        eta_s = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
+        eta_s_analytic = radiative_transfer_coefficients.eta_s_analytic_resonance(rho=rho, stokes_component_index=0)
 
         # plot
         from matplotlib import pyplot as plt
 
-        plt.plot(np.arange(5.5e14, 7e14, 1e12), eta_a_values)
+        plt.plot(nu, eta_s, label=r"$\eta_s$")
+        plt.plot(nu, eta_s_analytic, '--', label=r"$\eta_s$ (analytic test case)")
         # plt.plot(np.arange(5.5e14, 7e14, 2e12), eta_s_values)
         plt.xlabel("Frequency (Hz)")
-        plt.ylabel(r"$\eta_a$")
-        plt.title(r"$\eta_a$ vs Frequency")
+        plt.ylabel(r"$\eta_s$")
+        plt.title(r"$\eta_s$ vs Frequency")
+        plt.legend()
         plt.show()
 
 
