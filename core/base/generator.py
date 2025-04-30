@@ -1,39 +1,27 @@
+import logging
+
+import numpy as np
+
 from core.base.math import δ
-from core.base.python import range_inclusive, triangular, projection
+from core.base.python import intersection, projection, range_inclusive, triangular, triangular_with_kr
 
 
-def nested_loops(variables: dict, arguments: dict = None):
+def nested_loops(**kwargs):
     """
-    :param variables: dict {'parameter_name':'parameter iterable'}
-    :param arguments: dict {'argument_name':'argument'}
+    :param kwargs: iterables to loop through, with iterables for their values.
     :return: generator
 
     usage:
 
-    for k, q in nested_loops(
-        variables={
-            "k": "range(p0)",
-            "q": "range_inclusive(-k, k)",
-        },
-        arguments={"p0": p0},
-    ):
+    for k, q in nested_loops(k=f"range({p0})", q="range_inclusive(-k, k)"):
         R += k * abs(q)
 
-    alternatively:
-
-    for k, q in nested_loops(
-        variables={
-            "k": f"range({p0})",
-            "q": "range_inclusive(-k, k)",
-        },
-    ):
-        R += k * abs(q)
-
+    The user should maintain the order of operands!!!
     """
-    if arguments is None:
-        arguments = {}
 
-    code = "def _loop(" + ", ".join(arguments.keys()) + "):\n"
+    variables = kwargs
+
+    code = "def _loop():\n"
     tabs = 1
     for variable, variable_range in variables.items():
         code += "\t" * tabs + f"for {variable} in {variable_range}:\n"
@@ -43,12 +31,14 @@ def nested_loops(variables: dict, arguments: dict = None):
     input_scope = {
         "range_inclusive": range_inclusive,
         "triangular": triangular,
+        "triangular_with_kr": triangular_with_kr,
         "projection": projection,
+        "intersection": intersection,
     }
     output_scope = {}
 
     exec(code, input_scope, output_scope)
-    return output_scope["_loop"](*arguments.values())
+    return output_scope["_loop"]()
 
 
 def summate(expression: callable, **kwargs):
@@ -69,25 +59,30 @@ def summate(expression: callable, **kwargs):
 
     """
     tabs = 0
-    code = "result = 0\n"
+    code = "result = np.array([0.0], dtype=np.float64)\n"
     for variable, variable_range in kwargs.items():
         code += "\t" * tabs + f"for {variable} in {variable_range}:\n"
         tabs += 1
     code += "\t" * tabs + "result += expression(" + ", ".join([f"{key}={key}" for key in kwargs.keys()]) + ")"
 
+    # code += "\n"
+    # code += "\t" * tabs + "print(f'summate interm result = {result}')"
+    #
     input_scope = {
         "expression": expression,
         "range_inclusive": range_inclusive,
         "triangular": triangular,
         "projection": projection,
+        'np': np,
     }
     output_scope = {}
 
     exec(code, input_scope, output_scope)
+    # logging.info(f'summate final_result = {output_scope["result"]}')
     return output_scope["result"]
 
 
-def multiply(*args):
+def multiply(*args, complex=False):
     """
     DO NOT PUT multiply INSIDE LAMBDAS OR OTHER DELAYED-EVALUATION FUNCTIONS/CALLABLES!
 
@@ -154,7 +149,25 @@ def multiply(*args):
 
 
     """
-    result = 1
+    verbose = False
+
+    if verbose:
+        result = 1
+        for i, arg in enumerate(args):
+            if callable(arg):
+                value = arg()
+            else:
+                value = arg
+
+            if value == 0:
+                # logging.info(f'short circuiting arg {i}')
+                return 0
+            result *= value
+        logging.info(f'no short cirquit, result = {result}')
+        return result
+
+
+    result = np.array([1.0], dtype=np.float64) if not complex else np.array([1.0], dtype=np.complex128)
     for arg in args:
         if callable(arg):
             value = arg()
@@ -175,30 +188,17 @@ def n_proj(*args):
     return result
 
 
+def fromto(from_value, to_value):
+    return f"range_inclusive({from_value}, {to_value})"
+
+
 if __name__ == "__main__":
     p0 = 40
     R = 0
-    for k, q in nested_loops(
-        variables={
-            "k": "range(p0)",
-            "q": "range_inclusive(-k, k)",
-        },
-        arguments={"p0": p0},
-    ):
-        R += k * abs(q)
-    # print(R)
-
-    # ======
-
     R1 = 0
-    for k, q in nested_loops(
-        {
-            "k": f"range({p0})",
-            "q": "range_inclusive(-k, k)",
-        }
-    ):
+    for k, q in nested_loops(k=fromto(0, p0 - 1), q=fromto("-k", "k")):
         R1 += k * abs(q)
-    # print(R1)
+    print(R1)
 
     # ======
     import time

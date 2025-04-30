@@ -36,7 +36,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         )
         term_registry.validate()
 
-        nu = 20_000 * c  # Hz
+        nu = 6.5e14  # Hz
         a_ul = 0.7e8  # 1/s
         b_ul = b_ul_from_a_two_level_atom(a_ul=a_ul, nu=nu)
         b_lu = b_lu_from_b_ul_two_level_atom(b_ul=b_ul, j_u=1, j_l=0)
@@ -59,8 +59,8 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             transition_registry=transition_registry,
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor=radiation_tensor,
+            disable_r_s=True,
         )
-        atom.options.append("disable_r_s")
 
         atom.add_all_equations()
         solution = atom.get_solution_direct()

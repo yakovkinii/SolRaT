@@ -71,24 +71,24 @@ class MatrixBuilder:
     def select_equation(
         self,
         level: Level,
-        k: int,
-        q: int,
-        j: float,
-        j_prime: float,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
     ):
         """
         Selects the equation to add coefficients to.
         """
-        coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
+        coherence_id = _construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
         self.selected_coherence = coherence_id
 
     def add_coefficient(
         self,
         level: Level,
-        k: int,
-        q: int,
-        j: float,
-        j_prime: float,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
         coefficient: float,
     ):
         """
@@ -98,7 +98,7 @@ class MatrixBuilder:
             return
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
-        coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
+        coherence_id = _construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
         assert coherence_id in self.coherence_id_to_index.keys(), (
             f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
         )

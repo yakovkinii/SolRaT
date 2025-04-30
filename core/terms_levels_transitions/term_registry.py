@@ -2,7 +2,7 @@ import logging
 from typing import Dict, List
 
 from core.base.python import half_int_to_str, triangular
-from core.utility.constant import h
+from core.utility.constant import h, c
 
 
 class TermRegistry:
@@ -124,5 +124,7 @@ class Term:
 
 
 def get_transition_frequency(energy_lower_cmm1: float, energy_upper_cmm1: float) -> float:
-    # Todo needs to be checked
-    return (energy_upper_cmm1 - energy_lower_cmm1) * h  # cm-1 -> Hz
+    # E [cm^-1] = 1 / lambda [cm]
+    lambda_cm = 1 / (energy_upper_cmm1 - energy_lower_cmm1)  # cm
+    nu = c / lambda_cm  # Hz = 1 / s
+    return nu
