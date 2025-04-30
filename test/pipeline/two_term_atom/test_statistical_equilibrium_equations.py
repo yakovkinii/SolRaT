@@ -1,6 +1,7 @@
 import logging
 import unittest
 
+import numpy as np
 from numpy import sqrt
 from yatools import logging_config
 
@@ -36,7 +37,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         )
         term_registry.validate()
 
-        nu = 6.5e14  # Hz
+        nu = np.array([6e14, 7e14])  # Hz
         a_ul = 0.7e8  # 1/s
         b_ul = b_ul_from_a_two_level_atom(a_ul=a_ul, nu=nu)
         b_lu = b_lu_from_b_ul_two_level_atom(b_ul=b_ul, j_u=1, j_l=0)
@@ -60,6 +61,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor=radiation_tensor,
             disable_r_s=True,
+            n_frequencies=len(nu),
         )
 
         atom.add_all_equations()
@@ -81,10 +83,10 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         rho_u_0_0 = rho_u_0_0 / trace
         assert (
             abs(rho_l_0_0 - solution(level=term_registry.get_level(beta="1s", l=0, s=0), K=0, Q=0, J=0, Jʹ=0)) < 1e-15
-        )
+        ).all()
         assert (
             abs(rho_u_0_0 - solution(level=term_registry.get_level(beta="2p", l=1, s=0), K=0, Q=0, J=1, Jʹ=1)) < 1e-15
-        )
+        ).all()
 
 
 if __name__ == "__main__":

@@ -20,10 +20,10 @@ class Rho:
     def __init__(self):
         self.data = dict()
 
-    def set(self, level: Level, K: float, Q: float, J: float, Jʹ: float, value: float):
+    def set(self, level: Level, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
         self.data[_construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
-    def set_from_level_id(self, level_id: str, K: float, Q: float, J: float, Jʹ: float, value: float):
+    def set_from_level_id(self, level_id: str, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
         self.data[_construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
     def __call__(self, level: Level, K: float, Q: float, J: float, Jʹ: float):
@@ -31,7 +31,7 @@ class Rho:
 
 
 class MatrixBuilder:
-    def __init__(self, levels: List[Level]):
+    def __init__(self, levels: List[Level], n_frequencies: int):
         """
         This class helps to build the matrix for rhos.
         All possible rhos are defined by terms.
@@ -62,7 +62,7 @@ class MatrixBuilder:
                             index += 1
         # create the matrix
         matrix_size = index
-        self.rho_matrix = np.zeros((matrix_size, matrix_size), dtype=np.complex128)
+        self.rho_matrix = np.zeros((n_frequencies, matrix_size, matrix_size), dtype=np.complex128)
         self.selected_coherence = None
 
     def reset_matrix(self):
@@ -89,12 +89,20 @@ class MatrixBuilder:
         Q: int,
         J: float,
         Jʹ: float,
-        coefficient: float,
+        coefficient: np.array,
     ):
         """
         Adds a coefficient to the selected equation.
         """
-        if coefficient == 0:
+
+        if not isinstance(coefficient, np.ndarray):
+            coefficient = np.array([coefficient]*self.rho_matrix.shape[0], dtype=np.complex128)
+
+        assert isinstance(coefficient, np.ndarray), "Coefficient must be a numpy array"
+        assert coefficient.ndim == 1, "Coefficient must be a 1D array"
+        assert coefficient.shape[0] == self.rho_matrix.shape[0]
+
+        if coefficient.__eq__(0).all():
             return
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
@@ -104,4 +112,4 @@ class MatrixBuilder:
         )
         index1 = self.coherence_id_to_index[coherence_id]
         logging.info(f"=== {index0=} {index1=} += {coefficient}")
-        self.rho_matrix[index0, index1] += coefficient
+        self.rho_matrix[:, index0, index1] += coefficient

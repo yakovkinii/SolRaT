@@ -23,11 +23,14 @@ class TwoTermAtom:
         transition_registry: TransitionRegistry,
         atmosphere_parameters: AtmosphereParameters,
         radiation_tensor: RadiationTensor,
+        n_frequencies: int,
         disable_r_s: bool = False,
     ):
         self.term_registry: TermRegistry = term_registry
         self.transition_registry: TransitionRegistry = transition_registry
-        self.matrix_builder: MatrixBuilder = MatrixBuilder(levels=list(self.term_registry.levels.values()))
+        self.matrix_builder: MatrixBuilder = MatrixBuilder(
+            levels=list(self.term_registry.levels.values()), n_frequencies=n_frequencies
+        )
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.radiation_tensor: RadiationTensor = radiation_tensor
         self.disable_r_s = disable_r_s
@@ -405,22 +408,22 @@ class TwoTermAtom:
         # A[1:] x = 0
         # A[1:, 1:] x[1:] = -A[1:, 0]
         sol = np.linalg.solve(
-            self.matrix_builder.rho_matrix[1:, 1:],
-            -self.matrix_builder.rho_matrix[1:, 0],
+            self.matrix_builder.rho_matrix[:, 1:, 1:],
+            -self.matrix_builder.rho_matrix[:, 1:, 0:1],
         )
-        sol = np.insert(sol, 0, 1.0, 0)
+        sol = np.insert(sol, 0, 1.0, 1)
+        sol = sol[:, :, 0]
 
         # Sum sqrt(2J+1) rho00(J, J) = 1
-        trace = sum(
-            [
-                sol[index] * weight
-                for (index, weight) in zip(self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights)
-            ]
-        )
+        weights = np.zeros_like(sol)
+        for index, weight in zip(self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights):
+            weights[:, index] = weight
+        trace = (sol * weights).sum(axis=1, keepdims=True)
+
         solution_vector = sol / trace
 
         rho = Rho()
         for index, (level_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
-            rho.set_from_level_id(level_id=level_id, K=k, Q=q, J=j, Jʹ=j_prime, value=solution_vector[index])
+            rho.set_from_level_id(level_id=level_id, K=k, Q=q, J=j, Jʹ=j_prime, value=solution_vector[:, index])
 
         return rho

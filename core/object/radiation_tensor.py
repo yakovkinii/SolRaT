@@ -6,7 +6,7 @@ from core.terms_levels_transitions.transition_registry import Transition, Transi
 
 
 class RadiationTensor:
-    def __init__(self, transition_registry: TransitionRegistry):  # Todo
+    def __init__(self, transition_registry: TransitionRegistry):
         self.tensor: Dict[str, float] = {}
         self.transition_registry = transition_registry
 
