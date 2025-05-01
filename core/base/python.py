@@ -5,9 +5,11 @@ def range_inclusive(a, b):
     """Inclusive Range"""
     return [x for x in np.arange(a, b + 1)]
 
+
 def FROMTO(a, b):
     """Inclusive Range"""
     return f"range_inclusive({a}, {b})"
+
 
 def triangular(a, b):
     """Triangular Range: from |a-b| to a+b"""
@@ -19,9 +21,14 @@ def TRIANGULAR(a, b):
     return f"triangular({a}, {b})"
 
 
-def intersection(a, b):
+def intersection(*args):
     """Intersect 2 ranges"""
-    return [item for item in a if item in b]
+    sets = [set(arg) for arg in args]
+    return list(set.intersection(*sets))
+
+
+def INTERSECTION(*args):
+    return f"intersection({', '.join(args)})"
 
 
 def projection(a):

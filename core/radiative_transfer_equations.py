@@ -5,26 +5,31 @@ import pandas as pd
 from numpy import pi, real, sqrt
 from tqdm import tqdm
 
-from core.base.generator import multiply, n_proj, summate, nested_loops
+from core.base.generator import multiply, n_proj, nested_loops, summate
 from core.base.math import m1p
-from core.base.python import FROMTO, PROJECTION, TRIANGULAR
+from core.base.python import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR
 from core.matrix_builder import Rho
 from core.object.atmosphere_parameters import AtmosphereParameters
 from core.object.t_k_q import calculate_T_K_Q
 from core.steps.paschen_back import calculate_paschen_back
-from core.terms_levels_transitions.term_registry import get_transition_frequency
+from core.terms_levels_transitions.term_registry import Level, get_transition_frequency
 from core.terms_levels_transitions.transition_registry import TransitionRegistry
-from core.utility.constant import h, c
-from core.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, check_wigner_3j, check_wigner_6j
+from core.utility.constant import c, energy_cmm1_to_frequency_hz, h
+from core.utility.wigner_3j_6j_9j import check_wigner_3j, check_wigner_6j, wigner_3j, wigner_6j
 
 
 class RadiativeTransferCoefficients:
     def __init__(
-        self, atmosphere_parameters: AtmosphereParameters, transition_registry: TransitionRegistry, nu: np.ndarray
+        self,
+        atmosphere_parameters: AtmosphereParameters,
+        transition_registry: TransitionRegistry,
+        nu: np.ndarray,
+        maximum_delta_v_thermal_units_cutoff=5,
     ):
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
+        self.maximum_delta_v_thermal_units_cutoff = maximum_delta_v_thermal_units_cutoff
 
     def phi(self, nui, nu):  # Implement properly
         delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c
@@ -84,15 +89,15 @@ class RadiativeTransferCoefficients:
                         )
                     ),
                 ),
-                jl=TRIANGULAR(Ll, S),
                 Jl=TRIANGULAR(Ll, S),
+                Ml=PROJECTION("Jl"),
                 Jʹl=TRIANGULAR(Ll, S),
+                Mʹl=PROJECTION("Jʹl"),
                 Jʹʹl=TRIANGULAR(Ll, S),
+                jl=INTERSECTION(TRIANGULAR(Ll, S)),
                 ju=TRIANGULAR(Lu, S),
                 Ju=TRIANGULAR(Lu, S),
                 Jʹu=TRIANGULAR(Lu, S),
-                Ml=PROJECTION("Jl"),
-                Mʹl=PROJECTION("Jʹl"),
                 Mu=PROJECTION("Ju"),
                 K=TRIANGULAR(0, 2),
                 Q=PROJECTION("K"),
@@ -101,6 +106,13 @@ class RadiativeTransferCoefficients:
                 q=FROMTO(-1, 1),
                 qʹ=FROMTO(-1, 1),
             )
+
+    def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
+        nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
+        cutoff = self.maximum_delta_v_thermal_units_cutoff * nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c
+        if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
+            return True
+        return False
 
     def eta_s(self, rho: Rho, stokes_component_index: int):
         """
@@ -115,6 +127,12 @@ class RadiativeTransferCoefficients:
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            logging.info(f"{level_upper.level_id} -> {level_lower.level_id}")
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(f"Cutting off the transition because it is out of frequency range")
+                continue
+
             Ll = level_lower.l
             Lu = level_upper.l
             S = level_lower.s
@@ -129,12 +147,6 @@ class RadiativeTransferCoefficients:
 
             return summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
-                    lambda: check_wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-                    lambda: check_wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
-                    lambda: check_wigner_3j(1, 1, K, q, -qʹ, -Q),
-                    lambda: check_wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
-                    lambda: check_wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-                    lambda: check_wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
                     lambda: m1p(1 + Jʹʹu - Mu + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
@@ -173,11 +185,11 @@ class RadiativeTransferCoefficients:
                 Mʹu=PROJECTION("Jʹu"),
                 Ml=PROJECTION("Jl"),
                 K=FROMTO(0, 2),
-                Q=PROJECTION("K"),
                 Ku=TRIANGULAR("Jʹu", "Jʹʹu"),
-                Qu=PROJECTION("Ku"),
-                q=FROMTO(-1, 1),
-                qʹ=FROMTO(-1, 1),
+                Qu=INTERSECTION(PROJECTION("Ku"), "[Mʹu -Mu]"),
+                q="[Ml-Mu]",
+                qʹ="[Ml-Mʹu]",
+                Q=INTERSECTION(PROJECTION("K"), "[q-qʹ]"),
             )
 
     def eta_s_analytic_resonance(self, rho: Rho, stokes_component_index: int):
@@ -185,20 +197,25 @@ class RadiativeTransferCoefficients:
         Reference:
         (10.127)
         """
+        logging.info("Radiative Transfer Equations: calculate eta_s_analytic_resonance")
         chi = 0  # Todo
         theta = 0  # Todo
         gamma = 0  # Todo
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+            logging.info(f"{level_upper.level_id} -> {level_lower.level_id}")
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(f"Cutting off the transition because it is out of frequency range")
+                continue
+
             Ll = level_lower.l
             Lu = level_upper.l
             S = level_lower.s
-
             N = 1  # Todo
 
-            return summate(
+            result = result + summate(
                 lambda Ju, Jʹu, Jl, K, Q: multiply(
                     lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul,
                     lambda: m1p(1 + Jʹu + Jl),
@@ -226,3 +243,4 @@ class RadiativeTransferCoefficients:
                 K=FROMTO(0, 2),
                 Q=PROJECTION("K"),
             )
+        return result

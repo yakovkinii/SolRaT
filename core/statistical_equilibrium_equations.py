@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from core.base.generator import multiply, n_proj, nested_loops
 from core.base.math import delta, m1p, δ
-from core.base.python import intersection, projection, triangular, triangular_with_kr
+from core.base.python import intersection, projection, triangular, triangular_with_kr, INTERSECTION, TRIANGULAR
 from core.matrix_builder import Level, MatrixBuilder, Rho
 from core.object.atmosphere_parameters import AtmosphereParameters
 from core.object.radiation_tensor import RadiationTensor
@@ -67,7 +67,8 @@ class TwoTermAtom:
         for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
             Kʹ=f"triangular({K}, 1)",
             Qʹ=f"projection(Kʹ)",
-            Jʹʹ=f"intersection(triangular({J}, 1), triangular({level.l}, {level.s}))",
+            # Jʹʹ=f"intersection(triangular({J}, 1), triangular({level.l}, {level.s}))",
+            Jʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.l, level.s)),
             Jʹʹʹ=f"intersection(triangular({J}, 1), triangular({level.l}, {level.s}))",
         ):
             n = self.n(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)

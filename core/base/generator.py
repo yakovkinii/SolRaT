@@ -77,6 +77,7 @@ def summate(expression: callable, **kwargs):
         "range_inclusive": range_inclusive,
         "triangular": triangular,
         "projection": projection,
+        "intersection": intersection,
         # 'np': np,
         'tqdm': tqdm,
     }
