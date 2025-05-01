@@ -23,11 +23,7 @@ def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled)
     """
     if m1_doubled + m2_doubled + m3_doubled != 0:
         return 0.0
-    if (
-        (abs(m1_doubled) > j1_doubled)
-        or (abs(m2_doubled) > j2_doubled)
-        or (abs(m3_doubled) > j3_doubled)
-    ):
+    if (abs(m1_doubled) > j1_doubled) or (abs(m2_doubled) > j2_doubled) or (abs(m3_doubled) > j3_doubled):
         return 0.0
     a = j1_doubled + j2_doubled
     if j3_doubled > a:
@@ -48,14 +44,7 @@ def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled)
     z_max = min(g, h, c)
     result = 0.0
     for z in range(int(z_min), int(z_max) + 1, 2):
-        denominator = (
-            fact2(z)
-            * fact2(g - z)
-            * fact2(c - z)
-            * fact2(h - z)
-            * fact2(e + z)
-            * fact2(f + z)
-        )
+        denominator = fact2(z) * fact2(g - z) * fact2(c - z) * fact2(h - z) * fact2(e + z) * fact2(f + z)
         if z % 4 != 0:
             denominator = -denominator
         result += 1 / denominator
@@ -101,12 +90,7 @@ def _w6j(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled)
 
     if (a < j3_doubled) or (c < l3_doubled) or (e < l3_doubled) or (g < j3_doubled):
         return 0.0
-    if (
-        (abs(b) > j3_doubled)
-        or (abs(d) > l3_doubled)
-        or (abs(f) > l3_doubled)
-        or (abs(h) > j3_doubled)
-    ):
+    if (abs(b) > j3_doubled) or (abs(d) > l3_doubled) or (abs(f) > l3_doubled) or (abs(h) > j3_doubled):
         return 0.0
 
     sum_1 = a + j3_doubled
@@ -138,30 +122,10 @@ def _w6j(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled)
             denominator = -denominator
         result += fact2(w + 2) / denominator
 
-    theta1 = (
-        fact2(a - j3_doubled)
-        * fact2(j3_doubled + b)
-        * fact2(j3_doubled - b)
-        / fact2(sum_1 + 2)
-    )
-    theta2 = (
-        fact2(c - l3_doubled)
-        * fact2(l3_doubled + d)
-        * fact2(l3_doubled - d)
-        / fact2(sum_2 + 2)
-    )
-    theta3 = (
-        fact2(e - l3_doubled)
-        * fact2(l3_doubled + f)
-        * fact2(l3_doubled - f)
-        / fact2(sum_3 + 2)
-    )
-    theta4 = (
-        fact2(g - j3_doubled)
-        * fact2(j3_doubled + h)
-        * fact2(j3_doubled - h)
-        / fact2(sum_4 + 2)
-    )
+    theta1 = fact2(a - j3_doubled) * fact2(j3_doubled + b) * fact2(j3_doubled - b) / fact2(sum_1 + 2)
+    theta2 = fact2(c - l3_doubled) * fact2(l3_doubled + d) * fact2(l3_doubled - d) / fact2(sum_2 + 2)
+    theta3 = fact2(e - l3_doubled) * fact2(l3_doubled + f) * fact2(l3_doubled - f) / fact2(sum_3 + 2)
+    theta4 = fact2(g - j3_doubled) * fact2(j3_doubled + h) * fact2(j3_doubled - h) / fact2(sum_4 + 2)
     result = result * sqrt(theta1 * theta2 * theta3 * theta4)
     return result
 
@@ -237,3 +201,34 @@ def wigner_6j(j1, j2, j3, l1, l2, l3):
 @lru_cache(maxsize=None)
 def w9j(j1, j2, j3, j4, j5, j6, j7, j8, j9):
     return _w9j(j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2)
+
+
+@lru_cache(maxsize=None)
+def check_wigner_3j(j1, j2, j3, m1, m2, m3):
+    if not check_triangular(j1, j2, j3):
+        return 0
+    if not check_projection(m1, m2, m3):
+        return 0
+    return 1
+
+@lru_cache(maxsize=None)
+def check_wigner_6j(j1, j2, j3, l1, l2, l3):
+    if not check_triangular(j1, j2, j3):
+        return 0
+    if not check_triangular(j1, l2, l3):
+        return 0
+    if not check_triangular(l1, l2, j3):
+        return 0
+    if not check_triangular(l1, j2, l3):
+        return 0
+    return 1
+
+
+@lru_cache(maxsize=None)
+def check_triangular(j1, j2, j3):
+    return j3 >= abs(j1 - j2) and j3 <= j1 + j2
+
+
+@lru_cache(maxsize=None)
+def check_projection(m1, m2, m3):
+    return m1 + m2 + m3 == 0

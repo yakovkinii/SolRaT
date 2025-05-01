@@ -34,12 +34,12 @@ class PaschenBackCoefficients:
 
     def __call__(self, j, J, level: Level, M):
         if (half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M)) not in self.data:
-            logging.warning(
-                f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, {level.level_id}, {half_int_to_str(M)} not found."
-            )
-            logging.info(
-                self.data.keys()
-            )
+            # logging.warning(
+            #     f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, {level.level_id}, {half_int_to_str(M)} not found."
+            # )
+            # logging.info(
+            #     self.data.keys()
+            # )
             return 0
         return self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))]
 

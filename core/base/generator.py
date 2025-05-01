@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+from tqdm import tqdm
 
 from core.base.math import δ
 from core.base.python import intersection, projection, range_inclusive, triangular, triangular_with_kr
@@ -59,9 +60,12 @@ def summate(expression: callable, **kwargs):
 
     """
     tabs = 0
-    code = "result = np.array([0.0], dtype=np.float64)\n"
+    code = "result = 0\n"
     for variable, variable_range in kwargs.items():
-        code += "\t" * tabs + f"for {variable} in {variable_range}:\n"
+        if tabs <= 3:
+            code += "\t" * tabs + f"for {variable} in tqdm({variable_range}, leave=False):\n"
+        else:
+            code += "\t" * tabs + f"for {variable} in {variable_range}:\n"
         tabs += 1
     code += "\t" * tabs + "result = result + expression(" + ", ".join([f"{key}={key}" for key in kwargs.keys()]) + ")"
 
@@ -73,7 +77,8 @@ def summate(expression: callable, **kwargs):
         "range_inclusive": range_inclusive,
         "triangular": triangular,
         "projection": projection,
-        'np': np,
+        # 'np': np,
+        'tqdm': tqdm,
     }
     output_scope = {}
 
@@ -149,23 +154,6 @@ def multiply(*args, complex=False):
 
 
     """
-    verbose = False
-
-    if verbose:
-        result = 1
-        for i, arg in enumerate(args):
-            if callable(arg):
-                value = arg()
-            else:
-                value = arg
-
-            if value == 0:
-                # logging.info(f'short circuiting arg {i}')
-                return 0
-            result *= value
-        logging.info(f'no short cirquit, result = {result}')
-        return result
-
 
     result = np.array([1.0], dtype=np.float64) if not complex else np.array([1.0], dtype=np.complex128)
     for arg in args:
@@ -178,6 +166,7 @@ def multiply(*args, complex=False):
             if value == 0:
                 return 0
         result = result * value
+
     return result
 
 

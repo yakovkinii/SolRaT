@@ -23,8 +23,8 @@ class TermRegistry:
         j:half_int J
         """
 
-        if energy_cmm1 < 50000 or energy_cmm1 > 150000:
-            logging.warning(f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct.")
+        # if energy_cmm1 < 50000 or energy_cmm1 > 150000:
+        #     logging.warning(f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct.")
 
         level_id = self.construct_level_id(beta=beta, l=l, s=s)
         self.add_level_if_needed(level_id=level_id, beta=beta, l=l, s=s)
@@ -47,7 +47,7 @@ class TermRegistry:
 
     def add_level_if_needed(self, level_id: str, beta: str, l: float, s: float):
         if level_id not in self.levels.keys():
-            logging.info(f"Creating level {level_id}")
+            logging.info(f"Term registry: Creating level {level_id}")
             level = Level(level_id=level_id, beta=beta, l=l, s=s)
             self.levels[level_id] = level
 
@@ -104,6 +104,13 @@ class Level:
             if term.j == J:
                 return term
         raise ValueError(f"Term with J={J} not found in level {self.level_id}.")
+
+    def get_mean_energy_cmm1(self):
+        """
+        Get the mean energy of the level.
+        """
+        total_energy = sum(term.energy_cmm1 for term in self.terms)
+        return total_energy / len(self.terms)
 
 
 class Term:

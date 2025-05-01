@@ -13,12 +13,8 @@ class TestMathUtils(unittest.TestCase):
             voigt_h = np.real(voigt(nu=frequencies, a=a_values))
             voigt_l = np.imag(voigt(nu=frequencies, a=a_values))
             assert np.min(voigt_h) > 0
-            assert (
-                np.max(np.abs(voigt_h - voigt_h[::-1])) < 1e-12
-            )  # symmetrical wrt nu=0
-            assert (
-                np.max(np.abs(voigt_l + voigt_l[::-1])) < 1e-12
-            )  # anti-symmetrical wrt nu=0
+            assert np.max(np.abs(voigt_h - voigt_h[::-1])) < 1e-12  # symmetrical wrt nu=0
+            assert np.max(np.abs(voigt_l + voigt_l[::-1])) < 1e-12  # anti-symmetrical wrt nu=0
 
 
 if __name__ == "__main__":

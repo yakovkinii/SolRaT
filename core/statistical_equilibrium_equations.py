@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 from numpy import pi, sqrt
+from tqdm import tqdm
 
 from core.base.generator import multiply, n_proj, nested_loops
 from core.base.math import delta, m1p, δ
@@ -25,6 +26,7 @@ class TwoTermAtom:
         radiation_tensor: RadiationTensor,
         n_frequencies: int,
         disable_r_s: bool = False,
+        disable_n: bool = False,
     ):
         self.term_registry: TermRegistry = term_registry
         self.transition_registry: TransitionRegistry = transition_registry
@@ -34,6 +36,7 @@ class TwoTermAtom:
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.radiation_tensor: RadiationTensor = radiation_tensor
         self.disable_r_s = disable_r_s
+        self.disable_n = disable_n
 
     def add_all_equations(self):
         """
@@ -41,8 +44,9 @@ class TwoTermAtom:
 
         Reference: (7.38)
         """
+        logging.info("Populate Statistical Equilibrium Equations")
         self.matrix_builder.reset_matrix()
-        for level in self.term_registry.levels.values():
+        for level in tqdm(self.term_registry.levels.values()):
             for J, Jʹ, K, Q in nested_loops(
                 J=f"triangular({level.l}, {level.s})",
                 Jʹ=f"triangular({level.l}, {level.s})",
@@ -56,7 +60,7 @@ class TwoTermAtom:
                 self.add_relaxation(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
 
     def add_coherence_decay(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        logging.info("add_coherence_decay")
+        # logging.info("add_coherence_decay")
         """
         Reference: (7.38)
         """
@@ -70,7 +74,7 @@ class TwoTermAtom:
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
 
     def add_absorption(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        logging.info("add_absorption")
+        # logging.info("add_absorption")
         """
         Reference: (7.38)
         """
@@ -89,7 +93,7 @@ class TwoTermAtom:
                 self.matrix_builder.add_coefficient(level=level_lower, K=Kl, Q=Ql, J=Jl, Jʹ=Jʹl, coefficient=t_a)
 
     def add_emission(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        logging.info("add_emission")
+        # logging.info("add_emission")
         """
         Reference: (7.38)
         """
@@ -109,7 +113,7 @@ class TwoTermAtom:
                 self.matrix_builder.add_coefficient(level=level_upper, K=Ku, Q=Qu, J=Ju, Jʹ=Jʹu, coefficient=t_e + t_s)
 
     def add_relaxation(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        logging.info("add_relaxation")
+        # logging.info("add_relaxation")
         """
         Reference: (7.38)
         """
@@ -207,6 +211,8 @@ class TwoTermAtom:
         """
         Reference: (7.41)
         """
+        if self.disable_n:
+            return 0
         term = self.term_registry.get_term(level=level, j=J)
         term_prime = self.term_registry.get_term(level=level, j=Jʹ)
         nu = (term.energy_cmm1 - term_prime.energy_cmm1) / h
@@ -403,6 +409,7 @@ class TwoTermAtom:
         return result
 
     def get_solution_direct(self) -> Rho:
+        logging.info("Get Solution of Statistical Equilibrium Equations")
         # A x = 0
         # let x[0] = 1 (it is always rho_0_0 of some kind, so it is unlikely to be exactly zero)
         # A[1:] x = 0

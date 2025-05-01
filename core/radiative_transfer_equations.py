@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import pandas as pd
 from numpy import pi, real, sqrt
+from tqdm import tqdm
 
 from core.base.generator import multiply, n_proj, summate, nested_loops
 from core.base.math import m1p
@@ -13,8 +14,8 @@ from core.object.t_k_q import calculate_T_K_Q
 from core.steps.paschen_back import calculate_paschen_back
 from core.terms_levels_transitions.term_registry import get_transition_frequency
 from core.terms_levels_transitions.transition_registry import TransitionRegistry
-from core.utility.constant import h
-from core.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j
+from core.utility.constant import h, c
+from core.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, check_wigner_3j, check_wigner_6j
 
 
 class RadiativeTransferCoefficients:
@@ -25,9 +26,9 @@ class RadiativeTransferCoefficients:
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
 
-    @staticmethod
-    def phi(nui, nu):  # Implement properly
-        return np.exp(-(((nu - nui) * 1e-13) ** 2))
+    def phi(self, nui, nu):  # Implement properly
+        delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c
+        return np.exp(-(((nu - nui) / delta_nu) ** 2))
 
     def eta_a(self, rho: Rho, stokes_component_index: int):
         """
@@ -106,6 +107,7 @@ class RadiativeTransferCoefficients:
         Reference:
         (7.47b)
         """
+        logging.info("Radiative Transfer Equations: calculate eta_s")
         chi = 0  # Todo
         theta = 0  # Todo
         gamma = 0  # Todo
@@ -126,7 +128,13 @@ class RadiativeTransferCoefficients:
             N = 1  # Todo
 
             return summate(
-                lambda  ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml,K, Q, Ku, Qu, q, qʹ: multiply(
+                lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
+                    lambda: check_wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    lambda: check_wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
+                    lambda: check_wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    lambda: check_wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
+                    lambda: check_wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    lambda: check_wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
                     lambda: m1p(1 + Jʹʹu - Mu + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
@@ -191,7 +199,7 @@ class RadiativeTransferCoefficients:
             N = 1  # Todo
 
             return summate(
-                lambda  Ju, Jʹu, Jl, K, Q: multiply(
+                lambda Ju, Jʹu, Jl, K, Q: multiply(
                     lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul,
                     lambda: m1p(1 + Jʹu + Jl),
                     lambda: sqrt(n_proj(Jl, Jl, 1, Ju, Jʹu)),
