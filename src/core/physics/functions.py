@@ -1,5 +1,5 @@
-
 import logging
+from typing import Union
 
 import numpy as np
 from numpy import exp
@@ -20,11 +20,11 @@ def nu_larmor(magnetic_field_gauss: np.ndarray) -> np.ndarray:
     return magnetic_field_gauss * mu0 / h
 
 
-def energy_cmm1_to_frequency_hz(energy_cmm1: np.ndarray)-> np.ndarray:
+def energy_cmm1_to_frequency_hz(energy_cmm1: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return c * energy_cmm1
 
 
-def frequency_hz_to_energy_cmm1(frequency_hz: np.ndarray)-> np.ndarray:
+def frequency_hz_to_energy_cmm1(frequency_hz: np.ndarray) -> np.ndarray:
     return frequency_hz / c
 
 

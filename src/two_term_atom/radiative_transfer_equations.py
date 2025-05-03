@@ -4,18 +4,18 @@ import numpy as np
 from numpy import pi, real, sqrt
 
 from src.core.engine.functions.general import m1p, n_proj
-from src.core.engine.functions.looping import TRIANGULAR, PROJECTION, INTERSECTION, FROMTO
+from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import c, h
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
 from src.core.physics.rotation_tensor_t_k_q import t_k_q
-from src.two_term_atom.object.rho_matrix_builder import Rho
+from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from src.two_term_atom.object.rho_matrix_builder import Rho
 from src.two_term_atom.physics.paschen_back import calculate_paschen_back
 from src.two_term_atom.terms_levels_transitions.term_registry import Level, get_transition_frequency
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
-from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 
 
 class RadiativeTransferCoefficients:
@@ -47,9 +47,9 @@ class RadiativeTransferCoefficients:
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
-            Ll = level_lower.l
-            Lu = level_upper.l
-            S = level_lower.s
+            Ll = level_lower.L
+            Lu = level_upper.L
+            S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
                 level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
@@ -137,13 +137,13 @@ class RadiativeTransferCoefficients:
 
             logging.info(f"Processing {level_upper.level_id} -> {level_lower.level_id}")
 
-            Ll = level_lower.l
-            Lu = level_upper.l
+            Ll = level_lower.L
+            Lu = level_upper.L
             if abs(Lu - Ll) > 1:
                 logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
                 continue
 
-            S = level_lower.s
+            S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
                 level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
@@ -198,6 +198,7 @@ class RadiativeTransferCoefficients:
                 q="[Ml-Mu]",
                 qʹ="[Ml-Mʹu]",
                 Q=INTERSECTION(PROJECTION("K"), "[q-qʹ]"),
+                tqdm_level=1,
             )
 
     def eta_s_analytic_resonance(self, rho: Rho, stokes_component_index: int):
@@ -218,9 +219,9 @@ class RadiativeTransferCoefficients:
                 logging.info(f"Cutting off the transition because it is out of frequency range")
                 continue
 
-            Ll = level_lower.l
-            Lu = level_upper.l
-            S = level_lower.s
+            Ll = level_lower.L
+            Lu = level_upper.L
+            S = level_lower.S
             N = 1  # Todo
 
             result = result + summate(

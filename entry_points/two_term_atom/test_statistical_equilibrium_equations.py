@@ -22,16 +22,16 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",
-            l=0,
-            s=0,
-            j=0,
+            L=0,
+            S=0,
+            J=0,
             energy_cmm1=200_000,
         )
         term_registry.register_term(
             beta="2p",
-            l=1,
-            s=0,
-            j=1,
+            L=1,
+            S=0,
+            J=1,
             energy_cmm1=220_000,
         )
         term_registry.validate()
@@ -43,8 +43,8 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
 
         transition_registry = TransitionRegistry()
         transition_registry.register_transition(
-            level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-            level_lower=term_registry.get_level(beta="1s", l=0, s=0),
+            level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+            level_lower=term_registry.get_level(beta="1s", L=0, S=0),
             einstein_a_ul=a_ul,
             einstein_b_ul=b_ul,
             einstein_b_lu=b_lu,
@@ -69,8 +69,8 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         # Analytic:
         rt = radiation_tensor.get(
             transition=transition_registry.get_transition(
-                level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-                level_lower=term_registry.get_level(beta="1s", l=0, s=0),
+                level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+                level_lower=term_registry.get_level(beta="1s", L=0, S=0),
             ),
             k=0,
             q=0,
@@ -81,9 +81,8 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         rho_l_0_0 = 1 / trace
         rho_u_0_0 = rho_u_0_0 / trace
         assert (
-            abs(rho_l_0_0 - solution(level=term_registry.get_level(beta="1s", l=0, s=0), K=0, Q=0, J=0, Jʹ=0)) < 1e-15
+            abs(rho_l_0_0 - solution(level=term_registry.get_level(beta="1s", L=0, S=0), K=0, Q=0, J=0, Jʹ=0)) < 1e-15
         ).all()
         assert (
-            abs(rho_u_0_0 - solution(level=term_registry.get_level(beta="2p", l=1, s=0), K=0, Q=0, J=1, Jʹ=1)) < 1e-15
+            abs(rho_u_0_0 - solution(level=term_registry.get_level(beta="2p", L=1, S=0), K=0, Q=0, J=1, Jʹ=1)) < 1e-15
         ).all()
-

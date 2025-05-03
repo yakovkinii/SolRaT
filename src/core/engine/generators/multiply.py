@@ -65,4 +65,3 @@ def multiply(*args, is_complex=False):
         result = result * value
 
     return result
-

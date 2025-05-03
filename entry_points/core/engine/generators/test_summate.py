@@ -26,4 +26,3 @@ class TestSummate(unittest.TestCase):
 
         assert R == R_summate
         assert R == R_summate2
-

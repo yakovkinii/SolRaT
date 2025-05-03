@@ -1,9 +1,9 @@
 from tqdm import tqdm
 
-from src.core.engine.functions.looping import fromto, triangular, projection, intersection
+from src.core.engine.functions.looping import fromto, intersection, projection, triangular
 
 
-def summate(expression: callable, tqdm_level=1, **kwargs):
+def summate(expression: callable, tqdm_level=0, **kwargs):
     """
     :param expression: expression to sum
     :param tqdm_level: Number of levels of tqdm to show.

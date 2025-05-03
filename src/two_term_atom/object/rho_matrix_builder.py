@@ -5,7 +5,7 @@ import numpy as np
 from numpy import sqrt
 
 from src.core.engine.functions.general import half_int_to_str
-from src.core.engine.functions.looping import triangular, projection
+from src.core.engine.functions.looping import projection, triangular
 from src.two_term_atom.terms_levels_transitions.term_registry import Level
 
 
@@ -48,8 +48,8 @@ class MatrixBuilder:
         self.trace_weights = []
         index = 0
         for level in levels:
-            for j in triangular(level.l, level.s):
-                for j_prime in triangular(level.l, level.s):
+            for j in triangular(level.L, level.S):
+                for j_prime in triangular(level.L, level.S):
                     for k in triangular(j, j_prime):
                         for q in projection(k):
                             coherence_id = _construct_coherence_id(level=level, K=k, Q=q, J=j, Jʹ=j_prime)
@@ -101,7 +101,7 @@ class MatrixBuilder:
         """
 
         if not isinstance(coefficient, np.ndarray):
-            coefficient = np.array([coefficient]*self.rho_matrix.shape[0], dtype=np.complex128)
+            coefficient = np.array([coefficient] * self.rho_matrix.shape[0], dtype=np.complex128)
 
         assert isinstance(coefficient, np.ndarray), "Coefficient must be a numpy array"
         assert coefficient.ndim == 1, "Coefficient must be a 1D array"

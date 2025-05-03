@@ -36,11 +36,10 @@ class PaschenBackCoefficients:
     def __call__(self, j, J, level: Level, M):
         if (half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M)) not in self.data:
             logging.warning(
-                f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, {level.level_id}, {half_int_to_str(M)} not found."
+                f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, "
+                f"{level.level_id}, {half_int_to_str(M)} not found."
             )
-            logging.info(
-                self.data.keys()
-            )
+            logging.info(self.data.keys())
             return 0
         return self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))]
 
@@ -54,17 +53,17 @@ def calculate_paschen_back(
     eigenvalues = PaschenBackEigenvalues()
     coefficients = PaschenBackCoefficients()
 
-    L = level.l
-    S = level.s
+    L = level.L
+    S = level.S
 
-    def _g_ls(l, s, j):
+    def _g_ls(L, S, J):
         """
         Reference: (3.8)
         """
-        if j == 0:
+        if J == 0:
             return 1
 
-        return 1 + 0.5 * (j * (j + 1) + s * (s + 1) - l * (l + 1)) / j / (j + 1)
+        return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
 
     J_max = L + S
     J_min = abs(L - S)
@@ -115,8 +114,8 @@ def calculate_paschen_back(
         # eigenvectors is a matrix where columns are eigenvectors => column number is j_small
         # row number is index of j; j = j_max - row_number
         for j in range(block_size):
-            eigenvalues.set(j=J_max-j, level=level, M=M, value=eig_values[j])
+            eigenvalues.set(j=J_max - j, level=level, M=M, value=eig_values[j])
             for j1 in range(block_size):
-                coefficients.set(j=J_max-j, level=level, M=M, J=J_max-j1, value=eig_vectors[j1, j])
+                coefficients.set(j=J_max - j, level=level, M=M, J=J_max - j1, value=eig_vectors[j1, j])
 
     return eigenvalues, coefficients

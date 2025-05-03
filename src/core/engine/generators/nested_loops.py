@@ -1,4 +1,4 @@
-from src.core.engine.functions.looping import fromto, triangular, projection, intersection
+from src.core.engine.functions.looping import fromto, intersection, projection, triangular
 
 
 def nested_loops(**kwargs):
@@ -33,4 +33,3 @@ def nested_loops(**kwargs):
 
     exec(code, input_scope, output_scope)
     return output_scope["_loop"]()
-

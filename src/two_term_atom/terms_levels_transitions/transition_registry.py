@@ -1,8 +1,8 @@
 from typing import Dict
 
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
+from src.two_term_atom.physics.einstein_coefficients import b_lu_from_b_ul_two_term_atom, b_ul_from_a_two_term_atom
 from src.two_term_atom.terms_levels_transitions.term_registry import Level
-from src.two_term_atom.physics.einstein_coefficients import b_ul_from_a_two_term_atom, b_lu_from_b_ul_two_term_atom
 
 
 class TransitionRegistry:
@@ -23,6 +23,8 @@ class TransitionRegistry:
         B_ul = stimulated emission
         B_lu = absorption
         """
+        if level_lower.S != level_upper.S:
+            raise ValueError("Spin of upper and lower levels must be the same.")
 
         transition_id = level_upper.level_id + "->" + level_lower.level_id
         assert transition_id not in self.transitions.keys()
@@ -42,12 +44,15 @@ class TransitionRegistry:
         level_lower: Level,
         einstein_a_ul_sm1: float,
     ):
+        if level_lower.S != level_upper.S:
+            raise ValueError("Spin of upper and lower levels must be the same.")
+
         transition_id = level_upper.level_id + "->" + level_lower.level_id
         assert transition_id not in self.transitions.keys()
         nu_ul = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
 
         b_ul = b_ul_from_a_two_term_atom(a_ul=einstein_a_ul_sm1, nu_ul=nu_ul)
-        b_lu = b_lu_from_b_ul_two_term_atom(b_ul=b_ul, Lu=level_upper.l, Ll=level_lower.l)
+        b_lu = b_lu_from_b_ul_two_term_atom(b_ul=b_ul, Lu=level_upper.L, Ll=level_lower.L)
         transition = Transition(
             transition_id=transition_id,
             level_upper=level_upper,
@@ -57,7 +62,6 @@ class TransitionRegistry:
             einstein_b_lu=b_lu,
         )
         self.transitions[transition_id] = transition
-
 
     def is_transition_registered(
         self,
@@ -86,7 +90,7 @@ class Transition:
         einstein_b_ul: float,
         einstein_b_lu: float,
     ):
-        assert level_lower.s == level_lower.s
+        assert level_lower.S == level_lower.S
         self.transition_id = transition_id
         self.level_upper: Level = level_upper
         self.level_lower: Level = level_lower

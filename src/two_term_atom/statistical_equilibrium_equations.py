@@ -4,17 +4,18 @@ import numpy as np
 from numpy import pi, sqrt
 from tqdm import tqdm
 
-from src.core.engine.functions.general import m1p, delta, n_proj
-from src.core.engine.functions.looping import TRIANGULAR, INTERSECTION, projection
+from src.core.engine.functions.general import delta, m1p, n_proj
+from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.nested_loops import nested_loops
-from src.two_term_atom.object.rho_matrix_builder import Level, MatrixBuilder, Rho
+from src.core.engine.generators.summate import summate
+from src.core.physics.functions import energy_cmm1_to_frequency_hz
+from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
+from src.two_term_atom.object.rho_matrix_builder import Level, MatrixBuilder, Rho
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
-from src.core.physics.constants import h
-from src.core.physics.wigner_3j_6j_9j import wigner_9j, wigner_3j, wigner_6j
 
 
 class TwoTermAtom:
@@ -48,10 +49,10 @@ class TwoTermAtom:
         self.matrix_builder.reset_matrix()
         for level in tqdm(self.term_registry.levels.values(), leave=False):
             for J, Jʹ, K, Q in nested_loops(
-                J=f"triangular({level.l}, {level.s})",
-                Jʹ=f"triangular({level.l}, {level.s})",
-                K=f"triangular(J, Jʹ)",
-                Q="projection(K)",
+                J=TRIANGULAR(level.L, level.S),
+                Jʹ=TRIANGULAR(level.L, level.S),
+                K=TRIANGULAR("J", "Jʹ"),
+                Q=PROJECTION("K"),
             ):
                 self.matrix_builder.select_equation(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
                 self.add_coherence_decay(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
@@ -60,22 +61,19 @@ class TwoTermAtom:
                 self.add_relaxation(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
 
     def add_coherence_decay(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        # logging.info("add_coherence_decay")
         """
         Reference: (7.38)
         """
         for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
-            Kʹ=f"triangular({K}, 1)",
-            Qʹ=f"projection(Kʹ)",
-            # Jʹʹ=f"intersection(triangular({J}, 1), triangular({level.l}, {level.s}))",
-            Jʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.l, level.s)),
-            Jʹʹʹ=f"intersection(triangular({J}, 1), triangular({level.l}, {level.s}))",
+            Kʹ=TRIANGULAR(K, 1),
+            Qʹ=PROJECTION("Kʹ"),
+            Jʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.L, level.S)),
+            Jʹʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.L, level.S)),
         ):
             n = self.n(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
 
     def add_absorption(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        # logging.info("add_absorption")
         """
         Reference: (7.38)
         """
@@ -85,16 +83,15 @@ class TwoTermAtom:
                 continue
 
             for Jl, Jʹl, Kl, Ql in nested_loops(
-                Jl=f"triangular({level_lower.l}, {level_lower.s})",
-                Jʹl=f"triangular({level_lower.l}, {level_lower.s})",
-                Kl=f"triangular(Jl, Jʹl)",
-                Ql=f"projection(Kl)",
+                Jl=TRIANGULAR(level_lower.L, level_lower.S),
+                Jʹl=TRIANGULAR(level_lower.L, level_lower.S),
+                Kl=TRIANGULAR("Jl", "Jʹl"),
+                Ql=PROJECTION("Kl"),
             ):
                 t_a = self.t_a(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_lower=level_lower, Kl=Kl, Ql=Ql, Jl=Jl, Jʹl=Jʹl)
                 self.matrix_builder.add_coefficient(level=level_lower, K=Kl, Q=Ql, J=Jl, Jʹ=Jʹl, coefficient=t_a)
 
     def add_emission(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        # logging.info("add_emission")
         """
         Reference: (7.38)
         """
@@ -104,10 +101,10 @@ class TwoTermAtom:
                 continue
 
             for Ju, Jʹu, Ku, Qu in nested_loops(
-                Ju=f"triangular({level_upper.l}, {level_upper.s})",
-                Jʹu=f"triangular({level_upper.l}, {level_upper.s})",
-                Ku=f"triangular(Ju, Jʹu)",
-                Qu=f"projection(Ku)",
+                Ju=TRIANGULAR(level_upper.L, level_upper.S),
+                Jʹu=TRIANGULAR(level_upper.L, level_upper.S),
+                Ku=TRIANGULAR("Ju", "Jʹu"),
+                Qu=PROJECTION("Ku"),
             ):
                 t_e = self.t_e(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_upper=level_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu)
                 t_s = self.t_s(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_upper=level_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu)
@@ -120,10 +117,10 @@ class TwoTermAtom:
         """
         # Relaxation from selected coherence
         for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
-            Kʹ=f"triangular({J}, {Jʹ})",
-            Qʹ=f"projection(Kʹ)",
-            Jʹʹ=f"triangular({level.l}, {level.s})",
-            Jʹʹʹ=f"triangular({level.l}, {level.s})",
+            Kʹ=TRIANGULAR(J, Jʹ),
+            Qʹ=PROJECTION("Kʹ"),
+            Jʹʹ=TRIANGULAR(level.L, level.S),
+            Jʹʹʹ=TRIANGULAR(level.L, level.S),
         ):
             r_a = self.r_a(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
             r_e = self.r_e(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
@@ -134,77 +131,102 @@ class TwoTermAtom:
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-(r_a + r_e + r_s))
 
     def r_a(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
-        l = level.l
-        s = level.s
+        L = level.L
+        S = level.S
+
         result = 0
         for level_upper in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(level_upper=level_upper, level_lower=level):
                 continue
+
             transition = self.transition_registry.get_transition(level_upper=level_upper, level_lower=level)
-            m0 = (2 * l + 1) * transition.einstein_b_lu
-            l_u = level_upper.l
-            for k_r in [0, 1, 2]:
-                for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
-                    m1 = sqrt(3 * (2 * K + 1) * (2 * Kʹ + 1) * (2 * k_r + 1))
-                    m2 = m1p(1 + l_u - s + J + Qʹ)
-                    m3 = wigner_6j(l, l, k_r, 1, 1, l_u) * wigner_3j(K, Kʹ, k_r, Q, -Qʹ, q_r)
-                    m4 = 0.5 * self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
-                    a1 = delta(J, Jʹʹ) * sqrt((2 * Jʹ + 1) * (2 * Jʹʹʹ + 1))
-                    a2 = wigner_6j(l, l, k_r, Jʹʹʹ, Jʹ, s)
-                    a3 = wigner_6j(K, Kʹ, k_r, Jʹʹʹ, Jʹ, J)
-                    b1 = delta(Jʹ, Jʹʹʹ) * sqrt((2 * J + 1) * (2 * Jʹʹ + 1))
-                    b2 = m1p(Jʹʹ - Jʹ + K + Kʹ + k_r)
-                    b3 = wigner_6j(l, l, k_r, Jʹʹ, J, s)
-                    b4 = wigner_6j(K, Kʹ, k_r, Jʹʹ, J, Jʹ)
-                    result += m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
+            Lu = level_upper.L
+
+            result += summate(
+                lambda Kr, Qr: multiply(
+                    lambda: n_proj(L) * transition.einstein_b_lu,
+                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
+                    lambda: m1p(1 + Lu - S + J + Qʹ),
+                    lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
+                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                    lambda: (
+                        multiply(
+                            lambda: delta(J, Jʹʹ),
+                            lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
+                            lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
+                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                        )
+                        + multiply(
+                            lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
+                            lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
+                            lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
+                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                        )
+                    ),
+                ),
+                Kr=FROMTO(0, 2),
+                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
+            )
         return result
 
     def r_e(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
         result = 0
-        m0 = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ)
         for level_lower in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(level_upper=level, level_lower=level_lower):
                 continue
             transition = self.transition_registry.get_transition(level_upper=level, level_lower=level_lower)
-            result += m0 * transition.einstein_a_ul
+            result += delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * transition.einstein_a_ul
         return result
 
     def r_s(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
-        # Todo all relaxation rates can be simplified (7.46)
-        l = level.l
-        s = level.s
+        # (7.46c)
+        L = level.L
+        S = level.S
         result = 0
         for level_lower in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(level_upper=level, level_lower=level_lower):
                 continue
             transition = self.transition_registry.get_transition(level_upper=level, level_lower=level_lower)
-            m0 = (2 * l + 1) * transition.einstein_b_ul
-            l_l = level_lower.l
-            for k_r in [0, 1, 2]:
-                for q_r in projection(k_r):  # todo: no need to sum: q_r = q_prime - q
-                    m1 = sqrt(3 * (2 * K + 1) * (2 * Kʹ + 1) * (2 * k_r + 1))
-                    m2 = m1p(1 + l_l - s + J + k_r + Qʹ)
-                    m3 = wigner_6j(l, l, k_r, 1, 1, l_l) * wigner_3j(K, Kʹ, k_r, Q, -Qʹ, q_r)
-                    m4 = 0.5 * self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
-                    a1 = delta(J, Jʹʹ) * sqrt((2 * Jʹ + 1) * (2 * Jʹʹʹ + 1))
-                    a2 = wigner_6j(l, l, k_r, Jʹʹʹ, Jʹ, s)
-                    a3 = wigner_6j(K, Kʹ, k_r, Jʹʹʹ, Jʹ, J)
-                    b1 = delta(Jʹ, Jʹʹʹ) * sqrt((2 * J + 1) * (2 * Jʹʹ + 1))
-                    b2 = m1p(Jʹʹ - Jʹ + K + Kʹ + k_r)
-                    b3 = wigner_6j(l, l, k_r, Jʹʹ, J, s)
-                    b4 = wigner_6j(K, Kʹ, k_r, Jʹʹ, J, Jʹ)
-                    result += m0 * m1 * m2 * m3 * m4 * (a1 * a2 * a3 + b1 * b2 * b3 * b4)
+            Ll = level_lower.L
+
+            result += summate(
+                lambda Kr, Qr: multiply(
+                    lambda: n_proj(L) * transition.einstein_b_ul,
+                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
+                    lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
+                    lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
+                    lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
+                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                    lambda: (
+                        multiply(
+                            lambda: delta(J, Jʹʹ),
+                            lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
+                            lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
+                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                        )
+                        + multiply(
+                            lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
+                            lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
+                            lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
+                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                        )
+                    ),
+                ),
+                Kr=FROMTO(0, 2),
+                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
+            )
+
         return result
 
     @staticmethod
-    def gamma(level: Level, j: float, j_prime: float):
-        s = level.s
-        l = level.l
-        result = delta(j, j_prime) * sqrt(j * (j + 1) * (2 * j + 1))
+    def gamma(level: Level, J: float, Jʹ: float):
+        S = level.S
+        L = level.L
+        result = delta(J, Jʹ) * sqrt(J * (J + 1) * (2 * J + 1))
         result += (
-            m1p(1 + l + s + j)
-            * sqrt((2 * j + 1) * (2 * j_prime + 1) * s * (s + 1) * (2 * s + 1))
-            * wigner_6j(j, j_prime, 1, s, s, l)
+            m1p(1 + L + S + J)
+            * sqrt((2 * J + 1) * (2 * Jʹ + 1) * S * (S + 1) * (2 * S + 1))
+            * wigner_6j(J, Jʹ, 1, S, S, L)
         )
         return result
 
@@ -214,9 +236,10 @@ class TwoTermAtom:
         """
         if self.disable_n:
             return 0
-        term = self.term_registry.get_term(level=level, j=J)
-        term_prime = self.term_registry.get_term(level=level, j=Jʹ)
-        nu = (term.energy_cmm1 - term_prime.energy_cmm1) / h
+
+        term = self.term_registry.get_term(level=level, J=J)
+        term_prime = self.term_registry.get_term(level=level, J=Jʹ)
+        nu = energy_cmm1_to_frequency_hz(term.energy_cmm1 - term_prime.energy_cmm1)
 
         result = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * nu
 
@@ -227,8 +250,8 @@ class TwoTermAtom:
             * sqrt((2 * K + 1) * (2 * Kʹ + 1))
             * wigner_3j(K, Kʹ, 1, -Q, Q, 0)
             * (
-                delta(Jʹ, Jʹʹʹ) * self.gamma(level=level, j=J, j_prime=Jʹʹ) * wigner_6j(K, Kʹ, 1, Jʹʹ, J, Jʹ)
-                + delta(J, Jʹʹ) * self.gamma(level=level, j=Jʹʹʹ, j_prime=Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
+                delta(Jʹ, Jʹʹʹ) * self.gamma(level=level, J=J, Jʹ=Jʹʹ) * wigner_6j(K, Kʹ, 1, Jʹʹ, J, Jʹ)
+                + delta(J, Jʹʹ) * self.gamma(level=level, J=Jʹʹʹ, Jʹ=Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
             )
         )
         return result
@@ -249,36 +272,26 @@ class TwoTermAtom:
         """
         Reference: (7.45a)
         """
-        s = level.s
-        l = level.l
-        l_l = level_lower.l
-
-        assert s == level_lower.s
+        S = level.S
+        L = level.L
+        Ll = level_lower.L
 
         transition = self.transition_registry.get_transition(level_upper=level, level_lower=level_lower)
-        m0 = (2 * l_l + 1) * transition.einstein_b_lu
-        result = 0
-        for k_r in [0, 1, 2]:
-            for q_r in projection(k_r):  # todo: no need to sum: q_r = q_l - q
-                # q_r = Ql - Q  # Todo this errors out, need to investigate
-                m1 = sqrt(
-                    3
-                    * (2 * J + 1)
-                    * (2 * Jʹ + 1)
-                    * (2 * Jl + 1)
-                    * (2 * Jʹl + 1)
-                    * (2 * K + 1)
-                    * (2 * Kl + 1)
-                    * (2 * k_r + 1)
-                )
-                m2 = m1p(Kl + Ql + Jʹl - Jl)
-                m3 = wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, k_r)
-                m4 = wigner_6j(l, l_l, 1, Jl, J, s)
-                m5 = wigner_6j(l, l_l, 1, Jʹl, Jʹ, s)
-                m6 = wigner_3j(K, Kl, k_r, -Q, Ql, -q_r)
-                m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
-                result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
-        return result
+
+        return summate(
+            lambda Kr, Qr: multiply(
+                lambda: n_proj(Ll) * transition.einstein_b_lu,
+                lambda: sqrt(n_proj(1, J, Jʹ, Jl, Jʹl, K, Kl, Kr)),
+                lambda: m1p(Kl + Ql + Jʹl - Jl),
+                lambda: wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, Kr),
+                lambda: wigner_6j(L, Ll, 1, Jl, J, S),
+                lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
+                lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
+                lambda: self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+            ),
+            Kr=FROMTO(0, 2),
+            Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
+        )
 
     def t_e(
         self,
@@ -296,62 +309,16 @@ class TwoTermAtom:
         """
         Reference: (7.45b)
         """
-        s = level.s
-        l = level.l
-        l_u = level_upper.l
 
-        assert s == level_upper.s
-
-        if K != Ku:
-            return 0
-        if Q != Qu:
-            return 0
+        S = level.S
+        L = level.L
+        Lu = level_upper.L
 
         transition = self.transition_registry.get_transition(level_upper=level_upper, level_lower=level)
-        m0 = (2 * l_u + 1) * transition.einstein_a_ul
-        m1 = sqrt((2 * J + 1) * (2 * Jʹ + 1) * (2 * Ju + 1) * (2 * Jʹu + 1))
-        m2 = m1p(1 + K + Jʹ + Jʹu)
-        m3 = wigner_6j(J, Jʹ, K, Jʹu, Ju, 1)
-        m4 = wigner_6j(l_u, l, 1, J, Ju, s)
-        m5 = wigner_6j(l_u, l, 1, Jʹ, Jʹu, s)
-        result = m0 * m1 * m2 * m3 * m4 * m5
-        return result
-
-    def t_e_short(
-        self,
-        level: Level,
-        k: int,
-        q: int,
-        j: float,
-        j_prime: float,
-        level_upper: Level,
-        k_u: int,
-        q_u: int,
-        j_u: float,
-        j_prime_u: float,
-    ):
-        """
-        Reference: (7.45b)
-        """
-
-        # rename
-        K = k
-        Q = q
-        J = j
-        Jʹ = j_prime
-        Ku = k_u
-        Qu = q_u
-        Ju = j_u
-        Jʹu = j_prime_u
-
-        S = level.s
-        L = level.l
-        Lu = level_upper.l
-
-        transition = self.transition_registry.get_transition(level_upper=level_upper, level_lower=level)
+        assert S == level_upper.S
 
         result = multiply(
-            lambda: delta(S, level_upper.s) * delta(K, Ku) * delta(Q, Qu),
+            lambda: delta(S, level_upper.S) * delta(K, Ku) * delta(Q, Qu),
             lambda: (2 * Lu + 1) * transition.einstein_a_ul,
             lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu)),
             lambda: m1p(1 + K + Jʹ + Jʹu),
@@ -378,43 +345,35 @@ class TwoTermAtom:
         """
         Reference: (7.45c)
         """
-        s = level.s
-        l = level.l
-        l_u = level_upper.l
-
-        assert s == level_upper.s
+        S = level.S
+        L = level.L
+        Lu = level_upper.L
 
         transition = self.transition_registry.get_transition(level_upper=level_upper, level_lower=level)
 
-        m0 = (2 * l_u + 1) * transition.einstein_b_ul
-        result = 0
-        for k_r in [0, 1, 2]:
-            for q_r in projection(k_r):  # todo: no need to sum: q_r = q_u - q
-                m1 = sqrt(
-                    3
-                    * (2 * J + 1)
-                    * (2 * Jʹ + 1)
-                    * (2 * Ju + 1)
-                    * (2 * Jʹu + 1)
-                    * (2 * K + 1)
-                    * (2 * Ku + 1)
-                    * (2 * k_r + 1)
-                )
-                m2 = m1p(k_r + Ku + Qu + Jʹu - Ju)
-                m3 = wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, k_r)
-                m4 = wigner_6j(l_u, l, 1, J, Ju, s)
-                m5 = wigner_6j(l_u, l, 1, Jʹ, Jʹu, s)
-                m6 = wigner_3j(K, Ku, k_r, -Q, Qu, -q_r)
-                m7 = self.radiation_tensor.get(transition=transition, k=k_r, q=q_r)
-                result += m0 * m1 * m2 * m3 * m4 * m5 * m6 * m7
-        return result
+        return summate(
+            lambda Kr, Qr: multiply(
+                lambda: n_proj(Lu) * transition.einstein_b_ul,
+                lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
+                lambda: m1p(Kr + Ku + Qu + Jʹu - Ju),
+                lambda: wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr),
+                lambda: wigner_6j(Lu, L, 1, J, Ju, S),
+                lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
+                lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
+                lambda: self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+            ),
+            Kr=FROMTO(0, 2),
+            Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
+        )
 
     def get_solution_direct(self) -> Rho:
-        logging.info("Get Solution of Statistical Equilibrium Equations")
+        """
         # A x = 0
         # let x[0] = 1 (it is always rho_0_0 of some kind, so it is unlikely to be exactly zero)
         # A[1:] x = 0
         # A[1:, 1:] x[1:] = -A[1:, 0]
+        """
+        logging.info("Get Solution of Statistical Equilibrium Equations")
         sol = np.linalg.solve(
             self.matrix_builder.rho_matrix[:, 1:, 1:],
             -self.matrix_builder.rho_matrix[:, 1:, 0:1],

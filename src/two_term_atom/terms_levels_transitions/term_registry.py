@@ -16,7 +16,7 @@ class TermRegistry:
         self.levels: Dict[str, Level] = {}
         self.terms: Dict[str, Term] = {}
 
-    def register_term(self, beta: str, l: float, s: float, j: float, energy_cmm1: float):
+    def register_term(self, beta: str, L: float, S: float, J: float, energy_cmm1: float):
         """
         beta: str - level ID
         l:half_int L
@@ -27,39 +27,39 @@ class TermRegistry:
         # if energy_cmm1 < 50000 or energy_cmm1 > 150000:
         #     logging.warning(f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct.")
 
-        level_id = self.construct_level_id(beta=beta, l=l, s=s)
-        self.add_level_if_needed(level_id=level_id, beta=beta, l=l, s=s)
+        level_id = self.construct_level_id(beta=beta, L=L, S=S)
+        self.add_level_if_needed(level_id=level_id, beta=beta, L=L, S=S)
         level = self.levels[level_id]
 
-        term_id = self.construct_term_id(beta=beta, l=l, s=s, j=j)
+        term_id = self.construct_term_id(beta=beta, L=L, S=S, J=J)
         assert term_id not in self.terms.keys(), f"Term {term_id} is already registered."
-        term = Term(level=level, term_id=term_id, j=j, energy_cmm1=energy_cmm1)
+        term = Term(level=level, term_id=term_id, J=J, energy_cmm1=energy_cmm1)
 
         level.register_term(term)
         self.terms[term_id] = term
 
     @staticmethod
-    def construct_level_id(beta, l, s):
-        return f"{beta}_l{half_int_to_str(l)}_s{half_int_to_str(s)}"
+    def construct_level_id(beta, L, S):
+        return f"{beta}_L={half_int_to_str(L)}_S={half_int_to_str(S)}"
 
     @staticmethod
-    def construct_term_id(beta, l, s, j):
-        return f"{beta}_l{half_int_to_str(l)}_s{half_int_to_str(s)}_j{half_int_to_str(j)}"
+    def construct_term_id(beta, L, S, J):
+        return f"{beta}_L={half_int_to_str(L)}_S={half_int_to_str(S)}_J={half_int_to_str(J)}"
 
-    def add_level_if_needed(self, level_id: str, beta: str, l: float, s: float):
+    def add_level_if_needed(self, level_id: str, beta: str, L: float, S: float):
         if level_id not in self.levels.keys():
             logging.info(f"Term registry: Creating level {level_id}")
-            level = Level(level_id=level_id, beta=beta, l=l, s=s)
+            level = Level(level_id=level_id, beta=beta, L=L, S=S)
             self.levels[level_id] = level
 
     def validate(self):
         for level in self.levels.values():
-            expected_j_values = triangular(level.l, level.s)
+            expected_j_values = triangular(level.L, level.S)
             actual_j_values = []
             for term in level.terms:
-                if term.j in actual_j_values:
+                if term.J in actual_j_values:
                     raise ValueError(f"Duplicate J values for level {level}: {[t.term_id for t in level.terms]}")
-                actual_j_values.append(term.j)
+                actual_j_values.append(term.J)
             expected = set(expected_j_values)
             actual = set(actual_j_values)
             assert actual == expected, (
@@ -67,13 +67,13 @@ class TermRegistry:
                 f"for level {level.level_id} do not match."
             )
 
-    def get_term(self, level: "Level", j: float) -> "Term":
-        term_id = self.construct_term_id(beta=level.beta, l=level.l, s=level.s, j=j)
+    def get_term(self, level: "Level", J: float) -> "Term":
+        term_id = self.construct_term_id(beta=level.beta, L=level.L, S=level.S, J=J)
         assert term_id in self.terms.keys(), f"Trying to get non-registered term {term_id}"
         return self.terms[term_id]
 
-    def get_level(self, beta: str, l: float, s: float):
-        level_id = self.construct_level_id(beta=beta, l=l, s=s)
+    def get_level(self, beta: str, L: float, S: float):
+        level_id = self.construct_level_id(beta=beta, L=L, S=S)
         assert level_id in self.levels.keys()
         return self.levels[level_id]
 
@@ -83,17 +83,17 @@ class Level:
     Level is {beta L S}
     """
 
-    def __init__(self, level_id: str, beta: str, l: float, s: float):
+    def __init__(self, level_id: str, beta: str, L: float, S: float):
         self.level_id: str = level_id
         self.beta: str = beta
-        self.l: float = l
-        self.s: float = s
+        self.L: float = L
+        self.S: float = S
         self.terms: List["Term"] = []
 
     def register_term(self, term: "Term"):
         assert term.beta == self.beta
-        assert term.l == self.l
-        assert term.s == self.s
+        assert term.L == self.L
+        assert term.S == self.S
         assert term not in self.terms
         self.terms.append(term)
 
@@ -102,7 +102,7 @@ class Level:
         Get the term with the given J value.
         """
         for term in self.terms:
-            if term.j == J:
+            if term.J == J:
                 return term
         raise ValueError(f"Term with J={J} not found in level {self.level_id}.")
 
@@ -119,14 +119,14 @@ class Term:
     Term is {beta L S J}
     """
 
-    def __init__(self, level: "Level", term_id: str, j: float, energy_cmm1: float):
-        assert abs(level.l - level.s) <= j <= level.l + level.s
-        assert (level.l + level.s - j) % 1 == 0
+    def __init__(self, level: "Level", term_id: str, J: float, energy_cmm1: float):
+        assert abs(level.L - level.S) <= J <= level.L + level.S
+        assert (level.L + level.S - J) % 1 == 0
         self.term_id: str = term_id
         self.beta: str = level.beta
-        self.l: float = level.l
-        self.s: float = level.s
-        self.j: float = j
+        self.L: float = level.L
+        self.S: float = level.S
+        self.J: float = J
         self.energy_cmm1: float = energy_cmm1
         self.level: "Level" = level
 

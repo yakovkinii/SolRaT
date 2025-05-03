@@ -42,4 +42,6 @@ def PROJECTION(a):
     return f"projection({a})"
 
 
-
+def VALUE(a):
+    """Just single calue"""
+    return f"[{a}]"

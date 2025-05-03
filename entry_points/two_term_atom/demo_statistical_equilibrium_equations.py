@@ -1,16 +1,14 @@
 import logging
-import unittest
 
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy import sqrt
 from yatools import logging_config
 
-from src.core.physics.constants import c
 from src.core.physics.functions import get_BP
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.physics.einstein_coefficients import b_ul_from_a_two_term_atom, b_lu_from_b_ul_two_term_atom
+from src.two_term_atom.physics.einstein_coefficients import b_lu_from_b_ul_two_term_atom, b_ul_from_a_two_term_atom
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
@@ -23,16 +21,16 @@ def main():
     term_registry = TermRegistry()
     term_registry.register_term(
         beta="1s",
-        l=0,
-        s=0,
-        j=0,
+        L=0,
+        S=0,
+        J=0,
         energy_cmm1=200_000,
     )
     term_registry.register_term(
         beta="2p",
-        l=1,
-        s=0,
-        j=1,
+        L=1,
+        S=0,
+        J=1,
         energy_cmm1=220_000,
     )
     term_registry.validate()
@@ -45,8 +43,8 @@ def main():
 
     transition_registry = TransitionRegistry()
     transition_registry.register_transition(
-        level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-        level_lower=term_registry.get_level(beta="1s", l=0, s=0),
+        level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+        level_lower=term_registry.get_level(beta="1s", L=0, S=0),
         einstein_a_ul=a_ul,
         einstein_b_ul=b_ul,
         einstein_b_lu=b_lu,
@@ -71,8 +69,8 @@ def main():
     # Analytic:
     rt = radiation_tensor.get(
         transition=transition_registry.get_transition(
-            level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-            level_lower=term_registry.get_level(beta="1s", l=0, s=0),
+            level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+            level_lower=term_registry.get_level(beta="1s", L=0, S=0),
         ),
         k=0,
         q=0,
@@ -83,7 +81,6 @@ def main():
     rho_l_0_0 = 1 / trace
     rho_u_0_0 = rho_u_0_0 / trace
 
-
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(10, 10), sharex=True)
     plt.title("Density Matrix Elements")
     ax[0].plot(nu, I0 / max(I0), "orange", label="Isotropic Intensity I0")
@@ -91,7 +88,7 @@ def main():
     ax[0].legend()
     ax[1].plot(
         nu,
-        np.real(solution(level=term_registry.get_level(beta="2p", l=1, s=0), K=0, Q=0, J=1, Jʹ=1)),
+        np.real(solution(level=term_registry.get_level(beta="2p", L=1, S=0), K=0, Q=0, J=1, Jʹ=1)),
         label="rho_u_0_0",
     )
     ax[1].plot(nu, np.real(rho_u_0_0), ":", label="rho_u_0_0 (analytic)")
@@ -99,7 +96,7 @@ def main():
     ax[1].legend()
     ax[2].plot(
         nu,
-        np.real(solution(level=term_registry.get_level(beta="1s", l=0, s=0), K=0, Q=0, J=0, Jʹ=0)),
+        np.real(solution(level=term_registry.get_level(beta="1s", L=0, S=0), K=0, Q=0, J=0, Jʹ=0)),
         label=r"rho_l_0_0",
     )
     ax[2].plot(nu, np.real(rho_l_0_0), ":", label=r"rho_l_0_0 (analytic)")

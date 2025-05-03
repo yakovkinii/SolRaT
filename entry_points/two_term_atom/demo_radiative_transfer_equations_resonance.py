@@ -2,6 +2,7 @@ import logging
 import unittest
 
 import numpy as np
+from matplotlib import pyplot as plt
 from yatools import logging_config
 
 from src.core.physics.functions import get_BP
@@ -11,7 +12,6 @@ from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoef
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
-from matplotlib import pyplot as plt
 
 
 class TestRadiativeTransferEquations(unittest.TestCase):
@@ -21,23 +21,23 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",
-            l=0,
-            s=0.5,
-            j=0.5,
+            L=0,
+            S=0.5,
+            J=0.5,
             energy_cmm1=200_000,
         )
         term_registry.register_term(
             beta="2p",
-            l=1,
-            s=0.5,
-            j=0.5,
+            L=1,
+            S=0.5,
+            J=0.5,
             energy_cmm1=220_000,
         )
         term_registry.register_term(
             beta="2p",
-            l=1,
-            s=0.5,
-            j=1.5,
+            L=1,
+            S=0.5,
+            J=1.5,
             energy_cmm1=220_001,
         )
         term_registry.validate()
@@ -46,8 +46,8 @@ class TestRadiativeTransferEquations(unittest.TestCase):
 
         transition_registry = TransitionRegistry()
         transition_registry.register_transition_from_a_ul(
-            level_upper=term_registry.get_level(beta="2p", l=1, s=0.5),
-            level_lower=term_registry.get_level(beta="1s", l=0, s=0.5),
+            level_upper=term_registry.get_level(beta="2p", L=1, S=0.5),
+            level_lower=term_registry.get_level(beta="1s", L=0, S=0.5),
             einstein_a_ul_sm1=0.7e8,
         )
 
@@ -76,7 +76,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         eta_s_analytic = radiative_transfer_coefficients.eta_s_analytic_resonance(rho=rho, stokes_component_index=0)
 
         plt.plot(nu, eta_sI, label=r"$\eta_s$")
-        plt.plot(nu, eta_s_analytic, 'r--', label=r"$\eta_s$ (analytic test case, no magnetic field)")
+        plt.plot(nu, eta_s_analytic, "r--", label=r"$\eta_s$ (analytic test case, no magnetic field)")
         plt.xlabel("Frequency (Hz)")
         plt.ylabel(r"$\eta_s$")
         plt.title(r"$\eta_s$ vs Frequency")

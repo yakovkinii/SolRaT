@@ -9,27 +9,25 @@ class TestTransitionRegistry(unittest.TestCase):
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",
-            l=0,
-            s=0,
-            j=0,
+            L=0,
+            S=0,
+            J=0,
             energy_cmm1=100,
         )
         term_registry.register_term(
             beta="2p",
-            l=1,
-            s=0,
-            j=1,
+            L=1,
+            S=0,
+            J=1,
             energy_cmm1=200,
         )
         term_registry.validate()
 
         transition_registry = TransitionRegistry()
         transition_registry.register_transition(
-            level_upper=term_registry.get_level(beta="2p", l=1, s=0),
-            level_lower=term_registry.get_level(beta="1s", l=0, s=0),
+            level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+            level_lower=term_registry.get_level(beta="1s", L=0, S=0),
             einstein_a_ul=0.1,
             einstein_b_ul=0.1,
             einstein_b_lu=0.1,
         )
-
-

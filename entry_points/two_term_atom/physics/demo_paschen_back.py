@@ -14,21 +14,21 @@ def main():
     term_registry = TermRegistry()
     term_registry.register_term(
         beta="2p",
-        l=1,
-        s=0.5,
-        j=0.5,
+        L=1,
+        S=0.5,
+        J=0.5,
         energy_cmm1=82258.9191133,
     )
     term_registry.register_term(
         beta="2p",
-        l=1,
-        s=0.5,
-        j=1.5,
+        L=1,
+        S=0.5,
+        J=1.5,
         energy_cmm1=82259.2850014,
     )
     term_registry.validate()
 
-    level_2p = term_registry.get_level(beta="2p", l=1, s=0.5)
+    level_2p = term_registry.get_level(beta="2p", L=1, S=0.5)
 
     energies = []
     magnetic_fields = [_ for _ in range(0, 20001, 10)]

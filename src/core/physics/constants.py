@@ -11,4 +11,3 @@ e_0 = 0.480321e-9  # TODO
 m_e = 9.109390e-28  # TODO
 atomic_mass_unit = 1.660539e-24  # TODO
 mu0 = h * e_0 / (4 * np.pi * m_e * c)
-

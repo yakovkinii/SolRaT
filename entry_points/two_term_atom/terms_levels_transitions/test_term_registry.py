@@ -8,17 +8,16 @@ class TestTermRegistry(unittest.TestCase):
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",
-            l=0,
-            s=0,
-            j=0,
+            L=0,
+            S=0,
+            J=0,
             energy_cmm1=100,
         )
         term_registry.register_term(
             beta="2p",
-            l=1,
-            s=0,
-            j=1,
+            L=1,
+            S=0,
+            J=1,
             energy_cmm1=100,
         )
         term_registry.validate()
-
