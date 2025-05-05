@@ -4,7 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from yatools import logging_config
 
-from src.core.physics.functions import get_BP, lambda_cm_to_frequency_hz
+from src.core.physics.functions import get_planck_BP, lambda_cm_to_frequency_hz
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
@@ -127,7 +127,7 @@ def main():
 
     atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=20000, delta_v_thermal_cm_sm1=1_000_00)
     radiation_tensor = RadiationTensor(transition_registry=transition_registry)
-    I0 = get_BP(nu=nu, T=5000)
+    I0 = get_planck_BP(nu_sm1=nu, T_K=5000)
     radiation_tensor.fill_isotropic(I0)
     atom = TwoTermAtom(
         term_registry=term_registry,

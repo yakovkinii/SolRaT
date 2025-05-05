@@ -7,7 +7,7 @@ from src.core.physics.constants import sqrt2, sqrt3
 
 
 @lru_cache(maxsize=None)
-def t_k_q(K, Q, stokes_component_index, chi, theta, gamma):
+def t_k_q(K, Q, stokes_component_index, chi, theta, gamma):  # TODO test for other Stokes parameters
     """
     complex T{K, Q}(i, Omega)
 

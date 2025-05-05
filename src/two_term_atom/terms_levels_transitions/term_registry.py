@@ -3,7 +3,6 @@ from typing import Dict, List
 
 from src.core.engine.functions.general import half_int_to_str
 from src.core.engine.functions.looping import triangular
-from src.core.physics.constants import c
 
 
 class TermRegistry:
@@ -23,9 +22,6 @@ class TermRegistry:
         s:half_int S
         j:half_int J
         """
-
-        # if energy_cmm1 < 50000 or energy_cmm1 > 150000:
-        #     logging.warning(f"Received energy = {energy_cmm1} cm^-1. Please double check if the units are correct.")
 
         level_id = self.construct_level_id(beta=beta, L=L, S=S)
         self.add_level_if_needed(level_id=level_id, beta=beta, L=L, S=S)
@@ -57,8 +53,9 @@ class TermRegistry:
             expected_j_values = triangular(level.L, level.S)
             actual_j_values = []
             for term in level.terms:
-                if term.J in actual_j_values:
-                    raise ValueError(f"Duplicate J values for level {level}: {[t.term_id for t in level.terms]}")
+                assert (
+                    term.J not in actual_j_values
+                ), f"Duplicate J values for level {level.level_id}: {term.J} in {[t.term_id for t in level.terms]}"
                 actual_j_values.append(term.J)
             expected = set(expected_j_values)
             actual = set(actual_j_values)
@@ -129,10 +126,3 @@ class Term:
         self.J: float = J
         self.energy_cmm1: float = energy_cmm1
         self.level: "Level" = level
-
-
-def get_transition_frequency(energy_lower_cmm1: float, energy_upper_cmm1: float) -> float:
-    # E [cm^-1] = 1 / lambda [cm]
-    lambda_cm = 1 / (energy_upper_cmm1 - energy_lower_cmm1)  # cm
-    nu = c / lambda_cm  # Hz = 1 / s
-    return nu

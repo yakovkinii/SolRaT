@@ -5,7 +5,7 @@ from numpy import abs, sqrt
 from src.core.engine.functions.general import fact2
 
 
-def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled):
+def _w3j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled):
     """
     float Wigner 3J symbol where all arguments are doubled to be integer
 
@@ -63,7 +63,7 @@ def _w3j(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled)
     return result
 
 
-def _w6j(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled):
+def _w6j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled):
     """
     float Wigner 6J symbol where all arguments are doubled to be integer
 
@@ -130,7 +130,7 @@ def _w6j(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_doubled, l3_doubled)
     return result
 
 
-def _w9j(
+def _w9j_doubled_argument(
     j1_doubled,
     j2_doubled,
     j3_doubled,
@@ -174,23 +174,23 @@ def _w9j(
     result = 0
     for k in range(int(k_min), int(k_max) + 1, 2):
         s = -1 if k % 2 != 0 else 1
-        x1 = _w6j(j1_doubled, j9_doubled, k, j8_doubled, j4_doubled, j7_doubled)
-        x2 = _w6j(j2_doubled, j6_doubled, k, j4_doubled, j8_doubled, j5_doubled)
-        x3 = _w6j(j1_doubled, j9_doubled, k, j6_doubled, j2_doubled, j3_doubled)
+        x1 = _w6j_doubled_argument(j1_doubled, j9_doubled, k, j8_doubled, j4_doubled, j7_doubled)
+        x2 = _w6j_doubled_argument(j2_doubled, j6_doubled, k, j4_doubled, j8_doubled, j5_doubled)
+        x3 = _w6j_doubled_argument(j1_doubled, j9_doubled, k, j6_doubled, j2_doubled, j3_doubled)
         result += s * x1 * x2 * x3 * (k + 1)
     return result
 
 
 @lru_cache(maxsize=None)
 def wigner_3j(j1, j2, j3, m1, m2, m3):
-    return _w3j(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
+    return _w3j_doubled_argument(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
 
 
 @lru_cache(maxsize=None)
 def wigner_6j(j1, j2, j3, l1, l2, l3):
-    return _w6j(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
+    return _w6j_doubled_argument(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
 
 
 @lru_cache(maxsize=None)
 def wigner_9j(j1, j2, j3, j4, j5, j6, j7, j8, j9):
-    return _w9j(j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2)
+    return _w9j_doubled_argument(j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2)

@@ -1,6 +1,6 @@
 import unittest
 
-from src.core.engine.functions.general import delta, fact
+from src.core.engine.functions.general import delta, fact2
 from src.core.engine.generators.multiply import multiply
 
 
@@ -9,7 +9,7 @@ class TestMultiply(unittest.TestCase):
         def expensive_calculation(i, is_raw):
             if not is_raw and i != 0:
                 raise ValueError("Did not short-circuit correctly")
-            return fact(i)
+            return fact2(i)
 
         for i in [0, 1]:
             R_multiply = multiply(

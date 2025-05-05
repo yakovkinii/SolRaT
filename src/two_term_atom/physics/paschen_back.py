@@ -6,7 +6,7 @@ from numpy import sqrt
 
 from src.core.engine.functions.general import half_int_to_str
 from src.core.engine.functions.looping import fromto
-from src.core.physics.constants import c, h, mu0
+from src.core.physics.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
 from src.two_term_atom.terms_levels_transitions.term_registry import Level
 
 
@@ -34,14 +34,17 @@ class PaschenBackCoefficients:
         self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))] = value
 
     def __call__(self, j, J, level: Level, M):
-        if (half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M)) not in self.data:
-            logging.warning(
-                f"PaschenBackCoefficients: {half_int_to_str(j)}, {half_int_to_str(J)}, "
-                f"{level.level_id}, {half_int_to_str(M)} not found."
-            )
-            logging.info(self.data.keys())
-            return 0
         return self.data[(half_int_to_str(j), half_int_to_str(J), level.level_id, half_int_to_str(M))]
+
+
+def _g_ls(L, S, J):
+    """
+    Reference: (3.8)
+    """
+    if J == 0:
+        return 1
+
+    return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
 
 
 def calculate_paschen_back(
@@ -55,15 +58,6 @@ def calculate_paschen_back(
 
     L = level.L
     S = level.S
-
-    def _g_ls(L, S, J):
-        """
-        Reference: (3.8)
-        """
-        if J == 0:
-            return 1
-
-        return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
 
     J_max = L + S
     J_min = abs(L - S)
@@ -89,7 +83,7 @@ def calculate_paschen_back(
         # We have 3-diagonal matrix block_size x block_size
         matrix = np.zeros((block_size, block_size))
 
-        mu0b_cm = mu0 * magnetic_field_gauss / h / c  # mu_0 * B in cm-1
+        mu0b_cm = mu0_erg_gaussm1 * magnetic_field_gauss / h_erg_s / c_cm_sm1  # mu_0 * B in cm-1
         for i in range(block_size):
             J = J_max - i  # J of current row
 

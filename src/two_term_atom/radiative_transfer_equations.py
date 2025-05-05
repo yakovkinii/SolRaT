@@ -7,14 +7,14 @@ from src.core.engine.functions.general import m1p, n_proj
 from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.summate import summate
-from src.core.physics.constants import c, h
+from src.core.physics.constants import c_cm_sm1, h_erg_s
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
 from src.core.physics.rotation_tensor_t_k_q import t_k_q
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.rho_matrix_builder import Rho
 from src.two_term_atom.physics.paschen_back import calculate_paschen_back
-from src.two_term_atom.terms_levels_transitions.term_registry import Level, get_transition_frequency
+from src.two_term_atom.terms_levels_transitions.term_registry import Level
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
@@ -25,14 +25,25 @@ class RadiativeTransferCoefficients:
         transition_registry: TransitionRegistry,
         nu: np.ndarray,
         maximum_delta_v_thermal_units_cutoff=5,
+        use_voigt=False,
+        chi=0,
+        theta=0,
+        gamma=0,
+        N=1,
     ):
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
         self.maximum_delta_v_thermal_units_cutoff = maximum_delta_v_thermal_units_cutoff
+        self.use_voigt = use_voigt
+        self.chi = chi
+        self.theta = theta
+        self.gamma = gamma
+        self.N = N  # Atom concentration
 
-    def phi(self, nui, nu):  # Implement properly
-        delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c
+    def phi(self, nui, nu):
+        assert self.use_voigt is False, "Voigt profile is not implemented yet"  # Todo
+        delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         return np.exp(-(((nu - nui) / delta_nu) ** 2))
 
     def eta_a(self, rho: Rho, stokes_component_index: int):
@@ -40,9 +51,6 @@ class RadiativeTransferCoefficients:
         Reference:
         (7.47a)
         """
-        chi = 0  # Todo
-        theta = 0  # Todo
-        gamma = 0  # Todo
 
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -57,10 +65,9 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            N = 1  # Todo
             return summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
-                    lambda: self.nu * h / 4 / pi * N * n_proj(Ll),
+                    lambda: self.nu * h_erg_s / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(3 * n_proj(K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
@@ -76,12 +83,12 @@ class RadiativeTransferCoefficients:
                     lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, level=level_upper, M=Mu),
                     lambda: real(
                         multiply(
-                            lambda: t_k_q(K, Q, stokes_component_index, chi, theta, gamma),
+                            lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
-                                nui=get_transition_frequency(
-                                    energy_lower_cmm1=lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
-                                    energy_upper_cmm1=upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
+                                nui=energy_cmm1_to_frequency_hz(
+                                    lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml)
+                                    - upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
                                 ),
                                 nu=self.nu,
                             ),
@@ -109,7 +116,12 @@ class RadiativeTransferCoefficients:
 
     def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
         nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
-        cutoff = self.maximum_delta_v_thermal_units_cutoff * nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c
+        cutoff = (
+            self.maximum_delta_v_thermal_units_cutoff
+            * nui
+            * self.atmosphere_parameters.delta_v_thermal_cm_sm1
+            / c_cm_sm1
+        )
         if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
             return True
         return False
@@ -120,9 +132,6 @@ class RadiativeTransferCoefficients:
         (7.47b)
         """
         logging.info("Radiative Transfer Equations: calculate eta_s")
-        chi = 0  # Todo
-        theta = 0  # Todo
-        gamma = 0  # Todo
 
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -151,11 +160,10 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            N = 1  # Todo
-
             return summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
-                    lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
+                    lambda: h_erg_s * self.nu / 4 / pi * self.N,
+                    lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
                     lambda: m1p(1 + Jʹʹu - Mu + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
@@ -170,12 +178,12 @@ class RadiativeTransferCoefficients:
                     lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, level=level_upper, M=Mu),
                     lambda: real(
                         multiply(
-                            lambda: t_k_q(K, Q, stokes_component_index, chi, theta, gamma),
+                            lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
-                                nui=get_transition_frequency(
-                                    energy_lower_cmm1=lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
-                                    energy_upper_cmm1=upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
+                                nui=energy_cmm1_to_frequency_hz(
+                                    lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml)
+                                    - upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
                                 ),
                                 nu=self.nu,
                             ),
@@ -207,9 +215,6 @@ class RadiativeTransferCoefficients:
         (10.127)
         """
         logging.info("Radiative Transfer Equations: calculate eta_s_analytic_resonance")
-        chi = 0  # Todo
-        theta = 0  # Todo
-        gamma = 0  # Todo
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -222,11 +227,10 @@ class RadiativeTransferCoefficients:
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
-            N = 1  # Todo
 
             result = result + summate(
                 lambda Ju, Jʹu, Jl, K, Q: multiply(
-                    lambda: h * self.nu / 4 / pi * N * n_proj(Lu) * transition.einstein_b_ul,
+                    lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Lu) * transition.einstein_b_ul,
                     lambda: m1p(1 + Jʹu + Jl),
                     lambda: sqrt(n_proj(Jl, Jl, 1, Ju, Jʹu)),
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
@@ -234,12 +238,11 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Ju, Jʹu, Jl),
                     lambda: real(
                         multiply(
-                            lambda: t_k_q(K, Q, stokes_component_index, chi, theta, gamma),
+                            lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
-                                nui=get_transition_frequency(
-                                    energy_lower_cmm1=level_lower.get_term(J=Jl).energy_cmm1,
-                                    energy_upper_cmm1=level_upper.get_term(J=Ju).energy_cmm1,
+                                nui=energy_cmm1_to_frequency_hz(
+                                    level_lower.get_term(J=Jl).energy_cmm1 - level_upper.get_term(J=Ju).energy_cmm1,
                                 ),
                                 nu=self.nu,
                             ),

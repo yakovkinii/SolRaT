@@ -5,10 +5,10 @@ import numpy as np
 from numpy import sqrt
 from yatools import logging_config
 
-from src.core.physics.functions import get_BP
+from src.core.physics.functions import get_planck_BP
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.physics.einstein_coefficients import b_lu_from_b_ul_two_term_atom, b_ul_from_a_two_term_atom
+from src.two_term_atom.physics.einstein_coefficients import b_lu_from_b_ul_two_term_atom, b_ul_from_a_ul_two_term_atom
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
@@ -38,7 +38,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
 
         nu = np.arange(5e14, 7e14, 1e12)  # Hz
         a_ul = 0.7e8  # 1/s
-        b_ul = b_ul_from_a_two_term_atom(a_ul=a_ul, nu_ul=6e14)
+        b_ul = b_ul_from_a_ul_two_term_atom(a_ul_sm1=a_ul, nu_ul=6e14)
         b_lu = b_lu_from_b_ul_two_term_atom(b_ul=b_ul, Lu=1, Ll=0)
 
         transition_registry = TransitionRegistry()
@@ -52,7 +52,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
 
         atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=500_00)
         radiation_tensor = RadiationTensor(transition_registry=transition_registry)
-        I0 = get_BP(nu=nu, T=10000)
+        I0 = get_planck_BP(nu_sm1=nu, T_K=10000)
         radiation_tensor.fill_isotropic(I0)
         atom = TwoTermAtom(
             term_registry=term_registry,
@@ -72,8 +72,8 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
                 level_upper=term_registry.get_level(beta="2p", L=1, S=0),
                 level_lower=term_registry.get_level(beta="1s", L=0, S=0),
             ),
-            k=0,
-            q=0,
+            K=0,
+            Q=0,
         )
 
         rho_u_0_0 = b_lu / a_ul / sqrt(3) * rt

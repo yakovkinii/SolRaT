@@ -4,7 +4,7 @@ from numpy import exp, sign
 from src.core.physics.constants import sqrt_pi
 
 # TODO this is not properly tested/annotated
-
+# TODO add demo
 
 H = 0.4
 A1 = 2 / 3

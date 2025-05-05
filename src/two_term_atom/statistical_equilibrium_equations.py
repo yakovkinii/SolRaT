@@ -13,7 +13,7 @@ from src.core.physics.functions import energy_cmm1_to_frequency_hz
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.object.rho_matrix_builder import Level, MatrixBuilder, Rho
+from src.two_term_atom.object.rho_matrix_builder import Level, Rho, RhoMatrixBuilder
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
@@ -31,7 +31,7 @@ class TwoTermAtom:
     ):
         self.term_registry: TermRegistry = term_registry
         self.transition_registry: TransitionRegistry = transition_registry
-        self.matrix_builder: MatrixBuilder = MatrixBuilder(
+        self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
             levels=list(self.term_registry.levels.values()), n_frequencies=n_frequencies
         )
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
@@ -111,7 +111,6 @@ class TwoTermAtom:
                 self.matrix_builder.add_coefficient(level=level_upper, K=Ku, Q=Qu, J=Ju, Jʹ=Jʹu, coefficient=t_e + t_s)
 
     def add_relaxation(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
-        # logging.info("add_relaxation")
         """
         Reference: (7.38)
         """
@@ -148,7 +147,7 @@ class TwoTermAtom:
                     lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
                     lambda: m1p(1 + Lu - S + J + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -196,7 +195,7 @@ class TwoTermAtom:
                     lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
                     lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -287,7 +286,7 @@ class TwoTermAtom:
                 lambda: wigner_6j(L, Ll, 1, Jl, J, S),
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
-                lambda: self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                lambda: self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -360,7 +359,7 @@ class TwoTermAtom:
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
-                lambda: self.radiation_tensor.get(transition=transition, k=Kr, q=Qr),
+                lambda: self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
