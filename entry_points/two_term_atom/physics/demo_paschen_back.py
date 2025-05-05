@@ -9,6 +9,12 @@ from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistr
 
 
 def main():
+    """
+    This demo shows the calculation of the Zeeman splitting for the 2p term of hydrogen,
+    spanning the linear Zeeman effect regime, the intermediate fields regime,
+    and the complete Paschen-Back regime.
+    """
+
     logging_config.init(logging.INFO)
 
     term_registry = TermRegistry()

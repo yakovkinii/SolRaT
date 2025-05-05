@@ -14,8 +14,7 @@ def half_int_to_str(a: float):
     Converts half-integer floats like 0, 0.5, 1, ... to string in a stable manner
     (eliminates float artifacts)
     """
-    if a % 1 not in [0, 0.0, 0.5]:
-        raise ValueError(f"Expected half-integer, got {a}.")
+    assert a % 1 in [0, 0.0, 0.5]
     return str(ensure_positive_if_zero(round(float(a), 1)))
 
 

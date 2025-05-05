@@ -1,4 +1,3 @@
-import logging
 from typing import Tuple
 
 import numpy as np
@@ -18,11 +17,10 @@ class PaschenBackEigenvalues:
         self.data[(half_int_to_str(j), level.level_id, half_int_to_str(M))] = value
 
     def __call__(self, j, level: Level, M):
-        if (half_int_to_str(j), level.level_id, half_int_to_str(M)) not in self.data:
-            logging.warning(
-                f"PaschenBackEigenvalues: {half_int_to_str(j)}, {level.level_id}, {half_int_to_str(M)} not found."
-            )
-            return 0
+        assert (half_int_to_str(j), level.level_id, half_int_to_str(M)) in self.data, (
+            f"PaschenBackEigenvalues: {half_int_to_str(j)}, {level.level_id}, {half_int_to_str(M)}"
+            f" not found. Please explicitly enforce triangular rules."
+        )
         return self.data[(half_int_to_str(j), level.level_id, half_int_to_str(M))]
 
 

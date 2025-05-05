@@ -16,5 +16,12 @@ class RadiationTensor(Container):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = value * delta(K, 0) * delta(Q, 0)
 
+    def fill_NLTE_near_isotropic(self, value):
+        self.fill_isotropic(value=value)
+        for transition in self.transition_registry.transitions.values():
+            for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
+                key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
+                self.data[key] += value * 0.1 * (delta(Q, 1) - delta(Q, -1))
+
     def get(self, transition: Transition, K: int, Q: int):
         return self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]

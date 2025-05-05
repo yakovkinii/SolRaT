@@ -101,7 +101,7 @@ class Level:
         for term in self.terms:
             if term.J == J:
                 return term
-        raise ValueError(f"Term with J={J} not found in level {self.level_id}.")
+        raise ValueError(f"Term with J={J} not found in level {self.level_id}.")  # pragma: no cover
 
     def get_mean_energy_cmm1(self):
         """

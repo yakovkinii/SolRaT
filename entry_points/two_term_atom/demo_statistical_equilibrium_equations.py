@@ -15,7 +15,13 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 
 def main():
-    # (10.126)
+    """
+    This demo shows the calculation of the density matrix elements for a two-term atom
+    with a frequency-dependent incident radiation profile.
+    The results are compared with the analytical solution for the density matrix elements.
+    Reference: (10.126)
+    """
+
     logging_config.init(logging.INFO)
 
     term_registry = TermRegistry()
@@ -82,24 +88,25 @@ def main():
     rho_u_0_0 = rho_u_0_0 / trace
 
     fig, ax = plt.subplots(nrows=3, ncols=1, figsize=(10, 10), sharex=True)
-    plt.title("Density Matrix Elements")
-    ax[0].plot(nu, I0 / max(I0), "orange", label="Isotropic Intensity I0")
-    ax[0].set_ylabel("I0 (a.u.)")
+    ax[0].plot(nu, I0 / max(I0), "r-", label="Isotropic Intensity $I_0$")
+    ax[0].set_ylabel("$I_0$ (a.u.)")
     ax[0].legend()
     ax[1].plot(
         nu,
         np.real(solution(level=term_registry.get_level(beta="2p", L=1, S=0), K=0, Q=0, J=1, Jʹ=1)),
-        label="rho_u_0_0",
+        "g-",
+        label=r"Upper $\rho^{K=0}_{Q=0}$",
     )
-    ax[1].plot(nu, np.real(rho_u_0_0), ":", label="rho_u_0_0 (analytic)")
+    ax[1].plot(nu, np.real(rho_u_0_0), "k:", label=r"Upper $\rho^{K=0}_{Q=0}$ (analytical solution)")
     ax[1].set_ylabel(r"Upper $\rho^{K=0}_{Q=0}$")
     ax[1].legend()
     ax[2].plot(
         nu,
         np.real(solution(level=term_registry.get_level(beta="1s", L=0, S=0), K=0, Q=0, J=0, Jʹ=0)),
-        label=r"rho_l_0_0",
+        "y-",
+        label=r"Lower $\rho^{K=0}_{Q=0}$",
     )
-    ax[2].plot(nu, np.real(rho_l_0_0), ":", label=r"rho_l_0_0 (analytic)")
+    ax[2].plot(nu, np.real(rho_l_0_0), "k:", label=r"Lower $\rho^{K=0}_{Q=0}$ (analytical solution)")
     ax[2].set_ylabel(r"Lower $\rho^{K=0}_{Q=0}$")
     ax[2].legend()
     ax[2].set_xlabel("Frequency (Hz)")

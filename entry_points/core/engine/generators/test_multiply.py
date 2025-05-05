@@ -5,10 +5,9 @@ from src.core.engine.generators.multiply import multiply
 
 
 class TestMultiply(unittest.TestCase):
-    def test_summate(self):
+    def test_multiply(self):
         def expensive_calculation(i, is_raw):
-            if not is_raw and i != 0:
-                raise ValueError("Did not short-circuit correctly")
+            assert is_raw or i == 0, "Did not short-circuit correctly"
             return fact2(i)
 
         for i in [0, 1]:

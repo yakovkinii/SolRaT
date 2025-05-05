@@ -87,8 +87,8 @@ class RadiativeTransferCoefficients:
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml)
-                                    - upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
+                                    upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu)
+                                    - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
                             ),
@@ -163,8 +163,8 @@ class RadiativeTransferCoefficients:
             return summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
-                    lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(3 * n_proj(K, Ku)),
-                    lambda: m1p(1 + Jʹʹu - Mu + qʹ),
+                    lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
+                    lambda: m1p(1 + Jʹu - Mu + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
@@ -182,8 +182,8 @@ class RadiativeTransferCoefficients:
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml)
-                                    - upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu),
+                                    upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu)
+                                    - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
                             ),
@@ -209,6 +209,62 @@ class RadiativeTransferCoefficients:
                 tqdm_level=1,
             )
 
+    def eta_s_non_magnetic_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+        """
+        Reference:
+        (7.48d)
+        """
+        logging.info("Radiative Transfer Equations: calculate eta_s")
+
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
+            logging.info(f"Processing {level_upper.level_id} -> {level_lower.level_id}")
+
+            Ll = level_lower.L
+            Lu = level_upper.L
+            if abs(Lu - Ll) > 1:
+                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
+                continue
+
+            S = level_lower.S
+
+            return summate(
+                lambda Ju, Jʹu, K, Q: multiply(
+                    lambda: h_erg_s * self.nu / 4 / pi * self.N,
+                    lambda: n_proj(Lu) * transition.einstein_b_ul,
+                    lambda: m1p(1 - Ll + S + Ju + K),
+                    lambda: sqrt(n_proj(1, Ju, Jʹu)),
+                    lambda: wigner_6j(Lu, Lu, K, Ju, Jʹu, S),
+                    lambda: wigner_6j(1, 1, K, Lu, Lu, Ll),
+                    lambda: real(
+                        multiply(
+                            lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
+                            lambda: self.phi(
+                                nui=energy_cmm1_to_frequency_hz(
+                                    level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
+                                ),
+                                nu=self.nu,
+                            ),
+                        )
+                    ),
+                ),
+                Ju=TRIANGULAR(Lu, S),
+                Jʹu=TRIANGULAR(Lu, S),
+                K=FROMTO(0, 2),
+                Q=INTERSECTION(PROJECTION("K")),
+                tqdm_level=1,
+            )
+
     def eta_s_analytic_resonance(self, rho: Rho, stokes_component_index: int):
         """
         Reference:
@@ -231,20 +287,32 @@ class RadiativeTransferCoefficients:
             result = result + summate(
                 lambda Ju, Jʹu, Jl, K, Q: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Lu) * transition.einstein_b_ul,
-                    lambda: m1p(1 + Jʹu + Jl),
+                    lambda: m1p(1 + Jl + Jʹu),
                     lambda: sqrt(n_proj(Jl, Jl, 1, Ju, Jʹu)),
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Jʹu, S),
                     lambda: wigner_6j(1, 1, K, Ju, Jʹu, Jl),
-                    lambda: real(
+                    lambda: np.real(
                         multiply(
                             lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
-                            lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
-                                    level_lower.get_term(J=Jl).energy_cmm1 - level_upper.get_term(J=Ju).energy_cmm1,
-                                ),
-                                nu=self.nu,
+                            lambda: 0.5
+                            * (
+                                self.phi(
+                                    nui=energy_cmm1_to_frequency_hz(
+                                        level_upper.get_term(J=Ju).energy_cmm1 - level_lower.get_term(J=Jl).energy_cmm1,
+                                    ),
+                                    nu=self.nu,
+                                )
+                                + np.conjugate(
+                                    self.phi(
+                                        nui=energy_cmm1_to_frequency_hz(
+                                            level_upper.get_term(J=Jʹu).energy_cmm1
+                                            - level_lower.get_term(J=Jl).energy_cmm1,
+                                        ),
+                                        nu=self.nu,
+                                    )
+                                )
                             ),
                         )
                     ),

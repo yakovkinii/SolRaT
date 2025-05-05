@@ -14,10 +14,15 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 
 def main():
-    logging_config.init(logging.INFO)
-    # This demo corresponds to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023) https://doi.org/10.1093/mnras/stad1816
-    # This one takes ~ 30 seconds to run
+    """
+    This demo shows the calculation of stimulated emission eta_S profiles
+    for the He I D3 transition under super-strong magnetic field of 20 kG.
+    This result is closely related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023) https://doi.org/10.1093/mnras/stad1816
+    (in the latter, the Stokes profiles are shown instead, which should resemble eta_S for low optical depth).
+    This demo takes ~ 30 seconds to run.
+    """
 
+    logging_config.init(logging.INFO)
     term_registry = TermRegistry()
     term_registry.register_term(
         beta="2s3",
@@ -125,7 +130,10 @@ def main():
         einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,
     )
 
-    atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=20000, delta_v_thermal_cm_sm1=1_000_00)
+    magnetic_field_gauss = 20000
+    atmosphere_parameters = AtmosphereParameters(
+        magnetic_field_gauss=magnetic_field_gauss, delta_v_thermal_cm_sm1=1_000_00
+    )
     radiation_tensor = RadiationTensor(transition_registry=transition_registry)
     I0 = get_planck_BP(nu_sm1=nu, T_K=5000)
     radiation_tensor.fill_isotropic(I0)
@@ -153,8 +161,9 @@ def main():
     plt.plot(lambda_A - 5877.23, eta_sV / max(eta_sI), label=r"$\eta_s$ (Stokes $V$)")
     plt.xlabel(r"$\Delta\lambda$ ($\AA$)")
     plt.ylabel(r"$\eta_s$ (a.u.)")
-    plt.title(r"He I D3: $\eta_s$ vs $\Delta\lambda$")
+    plt.title(rf"He I D3: $\eta_s$ vs $\Delta\lambda$. $B_z = {magnetic_field_gauss//1000}$ kG")
     plt.legend()
+    plt.grid()
     plt.show()
 
 
