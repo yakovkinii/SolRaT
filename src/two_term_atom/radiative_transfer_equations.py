@@ -79,9 +79,13 @@ class RadiativeTransferCoefficients:
 
             return summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
-                    lambda: self.nu * h_erg_s / 4 / pi * self.N * n_proj(Ll),
+                    lambda:  h_erg_s*self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, level=level_lower, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, level=level_upper, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
@@ -89,10 +93,6 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, level=level_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, level=level_upper, M=Mu),
                     lambda: real(
                         multiply(
                             lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
@@ -166,6 +166,10 @@ class RadiativeTransferCoefficients:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
                     lambda: m1p(1 + Jʹu - Mu + qʹ),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, level=level_lower, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, level=level_upper, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
@@ -173,10 +177,6 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, level=level_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, level=level_upper, M=Mu),
                     lambda: real(
                         multiply(
                             lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
@@ -221,6 +221,48 @@ class RadiativeTransferCoefficients:
     """
     The following are some analytical expressions under further assumptions for reference and testing
     """
+
+    def eta_a_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+        """
+        Reference:
+        (7.48a)
+        """
+
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+            Ll = level_lower.L
+            Lu = level_upper.L
+            S = level_lower.S
+
+            return summate(
+                lambda K, Q, Jl, Jʹl: multiply(
+                    lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
+                    lambda: transition.einstein_b_lu,
+                    lambda: m1p(1 - Lu + S + Jʹl),
+                    lambda: sqrt(n_proj(1, Jl, Jʹl)),
+                    lambda: wigner_6j(Ll, Ll, K, Jl, Jʹl, S),
+                    lambda: wigner_6j(1, 1, K, Ll, Ll, Lu),
+                    lambda: real(
+                        multiply(
+                            lambda: t_k_q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: rho(level=level_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
+                            lambda: self.phi(
+                                nui=energy_cmm1_to_frequency_hz(
+                                    level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
+                                ),
+                                nu=self.nu,
+                            ),
+                            is_complex=True,
+                        )
+                    ),
+                ),
+                Jl=TRIANGULAR(Ll, S),
+                Jʹl=TRIANGULAR(Ll, S),
+                K=FROMTO(0, 2),
+                Q=PROJECTION("K"),
+                tqdm_level=1,
+            )
 
     def eta_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
         """
