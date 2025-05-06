@@ -124,6 +124,66 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
         assert (abs(eta_aV - eta_aV_analytic) < 1e-10).all()
 
+        rho_sI = radiative_transfer_coefficients.rho_s(rho=rho, stokes_component_index=0)
+        rho_s_analytic = radiative_transfer_coefficients.rho_s_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=0
+        )
+        assert (abs(rho_sI - rho_s_analytic) < 1e-10).all()
+
+        rho_sQ = radiative_transfer_coefficients.rho_s(rho=rho, stokes_component_index=1)
+        rho_sQ_analytic = radiative_transfer_coefficients.rho_s_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=1
+        )
+        assert (abs(rho_sQ - rho_sQ_analytic) < 1e-10).all()
+
+        rho_sU = radiative_transfer_coefficients.rho_s(rho=rho, stokes_component_index=2)
+        rho_sU_analytic = radiative_transfer_coefficients.rho_s_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=2
+        )
+        assert (abs(rho_sU - rho_sU_analytic) < 1e-10).all()
+
+        rho_sV = radiative_transfer_coefficients.rho_s(rho=rho, stokes_component_index=3)
+        rho_sV_analytic = radiative_transfer_coefficients.rho_s_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=3
+        )
+        assert (abs(rho_sV - rho_sV_analytic) < 1e-10).all()
+
+        rho_aI = radiative_transfer_coefficients.rho_a(rho=rho, stokes_component_index=0)
+        rho_a_analytic = radiative_transfer_coefficients.rho_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=0
+        )
+        assert (abs(rho_aI - rho_a_analytic) < 1e-10).all()
+
+        rho_aQ = radiative_transfer_coefficients.rho_a(rho=rho, stokes_component_index=1)
+        rho_aQ_analytic = radiative_transfer_coefficients.rho_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=1
+        )
+        assert (abs(rho_aQ - rho_aQ_analytic) < 1e-10).all()
+
+        rho_aU = radiative_transfer_coefficients.rho_a(rho=rho, stokes_component_index=2)
+        rho_aU_analytic = radiative_transfer_coefficients.rho_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=2
+        )
+        assert (abs(rho_aU - rho_aU_analytic) < 1e-10).all()
+
+        rho_aV = radiative_transfer_coefficients.rho_a(rho=rho, stokes_component_index=3)
+        rho_aV_analytic = radiative_transfer_coefficients.rho_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=3
+        )
+        assert (abs(rho_aV - rho_aV_analytic) < 1e-10).all()
+
         epsilon_I = radiative_transfer_coefficients.epsilon(eta_s=eta_sI, nu=nu)
         epsilon_I_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_s_analytic, nu=nu)
         assert (abs(epsilon_I - epsilon_I_analytic) < 1e-10).all()
+
+        epsilon_Q = radiative_transfer_coefficients.epsilon(eta_s=eta_sQ, nu=nu)
+        epsilon_Q_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_sQ_analytic, nu=nu)
+        assert (abs(epsilon_Q - epsilon_Q_analytic) < 1e-10).all()
+
+        epsilon_U = radiative_transfer_coefficients.epsilon(eta_s=eta_sU, nu=nu)
+        epsilon_U_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_sU_analytic, nu=nu)
+        assert (abs(epsilon_U - epsilon_U_analytic) < 1e-10).all()
+
+        epsilon_V = radiative_transfer_coefficients.epsilon(eta_s=eta_sV, nu=nu)
+        epsilon_V_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_sV_analytic, nu=nu)
+        assert (abs(epsilon_V - epsilon_V_analytic) < 1e-10).all()
