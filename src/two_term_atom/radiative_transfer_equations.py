@@ -7,9 +7,10 @@ from src.core.engine.functions.general import m1p, n_proj
 from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.summate import summate
-from src.core.physics.constants import c_cm_sm1, h_erg_s
+from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
 from src.core.physics.rotation_tensor_t_k_q import t_k_q
+from src.core.physics.voigt_profile import voigt
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.rho_matrix_builder import Rho
@@ -25,7 +26,6 @@ class RadiativeTransferCoefficients:
         transition_registry: TransitionRegistry,
         nu: np.ndarray,
         maximum_delta_v_thermal_units_cutoff=5,
-        use_voigt=False,
         chi=0,
         theta=0,
         gamma=0,
@@ -35,16 +35,24 @@ class RadiativeTransferCoefficients:
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
         self.maximum_delta_v_thermal_units_cutoff = maximum_delta_v_thermal_units_cutoff
-        self.use_voigt = use_voigt
         self.chi = chi
         self.theta = theta
         self.gamma = gamma
         self.N = N  # Atom concentration
 
     def phi(self, nui, nu):
-        assert self.use_voigt is False, "Voigt profile is not implemented yet"  # Todo
-        delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
-        return np.exp(-(((nu - nui) / delta_nu) ** 2))
+        """
+        Reference: (5.43 - 5.45)
+        """
+        delta_nu_D = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1  # Doppler width
+
+        nu_round = (nui - nu) / delta_nu_D  # nui already accounts for magnetic shifts
+        nu_round_A = (
+            self.atmosphere_parameters.macroscopic_velocity_cm_sm1 / self.atmosphere_parameters.delta_v_thermal_cm_sm1
+        )
+
+        complex_voigt = voigt(nu=nu_round - nu_round_A, a=self.atmosphere_parameters.voigt_a) / sqrt_pi / delta_nu_D
+        return complex_voigt
 
     def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
         nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
@@ -79,7 +87,7 @@ class RadiativeTransferCoefficients:
 
             return summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
-                    lambda:  h_erg_s*self.nu / 4 / pi * self.N * n_proj(Ll),
+                    lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
                     lambda: lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),

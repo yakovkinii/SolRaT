@@ -19,7 +19,7 @@ def main():
     for the He I D3 transition under super-strong magnetic field of 20 kG.
     This result is closely related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023) https://doi.org/10.1093/mnras/stad1816
     (in the latter, the Stokes profiles are shown instead, which should resemble eta_S for low optical depth).
-    This demo takes ~ 30 seconds to run.
+    This demo takes ~ 50 seconds to run.
     """
 
     logging_config.init(logging.INFO)

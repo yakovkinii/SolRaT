@@ -1,64 +1,19 @@
 import numpy as np
-from numpy import exp, sign
-
-from src.core.physics.constants import sqrt_pi
-
-# TODO this is not properly tested/annotated
-# TODO add demo
-
-H = 0.4
-A1 = 2 / 3
-A2 = 0.4
-A3 = 2 / 7
-
-C = [
-    exp(-((1 * H) ** 2)),
-    exp(-((3 * H) ** 2)),
-    exp(-((5 * H) ** 2)),
-    exp(-((7 * H) ** 2)),
-    exp(-((9 * H) ** 2)),
-    exp(-((11 * H) ** 2)),
-]
-
-
-def dawson(nu):
-    """
-    float Dawson's integral at frequency nu
-
-    Reference: https://github.com/aasensio/hazel2/blob/master/src/hazel/maths.f90#L1034
-    """
-    if abs(nu) < 0.2:
-        nu2 = nu**2
-        return nu * (1 - A1 * nu2 * (1 - A2 * nu2 * (1 - A3 * nu2)))
-    n0 = 2 * int(0.5 * abs(nu) / H)
-    xp = abs(nu) - n0 * H
-    e1 = exp(2 * xp * H)
-    e2 = e1**2
-    d1 = n0 + 1
-    d2 = d1 - 2
-    sum_i = 0
-    for i in range(6):
-        sum_i += C[i] * (e1 / d1 + 1 / d2 / e1)
-        d1 = d1 + 2
-        d2 = d2 - 2
-        e1 = e2 * e1
-    return 0.5641895835 * exp(-(xp**2)) * sign(nu) * sum_i
+from numpy import exp
 
 
 def _voigt(nu: np.ndarray, a: float) -> np.ndarray:
     """
     complex Voigt profile at relative frequency nu with damping factor a.
+    Reference: Humlíček, J. (1982). JQSRT, doi:10.1016/0022-4073(82)90078-4
 
-    Reference: https://github.com/aasensio/hazel2/blob/master/src/hazel/maths.f90#L1076
-    See also: Humlicek (1982) JQSRT 27, 437
+    Note: HAZEL2 for some reason uses an expansion in terms of the Dawson's integral for a < 1e-3, see
+    https://github.com/aasensio/hazel2/blob/master/src/hazel/maths.f90#L1076.
+    They motivate it by some numerical instabilities near a->0.
+
+    I didn't find any such issues here in SolRaT, and the Humlíček expansion approach matches the results from
+    Dawson's integral expansion very closely, so I decided to use the Humlíček expansion for all a.
     """
-    if a < 1e-3:
-        return (
-            exp(-(nu**2))
-            + 2 * a / sqrt_pi * (2 * nu * dawson(nu) - 1)
-            + 2j * dawson(nu) / sqrt_pi
-            - 2j * a * nu * exp(-(nu**2))
-        )
 
     t = a - 1j * nu
     s = abs(nu) + a

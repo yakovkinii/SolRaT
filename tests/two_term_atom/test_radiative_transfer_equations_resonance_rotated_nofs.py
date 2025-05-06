@@ -127,5 +127,3 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         epsilon_I = radiative_transfer_coefficients.epsilon(eta_s=eta_sI, nu=nu)
         epsilon_I_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_s_analytic, nu=nu)
         assert (abs(epsilon_I - epsilon_I_analytic) < 1e-10).all()
-
-
