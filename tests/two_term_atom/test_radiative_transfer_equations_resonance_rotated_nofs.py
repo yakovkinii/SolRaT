@@ -15,7 +15,6 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 class TestRadiativeTransferEquations(unittest.TestCase):
     def test_radiative_transfer_equations(self):
-        # (10.127)
         logging_config.init(logging.INFO)
 
         term_registry = TermRegistry()
@@ -76,6 +75,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             gamma=np.pi / 8,
             chi=np.pi / 8,
         )
+
         eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
         eta_s_analytic = radiative_transfer_coefficients.eta_s_no_field_no_fine_structure(
             rho=rho, stokes_component_index=0
@@ -99,3 +99,33 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             rho=rho, stokes_component_index=3
         )
         assert (abs(eta_sV - eta_sV_analytic) < 1e-10).all()
+
+        eta_aI = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=0)
+        eta_a_analytic = radiative_transfer_coefficients.eta_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=0
+        )
+        assert (abs(eta_aI - eta_a_analytic) < 1e-10).all()
+
+        eta_aQ = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=1)
+        eta_aQ_analytic = radiative_transfer_coefficients.eta_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=1
+        )
+        assert (abs(eta_aQ - eta_aQ_analytic) < 1e-10).all()
+
+        eta_aU = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=2)
+        eta_aU_analytic = radiative_transfer_coefficients.eta_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=2
+        )
+        assert (abs(eta_aU - eta_aU_analytic) < 1e-10).all()
+
+        eta_aV = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=3)
+        eta_aV_analytic = radiative_transfer_coefficients.eta_a_no_field_no_fine_structure(
+            rho=rho, stokes_component_index=3
+        )
+        assert (abs(eta_aV - eta_aV_analytic) < 1e-10).all()
+
+        epsilon_I = radiative_transfer_coefficients.epsilon(eta_s=eta_sI, nu=nu)
+        epsilon_I_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_s_analytic, nu=nu)
+        assert (abs(epsilon_I - epsilon_I_analytic) < 1e-10).all()
+
+
