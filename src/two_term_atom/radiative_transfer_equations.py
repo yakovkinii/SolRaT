@@ -4,7 +4,7 @@ import numpy as np
 from numpy import pi, real, sqrt
 
 from src.core.engine.functions.general import m1p, n_proj
-from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR
+from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import c_cm_sm1, h_erg_s
@@ -46,6 +46,18 @@ class RadiativeTransferCoefficients:
         delta_nu = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         return np.exp(-(((nu - nui) / delta_nu) ** 2))
 
+    def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
+        nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
+        cutoff = (
+            self.maximum_delta_v_thermal_units_cutoff
+            * nui
+            * self.atmosphere_parameters.delta_v_thermal_cm_sm1
+            / c_cm_sm1
+        )
+        if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
+            return True
+        return False
+
     def eta_a(self, rho: Rho, stokes_component_index: int):
         """
         Reference:
@@ -68,7 +80,7 @@ class RadiativeTransferCoefficients:
             return summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
                     lambda: self.nu * h_erg_s / 4 / pi * self.N * n_proj(Ll),
-                    lambda: transition.einstein_b_lu * sqrt(3 * n_proj(K, Kl)),
+                    lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
@@ -96,35 +108,24 @@ class RadiativeTransferCoefficients:
                         )
                     ),
                 ),
+                jl=TRIANGULAR(Ll, S),
                 Jl=TRIANGULAR(Ll, S),
-                Ml=PROJECTION("Jl"),
                 Jʹl=TRIANGULAR(Ll, S),
-                Mʹl=PROJECTION("Jʹl"),
                 Jʹʹl=TRIANGULAR(Ll, S),
-                jl=INTERSECTION(TRIANGULAR(Ll, S)),
                 ju=TRIANGULAR(Lu, S),
-                Ju=TRIANGULAR(Lu, S),
-                Jʹu=TRIANGULAR(Lu, S),
-                Mu=PROJECTION("Ju"),
-                K=TRIANGULAR(0, 2),
-                Q=PROJECTION("K"),
+                Ju=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jl", 1)),
+                Jʹu=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jʹl", 1)),
+                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹʹl"), PROJECTION("jl")),
+                Mʹl=PROJECTION("Jʹl"),
+                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("Jʹu"), PROJECTION("ju")),
+                K=FROMTO(0, 2),
                 Kl=TRIANGULAR("Jʹl", "Jʹʹl"),
-                Ql=PROJECTION("Kl"),
-                q=FROMTO(-1, 1),
-                qʹ=FROMTO(-1, 1),
+                Ql=INTERSECTION(PROJECTION("Kl"), VALUE("Ml - Mʹl")),
+                q=VALUE("Ml - Mu"),
+                qʹ=VALUE("Mʹl - Mu"),
+                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
+                tqdm_level=1,
             )
-
-    def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
-        nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
-        cutoff = (
-            self.maximum_delta_v_thermal_units_cutoff
-            * nui
-            * self.atmosphere_parameters.delta_v_thermal_cm_sm1
-            / c_cm_sm1
-        )
-        if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
-            return True
-        return False
 
     def eta_s(self, rho: Rho, stokes_component_index: int):
         """
@@ -202,15 +203,28 @@ class RadiativeTransferCoefficients:
                 Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹl"), PROJECTION("jl")),
                 K=FROMTO(0, 2),
                 Ku=TRIANGULAR("Jʹu", "Jʹʹu"),
-                Qu=INTERSECTION(PROJECTION("Ku"), "[Mʹu -Mu]"),
-                q="[Ml-Mu]",
-                qʹ="[Ml-Mʹu]",
-                Q=INTERSECTION(PROJECTION("K"), "[q-qʹ]"),
+                Qu=INTERSECTION(PROJECTION("Ku"), VALUE("Mʹu - Mu")),
+                q=VALUE("Ml - Mu"),
+                qʹ=VALUE("Ml - Mʹu"),
+                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
 
-    def eta_s_non_magnetic_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+    @staticmethod
+    def epsilon(eta_s: np.ndarray, nu: np.ndarray):
         """
+        Reference:
+        (7.47e)
+        """
+        return 2 * h_erg_s * nu**3 / c_cm_sm1**2 * eta_s
+
+    """
+    The following are some analytical expressions under further assumptions for reference and testing
+    """
+
+    def eta_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+        """
+        No magnetic field, no fine structure splitting.
         Reference:
         (7.48d)
         """
@@ -265,8 +279,9 @@ class RadiativeTransferCoefficients:
                 tqdm_level=1,
             )
 
-    def eta_s_analytic_resonance(self, rho: Rho, stokes_component_index: int):
+    def eta_s_no_field(self, rho: Rho, stokes_component_index: int):
         """
+        No magnetic field.
         Reference:
         (10.127)
         """

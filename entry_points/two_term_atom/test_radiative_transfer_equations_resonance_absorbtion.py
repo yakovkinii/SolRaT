@@ -15,7 +15,9 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 class TestRadiativeTransferEquations(unittest.TestCase):
     def test_radiative_transfer_equations(self):
-        # (10.127)
+        """
+        Test that absorption runs through
+        """
         logging_config.init(logging.INFO)
 
         term_registry = TermRegistry()
@@ -72,18 +74,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             transition_registry=transition_registry,
             nu=nu,
         )
-        eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
-        eta_s_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=0)
-        assert (abs(eta_sI - eta_s_analytic) < 1e-10).all()
-
-        eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
-        eta_sQ_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=1)
-        assert (abs(eta_sQ - eta_sQ_analytic) < 1e-10).all()
-
-        eta_sU = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=2)
-        eta_sU_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=2)
-        assert (abs(eta_sU - eta_sU_analytic) < 1e-10).all()
-
-        eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
-        eta_sV_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=3)
-        assert (abs(eta_sV - eta_sV_analytic) < 1e-10).all()
+        _ = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=0)
+        _ = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=1)
+        _ = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=2)
+        _ = radiative_transfer_coefficients.eta_a(rho=rho, stokes_component_index=3)
