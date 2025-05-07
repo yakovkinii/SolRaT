@@ -219,6 +219,10 @@ class TwoTermAtom:
 
     @staticmethod
     def gamma(level: Level, J: float, Jʹ: float):
+        """
+        (7.42)
+        """
+
         S = level.S
         L = level.L
         result = delta(J, Jʹ) * sqrt(J * (J + 1) * (2 * J + 1))
