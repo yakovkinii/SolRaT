@@ -1,5 +1,8 @@
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
+from yatools import logging_config
 
 from src.core.physics.constants import c_cm_sm1, sqrt_pi
 from src.core.physics.voigt_profile import voigt
@@ -10,6 +13,7 @@ def main():
     Reference: (5.43)
     This corresponds to Fig. 5.3.
     """
+    logging_config.init(logging.INFO)
 
     nu0 = 5.996e14  # Hz
 

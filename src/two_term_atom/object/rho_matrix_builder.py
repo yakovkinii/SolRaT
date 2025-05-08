@@ -18,8 +18,9 @@ def _construct_coherence_id_from_level_id(level_id: str, K: float, Q: float, J: 
 
 
 class Rho:
-    def __init__(self):
+    def __init__(self, levels: List[Level]):
         self.data = dict()
+        self.levels = levels
 
     def set_from_level_id(self, level_id: str, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
         self.data[_construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value

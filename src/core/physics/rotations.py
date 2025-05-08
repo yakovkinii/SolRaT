@@ -1,0 +1,162 @@
+from functools import lru_cache
+
+import numpy as np
+import sympy
+from numpy import cos, exp, sin
+from sympy.physics.wigner import wigner_d
+
+from src.core.engine.functions.general import delta, m1p
+from src.core.engine.functions.looping import FROMTO, PROJECTION, TRIANGULAR, fromto, projection
+from src.core.engine.generators.nested_loops import nested_loops
+from src.core.engine.generators.summate import summate
+from src.core.physics.constants import sqrt2, sqrt3
+from src.two_term_atom.object.radiation_tensor import RadiationTensor
+from src.two_term_atom.object.rho_matrix_builder import Rho
+
+
+class WignerD:
+    """
+    Wigner D function.
+    alpha, beta, gamma are Euler angles in radians.
+    Typically, we have alpha = chi, beta = theta, gamma = gamma (see Fig. 5.14).
+
+    This one is to be called before SEE, and between SEE and RTE, so no need to cache.
+    Note: sympy uses a different convention which swaps alpha and gamma.
+    """
+
+    def __init__(self, alpha, beta, gamma, K_max):
+        self.d = {}
+        for K in fromto(0, K_max):
+            self.d[K] = wigner_d(J=K, alpha=gamma, beta=beta, gamma=alpha)
+
+    def __call__(self, K, P, Q):
+        result = np.array(sympy.N(self.d[K][K - P, K - Q])).astype(np.complex128)
+        return result
+
+
+def t_K_P(K, P, stokes_component_index):
+    """
+    t{K, P}(i)
+    Reference: Table 5.5
+    This is implemented primarily to validate Wigner D functions
+    """
+    if K == 0:
+        return delta(P, 0) * delta(stokes_component_index, 0)
+    if K == 1:
+        return sqrt3 / sqrt2 * delta(P, 0) * delta(stokes_component_index, 3)
+    return (
+        1 / sqrt2 * delta(P, 0) * delta(stokes_component_index, 0)
+        - sqrt3 / 2 * (delta(P, -2) + delta(P, 2)) * delta(stokes_component_index, 1)
+        + 1j * sqrt3 / 2 * (delta(P, -2) - delta(P, 2)) * delta(stokes_component_index, 2)
+    )
+
+
+def T_from_t(K, Q, stokes_component_index, D: WignerD):
+    """
+    (5.159)
+    This is implemented primarily to validate Wigner D functions
+    """
+    result = 0
+    for P in projection(K):
+        result = result + t_K_P(
+            K=K,
+            P=P,
+            stokes_component_index=stokes_component_index,
+        ) * D(K=K, P=P, Q=Q)
+
+    return result
+
+
+@lru_cache(maxsize=None)
+def T_K_Q(K, Q, stokes_component_index, chi, theta, gamma):
+    """
+    T{K, Q}(i, Omega)
+
+    Reference: Table 5.6
+    See also: (5.159), (5.160)
+    """
+    if Q < 0:
+        return m1p(Q) * T_K_Q(K, -Q, stokes_component_index, chi, theta, gamma).conjugate()
+
+    if stokes_component_index == 0:
+        if K == 0:
+            return 1 + 0j
+        if K == 1:
+            return 0 + 0j
+        if Q == 0:
+            return 0.5 / sqrt2 * (3 * cos(theta) ** 2 - 1) + 0j
+        if Q == 1:
+            return -0.5 * sqrt3 * sin(theta) * cos(theta) * exp(1j * chi)
+        return 0.25 * sqrt3 * sin(theta) ** 2 * exp(2j * chi)
+    if stokes_component_index == 1:
+        if K <= 1:
+            return 0 + 0j
+        if Q == 0:
+            return -1.5 / sqrt2 * cos(2 * gamma) * sin(theta) ** 2 + 0j
+        if Q == 1:
+            return -0.5 * sqrt3 * (cos(2 * gamma) * cos(theta) + 1j * sin(2 * gamma)) * sin(theta) * exp(1j * chi)
+        return (
+            -0.25 * sqrt3 * (cos(2 * gamma) * (1 + cos(theta) ** 2) + 2j * sin(2 * gamma) * cos(theta)) * exp(2j * chi)
+        )
+    if stokes_component_index == 2:
+        if K <= 1:
+            return 0 + 0j
+        if Q == 0:
+            return 1.5 / sqrt2 * sin(2 * gamma) * sin(theta) ** 2 + 0j
+        if Q == 1:
+            return 0.5 * sqrt3 * (sin(2 * gamma) * cos(theta) - 1j * cos(2 * gamma)) * sin(theta) * exp(1j * chi)
+        return (
+            0.25 * sqrt3 * (sin(2 * gamma) * (1 + cos(theta) ** 2) - 2j * cos(2 * gamma) * cos(theta)) * exp(2j * chi)
+        )
+    if K == 0 or K == 2:
+        return 0 + 0j
+    if Q == 0:
+        return sqrt3 / sqrt2 * cos(theta) + 0j
+    return -0.5 * sqrt3 * sin(theta) * exp(1j * chi)
+
+
+def rotate_J(J: RadiationTensor, D: WignerD):
+    """
+    (2.78), or more precisely, equation above (2.80)
+    And also using the fact that J has K <= 2 for electric dipole transitions
+    """
+
+    new_J = RadiationTensor(transition_registry=J.transition_registry)
+    for transition in J.transition_registry.transitions.values():
+        for K, Q in nested_loops(
+            K=FROMTO(0, 2),
+            Q=PROJECTION("K"),
+        ):
+            new_J.add(
+                transition=transition,
+                K=K,
+                Q=Q,
+                value=summate(lambda P: J(transition=transition, K=K, Q=P) * D(K=K, P=P, Q=Q), P=PROJECTION(K)),
+            )
+    return new_J
+
+
+def rotate_rho(rho: Rho, D: WignerD):
+    """
+    (7.76)
+    """
+    new_rho = Rho(levels=rho.levels)
+    for level in rho.levels:
+        for J, Jʹ, K, Q in nested_loops(
+            J=TRIANGULAR(level.L, level.S),
+            Jʹ=TRIANGULAR(level.L, level.S),
+            K=TRIANGULAR("J", "Jʹ"),
+            Q=PROJECTION("K"),
+        ):
+            new_rho.set_from_level_id(
+                level_id=level.level_id,
+                K=K,
+                Q=Q,
+                J=J,
+                Jʹ=Jʹ,
+                value=summate(
+                    lambda Qʹ: rho(level=level, K=K, Q=Qʹ, J=J, Jʹ=Jʹ) * np.conj(D(K=K, P=Qʹ, Q=Q)),
+                    Qʹ=PROJECTION(K),
+                ),
+            )
+    return new_rho

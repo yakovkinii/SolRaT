@@ -1,4 +1,7 @@
+import logging
 import unittest
+
+from yatools import logging_config
 
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
@@ -6,6 +9,8 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 class TestTransitionRegistry(unittest.TestCase):
     def test_transition_registry(self):
+        logging_config.init(logging.INFO)
+
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",

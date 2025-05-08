@@ -73,7 +73,7 @@ def main():
     solution = atom.get_solution_direct()
 
     # Analytic:
-    rt = radiation_tensor.get(
+    rt = radiation_tensor(
         transition=transition_registry.get_transition(
             level_upper=term_registry.get_level(beta="2p", L=1, S=0),
             level_lower=term_registry.get_level(beta="1s", L=0, S=0),

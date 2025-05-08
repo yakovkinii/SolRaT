@@ -1,12 +1,16 @@
+import logging
 import unittest
 
 import numpy as np
+from yatools import logging_config
 
 from src.core.physics.voigt_profile import voigt
 
 
 class TestMathUtils(unittest.TestCase):
     def test_voigt(self):
+        logging_config.init(logging.INFO)
+
         frequencies = np.linspace(-10, 10, 200)
         for a in [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 2, 5]:
             voigt_h = np.real(voigt(nu=frequencies, a=a))

@@ -88,6 +88,9 @@ class Transition:
         einstein_b_ul: float,
         einstein_b_lu: float,
     ):
+        """
+        Transition coefficients are registered between levels, not terms.
+        """
         assert level_lower.S == level_lower.S
         self.transition_id = transition_id
         self.level_upper: Level = level_upper

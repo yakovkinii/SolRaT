@@ -1,10 +1,15 @@
+import logging
 import unittest
+
+from yatools import logging_config
 
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 
 
 class TestTermRegistry(unittest.TestCase):
     def test_term_registry(self):
+        logging_config.init(logging.INFO)
+
         term_registry = TermRegistry()
         term_registry.register_term(
             beta="1s",

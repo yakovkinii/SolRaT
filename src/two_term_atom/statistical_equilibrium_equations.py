@@ -147,7 +147,7 @@ class TwoTermAtom:
                     lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
                     lambda: m1p(1 + Lu - S + J + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -195,7 +195,7 @@ class TwoTermAtom:
                     lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
                     lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -290,7 +290,7 @@ class TwoTermAtom:
                 lambda: wigner_6j(L, Ll, 1, Jl, J, S),
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
-                lambda: self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -363,7 +363,7 @@ class TwoTermAtom:
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
-                lambda: self.radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
@@ -392,7 +392,7 @@ class TwoTermAtom:
 
         solution_vector = sol / trace
 
-        rho = Rho()
+        rho = Rho(levels=list(self.term_registry.levels.values()))
         for index, (level_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
             rho.set_from_level_id(level_id=level_id, K=k, Q=q, J=j, Jʹ=j_prime, value=solution_vector[:, index])
 
