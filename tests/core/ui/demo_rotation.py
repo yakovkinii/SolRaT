@@ -7,14 +7,12 @@ from matplotlib import pyplot as plt
 from numpy import pi
 from yatools import logging_config
 
-from src.core.physics.functions import get_planck_BP
 from src.core.physics.rotations import WignerD, rotate_J
+from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
-from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
-from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 _vtk = vtk  # This is a hack for Windows to enable LaTeX rendering in PyVista
 
@@ -83,57 +81,11 @@ plotter.set_focus(B_origin)
 
 logging_config.init(logging.INFO)
 
-term_registry = TermRegistry()
-term_registry.register_term(
-    beta="1s",
-    L=0,
-    S=0,
-    J=0,
-    energy_cmm1=200_000,
-)
-term_registry.register_term(
-    beta="2p",
-    L=1,
-    S=0,
-    J=1,
-    energy_cmm1=220_000,
-)
-# term_registry.register_term(
-#     beta="1s",
-#     L=0,
-#     S=0.5,
-#     J=0.5,
-#     energy_cmm1=200_000,
-# )
-# term_registry.register_term(
-#     beta="2p",
-#     L=1,
-#     S=0.5,
-#     J=0.5,
-#     energy_cmm1=220_000,
-# )
-# term_registry.register_term(
-#     beta="2p",
-#     L=1,
-#     S=0.5,
-#     J=1.5,
-#     energy_cmm1=220_001,
-# )
-term_registry.validate()
-
-nu = np.arange(5.995e14, 5.997e14, 1e8)  # Hz
-
-transition_registry = TransitionRegistry()
-transition_registry.register_transition_from_a_ul(
-    level_upper=term_registry.get_level(beta="2p", L=1, S=0),
-    level_lower=term_registry.get_level(beta="1s", L=0, S=0),
-    einstein_a_ul_sm1=0.7e8,
-)
+term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
+nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e8)  # Hz
 
 atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=B_norm, delta_v_thermal_cm_sm1=5_000_00)
-radiation_tensor = RadiationTensor(transition_registry=transition_registry)
-I0 = get_planck_BP(nu_sm1=nu, T_K=5000)
-radiation_tensor.fill_isotropic(I0)
+radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=0.725 * height)
 
 # Rotate the radiation tensor from the Sun to the B field
 D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
@@ -146,7 +98,6 @@ atom = TwoTermAtom(
     radiation_tensor=J_B,
     disable_r_s=True,
     disable_n=True,
-    n_frequencies=len(nu),
 )
 
 atom.add_all_equations()

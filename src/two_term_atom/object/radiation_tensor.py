@@ -1,9 +1,10 @@
-import logging
-
+from src.core.engine.functions.decorators import not_tested
 from src.core.engine.functions.general import delta
 from src.core.engine.functions.looping import FROMTO, PROJECTION
 from src.core.engine.generators.nested_loops import nested_loops
 from src.core.engine.objects.container import Container
+from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt2
+from src.core.physics.functions import frequency_hz_to_lambda_A, get_planck_BP
 from src.two_term_atom.terms_levels_transitions.transition_registry import Transition, TransitionRegistry
 
 
@@ -18,22 +19,57 @@ class RadiationTensor(Container):
         super().__init__()
         self.transition_registry = transition_registry
 
-    def fill_isotropic(self, value):
-        logging.warning("J should be a scalar, not vector. Or a vector of duplicated scalars, no nu-dependence")
+    def fill_planck(self, T_K: float):
+        """
+        Flat-spectrum approximation, i.e. J needs to be defined for each transition, not for each frequency.
+        """
         for transition in self.transition_registry.transitions.values():
+            nu_ul = transition.get_mean_transition_frequency_sm1()
+            planck = get_planck_BP(nu_sm1=nu_ul, T_K=T_K)
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
-                self.data[key] = value * delta(K, 0) * delta(Q, 0)
+                self.data[key] = planck * delta(K, 0) * delta(Q, 0)
 
-    def fill_NLTE_near_isotropic(self, value):
-        logging.warning("J should be a scalar, not vector. Or a vector of duplicated scalars, no nu-dependence")
-        self.fill_isotropic(value=value)
+        return self
+
+    @staticmethod
+    @not_tested
+    def n_fit(lambda_A):
+        """
+        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
+        """
+        return 1e-25 * lambda_A**5.83
+
+    @staticmethod
+    @not_tested
+    def w_fit(lambda_A, h_arcsec):
+        """
+        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
+        """
+        w0 = 0.19 + 0.0035 * h_arcsec
+        alpha = 0.90 - 0.013 * h_arcsec
+        return w0 * (lambda_A / 4000.0) ** (-alpha)
+
+    def fill_NLTE_w(self, h_arcsec):
+        """
+        Reference: (12.1)
+        Assume flat spectrum.
+        (19) in A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
+        1'' = 725 km
+        """
         for transition in self.transition_registry.transitions.values():
+            nu_ul = transition.get_mean_transition_frequency_sm1()
+            lambda_ul_A = frequency_hz_to_lambda_A(nu_ul)
+
+            J00 = self.n_fit(h_arcsec) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+            J20 = J00 * self.w_fit(lambda_ul_A, h_arcsec) / sqrt2
+
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
-                self.data[key] += value * 0.1 * (delta(Q, 1) - delta(Q, -1))
+                self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
+        return self
 
-    def __call__(self, transition: Transition, K: int, Q: int):
+    def __call__(self, transition: Transition, K: int, Q: int) -> float:
         result = self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
         return result
 

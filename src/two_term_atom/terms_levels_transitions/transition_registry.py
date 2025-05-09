@@ -98,3 +98,8 @@ class Transition:
         self.einstein_a_ul: float = einstein_a_ul
         self.einstein_b_ul: float = einstein_b_ul
         self.einstein_b_lu: float = einstein_b_lu
+
+    def get_mean_transition_frequency_sm1(self):
+        return energy_cmm1_to_frequency_hz(
+            self.level_upper.get_mean_energy_cmm1() - self.level_lower.get_mean_energy_cmm1()
+        )

@@ -25,10 +25,11 @@ class TwoTermAtom:
         transition_registry: TransitionRegistry,
         atmosphere_parameters: AtmosphereParameters,
         radiation_tensor: RadiationTensor,
-        n_frequencies: int,
+        # n_frequencies: int = 1,
         disable_r_s: bool = False,
         disable_n: bool = False,
     ):
+        n_frequencies = 1
         self.term_registry: TermRegistry = term_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
