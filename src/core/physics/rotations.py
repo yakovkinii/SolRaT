@@ -6,7 +6,7 @@ from numpy import cos, exp, sin
 from sympy.physics.wigner import wigner_d
 
 from src.core.engine.functions.general import delta, m1p
-from src.core.engine.functions.looping import FROMTO, PROJECTION, TRIANGULAR, fromto, projection
+from src.core.engine.functions.looping import FROMTO, PROJECTION, TRIANGULAR, fromto
 from src.core.engine.generators.nested_loops import nested_loops
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import sqrt2, sqrt3
@@ -19,18 +19,17 @@ class WignerD:
     Wigner D function.
     alpha, beta, gamma are Euler angles in radians.
     Typically, we have alpha = chi, beta = theta, gamma = gamma (see Fig. 5.14).
-
-    This one is to be called before SEE, and between SEE and RTE, so no need to cache.
-    Note: sympy uses a different convention which swaps alpha and gamma.
     """
 
     def __init__(self, alpha, beta, gamma, K_max):
         self.d = {}
         for K in fromto(0, K_max):
-            self.d[K] = wigner_d(J=K, alpha=gamma, beta=beta, gamma=alpha)
+            # Note: sympy uses a different convention for angles, so I perform under-the-hood conversion here.
+            self.d[K] = wigner_d(J=K, alpha=-alpha, beta=-beta, gamma=-gamma)
 
+    @lru_cache(maxsize=None)
     def __call__(self, K, P, Q):
-        result = np.array(sympy.N(self.d[K][K - P, K - Q])).astype(np.complex128)
+        result = np.array(sympy.N(self.d[K][int(K - P), int(K - Q)])).astype(np.complex128)
         return result
 
 
@@ -51,18 +50,21 @@ def t_K_P(K, P, stokes_component_index):
     )
 
 
-def T_from_t(K, Q, stokes_component_index, D: WignerD):
+@lru_cache(maxsize=None)
+def T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega: WignerD, D_magnetic: WignerD):
     """
-    (5.159)
-    This is implemented primarily to validate Wigner D functions
+    (5.159), (2.74), (5.122)
+    Two consecutive D rotations within T tensor.
     """
     result = 0
-    for P in projection(K):
+    for P, Qʹ in nested_loops(P=PROJECTION(K), Qʹ=PROJECTION(K)):
         result = result + t_K_P(
             K=K,
             P=P,
             stokes_component_index=stokes_component_index,
-        ) * D(K=K, P=P, Q=Q)
+        ) * D_inverse_omega(
+            K=K, P=P, Q=Qʹ
+        ) * D_magnetic(K=K, P=Qʹ, Q=Q)
 
     return result
 

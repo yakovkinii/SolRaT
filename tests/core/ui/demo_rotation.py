@@ -3,15 +3,32 @@ import logging
 import numpy as np
 import pyvista as pv
 import vtk
+from matplotlib import pyplot as plt
+from numpy import pi
 from yatools import logging_config
+
+from src.core.physics.functions import get_planck_BP
+from src.core.physics.rotations import WignerD, rotate_J
+from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from src.two_term_atom.object.radiation_tensor import RadiationTensor
+from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
+from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
+from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 _vtk = vtk  # This is a hack for Windows to enable LaTeX rendering in PyVista
 
 logging_config.init(logging.INFO)
 
 # Vector B
-Bx, By, Bz = 1.0, 2, 5
-height = 2
+Bx, By, Bz = 0, 10000, 10000
+chi = 0
+theta = pi / 2
+gamma = 0
+
+
+height = 10
+vector_length = 10
 
 # Origin and projection
 origin = np.array([0.0, 0, 0])
@@ -22,107 +39,149 @@ B_proj_xy = np.array([Bx, By, 0]) / B_norm
 B_proj_z = np.array([0, 0, Bz]) / B_norm
 
 # Compute angles
-theta = np.arctan2(np.linalg.norm(B_proj_xy), np.linalg.norm(B_proj_z))
-phi = np.arctan2(Bx, By)
+theta_B = np.arctan2(np.linalg.norm(B_proj_xy), np.linalg.norm(B_proj_z))
+chi_B = np.arctan2(By, Bx)
+
+
+logging.info(f"theta_B: {theta_B}, chi_B: {chi_B}")
+logging.info(f"theta: {theta}, chi: {chi}, gamma: {gamma}")
+
+omega = np.array([np.cos(chi) * np.sin(theta), np.sin(chi) * np.sin(theta), np.cos(theta)])
 
 # PyVista plotter
-plotter = pv.Plotter()
+plotter = pv.Plotter(shape=(1, 1))
 
-# Add plane
-x = np.linspace(-2, 2, 100)
-y = np.linspace(-2, 2, 100)
-x, y = np.meshgrid(x, y)
-z = np.zeros_like(x) - 1e-5
-# plane = pv.StructuredGrid(x, y, z)
-# plotter.add_mesh(plane, color="orange", opacity=0.2, show_edges=False)
+# plot Volume
+sphere = pv.Sphere(radius=2, center=B_origin)
+plotter.add_mesh(sphere, color="white", show_edges=False, opacity=1)
 
-# plot sphere
-sphere = pv.Sphere(radius=0.6, center=B_origin)
-plotter.add_mesh(sphere, color="blue", show_edges=False, opacity=0.3)
-
-# plot sphere
-Rsun = 696340 / 10000  # km
-sun = pv.Sphere(radius=Rsun, center=origin - np.array([0, 0, Rsun]))
-plotter.add_mesh(sun, color="orange", show_edges=False, opacity=0.8)
-
-Rearth = 6378 / 10000.0 * 10  # km
-earth = pv.Sphere(
-    radius=Rearth, center=origin - np.array([0, 151_000_000 / 10000 / 1.41, Rsun + 151_000_000 / 10000 / 1.41])
-)
-plotter.add_mesh(earth, color="green", show_edges=False, opacity=1)
-
+# plot Sun
+Rsun = 696340 / 1e3  # km
+sun = pv.Sphere(radius=Rsun, center=origin - np.array([0, 0, Rsun]), theta_resolution=100, phi_resolution=100)
+plotter.add_mesh(sun, color="#ffbf00", show_edges=False, opacity=1)
 
 # Vector B
-arrow = pv.Arrow(start=B_origin, direction=B, tip_length=0.1, tip_radius=0.02, shaft_radius=0.01, scale="auto")
-plotter.add_mesh(arrow, color="black")
-plotter.add_point_labels([B_origin + B], ["B"], text_color="black", font_size=16, shape_opacity=0, show_points=False)
+arrow = pv.Arrow(
+    start=B_origin, direction=B * vector_length, tip_length=0.1, tip_radius=0.02, shaft_radius=0.01, scale="auto"
+)
+plotter.add_mesh(arrow, color="blue")
 
-# draw line from B to Oz
-line = pv.Line(pointa=B_origin + B, pointb=B_origin + B_proj_z)
-plotter.add_mesh(line, color="black", line_width=1)
+# Vector omega
+arrow = pv.Arrow(
+    start=B_origin, direction=omega * vector_length, tip_length=0.1, tip_radius=0.02, shaft_radius=0.01, scale="auto"
+)
+plotter.add_mesh(arrow, color="black")
 
 # draw line from Bz to origin
-line = pv.Line(pointa=B_origin + B_proj_z, pointb=origin)
+line = pv.Line(pointa=2 * B_origin, pointb=origin)
 plotter.add_mesh(line, color="black", line_width=1)
 
-
-# draw line from B to B_proj
-line = pv.Line(pointa=B_origin + B, pointb=B_proj_xy)
-plotter.add_mesh(line, color="black", line_width=1)
-
-# Add projection of B onto XY plane
-line = pv.Line(pointa=origin, pointb=B_proj_xy)
-plotter.add_mesh(line, color="black", line_width=1)
-
-# Add projection of B onto XY plane
-line = pv.Line(pointa=B_origin, pointb=B_origin + B_proj_xy)
-plotter.add_mesh(line, color="black", line_width=1)
-
-# Add projection of Bxy onto X axis
-line = pv.Line(pointa=origin, pointb=[B_proj_xy[0], 0, 0])
-plotter.add_mesh(line, color="black", line_width=1)
-
-# Add projection of Bxy onto Y axis
-line = pv.Line(pointa=origin, pointb=[0, B_proj_xy[1], 0])
-plotter.add_mesh(line, color="black", line_width=1)
-
-# Add opposite lines
-line = pv.Line(pointa=B_proj_xy, pointb=[B_proj_xy[0], 0, 0])
-plotter.add_mesh(line, color="black", line_width=1)
-
-line = pv.Line(pointa=B_proj_xy, pointb=[0, B_proj_xy[1], 0])
-plotter.add_mesh(line, color="black", line_width=1)
+plotter.set_focus(B_origin)
 
 
-# Arc for theta
-arc_phi = pv.CircularArcFromNormal(
-    center=B_origin, resolution=100, normal=np.cross(B_proj_z, B), polar=B_proj_z * 0.3, angle=np.degrees(theta)
+# =========
+
+logging_config.init(logging.INFO)
+
+term_registry = TermRegistry()
+term_registry.register_term(
+    beta="1s",
+    L=0,
+    S=0,
+    J=0,
+    energy_cmm1=200_000,
 )
-plotter.add_mesh(arc_phi, color="purple")
-midpoint_theta = B_origin + B_proj_z * 0.3 * np.cos(theta / 2) + B_proj_xy * 0.3 * np.sin(theta / 2)
-plotter.add_point_labels(
-    [midpoint_theta], [r"$\theta$"], text_color="purple", font_size=18, shape_opacity=0, show_points=False
+term_registry.register_term(
+    beta="2p",
+    L=1,
+    S=0,
+    J=1,
+    energy_cmm1=220_000,
+)
+# term_registry.register_term(
+#     beta="1s",
+#     L=0,
+#     S=0.5,
+#     J=0.5,
+#     energy_cmm1=200_000,
+# )
+# term_registry.register_term(
+#     beta="2p",
+#     L=1,
+#     S=0.5,
+#     J=0.5,
+#     energy_cmm1=220_000,
+# )
+# term_registry.register_term(
+#     beta="2p",
+#     L=1,
+#     S=0.5,
+#     J=1.5,
+#     energy_cmm1=220_001,
+# )
+term_registry.validate()
+
+nu = np.arange(5.995e14, 5.997e14, 1e8)  # Hz
+
+transition_registry = TransitionRegistry()
+transition_registry.register_transition_from_a_ul(
+    level_upper=term_registry.get_level(beta="2p", L=1, S=0),
+    level_lower=term_registry.get_level(beta="1s", L=0, S=0),
+    einstein_a_ul_sm1=0.7e8,
 )
 
-# Add axes and labels
-# plotter.add_axes()
-# plotter.show_bounds(grid=None, location="outer", all_edges=True, bold=False, font_size=10, use_2d=False)
-plotter.add_text("Vector B with Angles θ (azimuth) and φ (elevation)", font_size=12)
+atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=B_norm, delta_v_thermal_cm_sm1=5_000_00)
+radiation_tensor = RadiationTensor(transition_registry=transition_registry)
+I0 = get_planck_BP(nu_sm1=nu, T_K=5000)
+radiation_tensor.fill_isotropic(I0)
 
+# Rotate the radiation tensor from the Sun to the B field
+D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+J_B = rotate_J(J=radiation_tensor, D=D)
 
-plotter.set_focus(
-    origin - np.array([0, 151_000_000 / 10000 / 1.41, Rsun + 151_000_000 / 10000 / 1.41])
-)  # Optional: center of rotation
-# plotter.camera_position = 'xy'  # Optional: set view
-# plotter.set_scale(xscale=1, yscale=1, zscale=1)  # Keep aspect ratio
+atom = TwoTermAtom(
+    term_registry=term_registry,
+    transition_registry=transition_registry,
+    atmosphere_parameters=atmosphere_parameters,
+    radiation_tensor=J_B,
+    disable_r_s=True,
+    disable_n=True,
+    n_frequencies=len(nu),
+)
 
-# Force bounding box
-# plotter.show_bounds(bounds=[-10, 10, -10, 10, -5, 10])
+atom.add_all_equations()
+rho = atom.get_solution_direct()
 
-# set coordinate ranges
-# plotter.view_xy()
-# plotter.camera.SetPosition(0, 0, 2)
-# plotter.enable_terrain_style()
-# Show plot
-# plotter.camera.SetParallelProjection(True)
-plotter.show()
+radiative_transfer_coefficients = RadiativeTransferCoefficients(
+    atmosphere_parameters=atmosphere_parameters,
+    transition_registry=transition_registry,
+    nu=nu,
+    chi=chi,
+    theta=theta,
+    gamma=gamma,
+    chi_B=chi_B,
+    theta_B=theta_B,
+)
+
+eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
+eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
+eta_sU = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=2)
+eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
+norm = np.max(np.abs(eta_sI))
+fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True)
+
+ax[0].plot(nu, eta_sI / norm, "g-", label=r"$\eta_s^I$")
+ax[1].plot(nu, eta_sQ / norm, "r-", label=r"$\eta_s^Q$")
+ax[2].plot(nu, eta_sU / norm, "y-", label=r"$\eta_s^U$")
+ax[3].plot(nu, eta_sV / norm, "b-", label=r"$\eta_s^V$")
+
+plt.xlabel("Frequency (Hz)")
+for i in range(4):
+    ax[i].set_ylim(-1.05, 1.05)
+    ax[i].grid()
+    ax[i].legend()
+plotter.show_axes()
+plotter.show(interactive_update=True)
+plt.show()
+
+plotter.close()

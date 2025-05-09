@@ -6,7 +6,105 @@ from yatools import logging_config
 
 from src.core.engine.functions.looping import FROMTO, PROJECTION
 from src.core.engine.generators.nested_loops import nested_loops
-from src.core.physics.rotations import T_K_Q, T_from_t, WignerD
+from src.core.physics.constants import sqrt2
+from src.core.physics.rotations import WignerD
+
+
+def d_1_M_N(M, N, beta):
+    """
+    Table 2.1 (p. 57)
+    """
+    C = np.cos(beta)
+    S = np.sin(beta)
+    if M == -1:
+        if N == -1:
+            return 0.5 * (1 + C)
+        if N == 0:
+            return S / sqrt2
+        return 0.5 * (1 - C)
+    if M == 0:
+        if N == -1:
+            return -S / sqrt2
+        if N == 0:
+            return C
+        return S / sqrt2
+    if M == 1:
+        if N == -1:
+            return 0.5 * (1 - C)
+        if N == 0:
+            return -S / sqrt2
+        return 0.5 * (1 + C)
+
+
+def d_2_M_N(M, N, beta):
+    """
+    Table 2.1 (p. 57)
+    """
+    C = np.cos(beta)
+    S = np.sin(beta)
+
+    if M == -2:
+        if N == -2:
+            return 0.25 * (1 + C) ** 2
+        if N == -1:
+            return 0.5 * S * (1 + C)
+        if N == 0:
+            return np.sqrt(3 / 8) * S**2
+        if N == 1:
+            return 0.5 * S * (1 - C)
+        return 0.25 * (1 - C) ** 2
+
+    if M == -1:
+        if N == -2:
+            return -0.5 * S * (1 + C)
+        if N == -1:
+            return (C - 0.5) * (1 + C)
+        if N == 0:
+            return np.sqrt(3 / 2) * S * C
+        if N == 1:
+            return (C + 0.5) * (1 - C)
+        return 0.5 * S * (1 - C)
+
+    if M == 0:
+        if N == -2:
+            return np.sqrt(3 / 8) * S**2
+        if N == -1:
+            return -np.sqrt(3 / 2) * S * C
+        if N == 0:
+            return 0.5 * (3 * C**2 - 1)
+        if N == 1:
+            return np.sqrt(3 / 2) * S * C
+        return np.sqrt(3 / 8) * S**2
+
+    if M == 1:
+        if N == -2:
+            return -0.5 * S * (1 - C)
+        if N == -1:
+            return (C + 0.5) * (1 - C)
+        if N == 0:
+            return -np.sqrt(3 / 2) * S * C
+        if N == 1:
+            return (C - 0.5) * (1 + C)
+        return 0.5 * S * (1 + C)
+
+    if M == 2:
+        if N == -2:
+            return 0.25 * (1 - C) ** 2
+        if N == -1:
+            return -0.5 * S * (1 - C)
+        if N == 0:
+            return np.sqrt(3 / 8) * S**2
+        if N == 1:
+            return -0.5 * S * (1 + C)
+        return 0.25 * (1 + C) ** 2
+
+
+def D_1_M_N(M, N, alpha, beta, gamma):
+    return d_1_M_N(M, N, beta) * np.exp(-1j * (M * alpha + N * gamma))
+
+
+def D_2_M_N(M, N, alpha, beta, gamma):
+    return d_2_M_N(M, N, beta) * np.exp(-1j * (M * alpha + N * gamma))
 
 
 class TestWignerD(unittest.TestCase):
@@ -23,10 +121,11 @@ class TestWignerD(unittest.TestCase):
 
         D = WignerD(alpha=chi, beta=theta, gamma=gamma, K_max=2)
 
-        for K, Q, stokes_component_index in nested_loops(
-            K=FROMTO(0, 2), Q=PROJECTION("K"), stokes_component_index=FROMTO(0, 3)
+        for K, M, N in nested_loops(
+            K=FROMTO(1, 2),
+            M=PROJECTION("K"),
+            N=PROJECTION("K"),
         ):
-            T1 = T_from_t(K=K, Q=Q, stokes_component_index=stokes_component_index, D=D)
-            T2 = T_K_Q(K=K, Q=Q, stokes_component_index=stokes_component_index, chi=chi, theta=theta, gamma=gamma)
-
-            assert np.max(np.abs(T1 - T2)) < 1e-12
+            D1 = D_1_M_N(M, N, chi, theta, gamma) if K == 1 else D_2_M_N(M, N, chi, theta, gamma)
+            D2 = D(K=K, P=M, Q=N)
+            assert np.max(np.abs(D1 - D2)) < 1e-12

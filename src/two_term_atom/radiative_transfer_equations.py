@@ -9,7 +9,7 @@ from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
-from src.core.physics.rotations import T_K_Q
+from src.core.physics.rotations import T_K_Q_double_rotation, WignerD
 from src.core.physics.voigt_profile import voigt
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
@@ -29,15 +29,16 @@ class RadiativeTransferCoefficients:
         chi=0,
         theta=0,
         gamma=0,
+        chi_B=0,
+        theta_B=0,
         N=1,
     ):
         self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
         self.maximum_delta_v_thermal_units_cutoff = maximum_delta_v_thermal_units_cutoff
-        self.chi = chi
-        self.theta = theta
-        self.gamma = gamma
+        self.D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        self.D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
         self.N = N  # Atom concentration
 
     def phi(self, nui, nu):
@@ -103,7 +104,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -187,7 +190,13 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K=K,
+                                Q=Q,
+                                stokes_component_index=stokes_component_index,
+                                D_inverse_omega=self.D_inverse_omega,
+                                D_magnetic=self.D_magnetic,
+                            ),
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -255,7 +264,13 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K=K,
+                                Q=Q,
+                                stokes_component_index=stokes_component_index,
+                                D_inverse_omega=self.D_inverse_omega,
+                                D_magnetic=self.D_magnetic,
+                            ),
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -339,7 +354,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -421,7 +438,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
-                        lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                        lambda: T_K_Q_double_rotation(
+                            K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                        ),
                         lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
@@ -503,7 +522,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
-                        lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                        lambda: T_K_Q_double_rotation(
+                            K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                        ),
                         lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
@@ -560,7 +581,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Ll, Ll, Lu),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -618,7 +641,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Lu, Lu, Ll),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -659,7 +684,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Ll, Ll, Lu),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -717,7 +744,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Lu, Lu, Ll),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -765,7 +794,9 @@ class RadiativeTransferCoefficients:
                     lambda: wigner_6j(1, 1, K, Ju, Jʹu, Jl),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q(K, Q, stokes_component_index, self.chi, self.theta, self.gamma),
+                            lambda: T_K_Q_double_rotation(
+                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
+                            ),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: 0.5
                             * (

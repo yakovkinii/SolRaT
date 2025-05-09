@@ -3,7 +3,9 @@ import numpy as np
 
 def fromto(a, b):
     """Inclusive Range"""
-    return [x for x in np.arange(a, b + 1)]
+    if int(a) == a and int(b) == b:
+        return list(range(int(a), int(b) + 1))
+    return [float(x) for x in np.arange(a, b + 1)]
 
 
 def FROMTO(a, b):
