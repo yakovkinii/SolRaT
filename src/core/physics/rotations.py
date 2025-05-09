@@ -6,12 +6,11 @@ from numpy import cos, exp, sin
 from sympy.physics.wigner import wigner_d
 
 from src.core.engine.functions.general import delta, m1p
-from src.core.engine.functions.looping import FROMTO, PROJECTION, TRIANGULAR, fromto
+from src.core.engine.functions.looping import FROMTO, PROJECTION, fromto
 from src.core.engine.generators.nested_loops import nested_loops
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import sqrt2, sqrt3
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.object.rho_matrix_builder import Rho
 
 
 class WignerD:
@@ -136,29 +135,3 @@ def rotate_J(J: RadiationTensor, D: WignerD):
                 value=summate(lambda P: J(transition=transition, K=K, Q=P) * D(K=K, P=P, Q=Q), P=PROJECTION(K)),
             )
     return new_J
-
-
-def rotate_rho(rho: Rho, D: WignerD):
-    """
-    (7.76)
-    """
-    new_rho = Rho(levels=rho.levels)
-    for level in rho.levels:
-        for J, Jʹ, K, Q in nested_loops(
-            J=TRIANGULAR(level.L, level.S),
-            Jʹ=TRIANGULAR(level.L, level.S),
-            K=TRIANGULAR("J", "Jʹ"),
-            Q=PROJECTION("K"),
-        ):
-            new_rho.set_from_level_id(
-                level_id=level.level_id,
-                K=K,
-                Q=Q,
-                J=J,
-                Jʹ=Jʹ,
-                value=summate(
-                    lambda Qʹ: rho(level=level, K=K, Q=Qʹ, J=J, Jʹ=Jʹ) * np.conj(D(K=K, P=Qʹ, Q=Q)),
-                    Qʹ=PROJECTION(K),
-                ),
-            )
-    return new_rho
