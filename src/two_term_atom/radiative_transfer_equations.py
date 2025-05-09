@@ -72,10 +72,18 @@ class RadiativeTransferCoefficients:
         Reference:
         (7.47a)
         """
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
@@ -86,7 +94,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
@@ -137,6 +145,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     def eta_s(self, rho: Rho, stokes_component_index: int):
         """
@@ -145,6 +154,7 @@ class RadiativeTransferCoefficients:
         """
         logging.info("Radiative Transfer Equations: calculate eta_s")
 
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
@@ -172,7 +182,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
@@ -226,16 +236,25 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     def rho_a(self, rho: Rho, stokes_component_index: int):
         """
         Reference:
         (7.47a)
         """
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
@@ -246,7 +265,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
@@ -301,6 +320,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     def rho_s(self, rho: Rho, stokes_component_index: int):
         """
@@ -308,7 +328,7 @@ class RadiativeTransferCoefficients:
         (7.47b)
         """
         logging.info("Radiative Transfer Equations: calculate eta_s")
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
@@ -336,7 +356,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
@@ -386,6 +406,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     @staticmethod
     def epsilon(eta_s: np.ndarray, nu: np.ndarray):
@@ -407,10 +428,18 @@ class RadiativeTransferCoefficients:
         eta_a = real(eta_rho_a)
         rho_a = imag(eta_rho_a)
         """
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
@@ -421,7 +450,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda K, Q, Kl, Ql, jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
@@ -470,6 +499,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     def eta_rho_s(self, rho: Rho, stokes_component_index: int):
         """
@@ -478,6 +508,7 @@ class RadiativeTransferCoefficients:
         """
         logging.info("Radiative Transfer Equations: calculate eta_rho_s")
 
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
@@ -505,7 +536,7 @@ class RadiativeTransferCoefficients:
                 level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
             )
 
-            return summate(
+            result = result + summate(
                 lambda ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Q, Ku, Qu, q, qʹ: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
@@ -553,6 +584,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
                 tqdm_level=1,
             )
+        return result
 
     """
     The following are some analytical expressions under further assumptions for validation.
@@ -564,14 +596,23 @@ class RadiativeTransferCoefficients:
         (7.48a)
         """
 
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
 
-            return summate(
+            result = result + summate(
                 lambda K, Q, Jl, Jʹl: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu,
@@ -601,6 +642,7 @@ class RadiativeTransferCoefficients:
                 Q=PROJECTION("K"),
                 tqdm_level=1,
             )
+        return result
 
     def eta_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
         """
@@ -609,7 +651,7 @@ class RadiativeTransferCoefficients:
         (7.48d)
         """
         logging.info("Radiative Transfer Equations: calculate eta_s")
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
@@ -631,7 +673,7 @@ class RadiativeTransferCoefficients:
 
             S = level_lower.S
 
-            return summate(
+            result = result + summate(
                 lambda Ju, Jʹu, K, Q: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul,
@@ -660,21 +702,30 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K")),
                 tqdm_level=1,
             )
+        return result
 
     def rho_a_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
         """
         Reference:
         (7.48a)
         """
-
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
             Ll = level_lower.L
             Lu = level_upper.L
             S = level_lower.S
 
-            return summate(
+            result = result + summate(
                 lambda K, Q, Jl, Jʹl: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu,
@@ -704,6 +755,7 @@ class RadiativeTransferCoefficients:
                 Q=PROJECTION("K"),
                 tqdm_level=1,
             )
+        return result
 
     def rho_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
         """
@@ -713,6 +765,7 @@ class RadiativeTransferCoefficients:
         """
         logging.info("Radiative Transfer Equations: calculate eta_s")
 
+        result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
@@ -734,7 +787,7 @@ class RadiativeTransferCoefficients:
 
             S = level_lower.S
 
-            return summate(
+            result = result + summate(
                 lambda Ju, Jʹu, K, Q: multiply(
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul,
@@ -763,6 +816,7 @@ class RadiativeTransferCoefficients:
                 Q=INTERSECTION(PROJECTION("K")),
                 tqdm_level=1,
             )
+        return result
 
     def eta_s_no_field(self, rho: Rho, stokes_component_index: int):
         """
@@ -775,6 +829,7 @@ class RadiativeTransferCoefficients:
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
+
             logging.info(f"{level_upper.level_id} -> {level_lower.level_id}")
             if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
                 logging.info(f"Cutting off the transition because it is out of frequency range")

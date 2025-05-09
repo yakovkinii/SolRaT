@@ -18,7 +18,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data(
             fine_structure=False
         )
-        nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e19)  # Hz
+        nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e9)  # Hz
 
         atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=5_000_00)
         radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=30)
@@ -44,10 +44,10 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
 
         eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
-        eta_s_analytic = radiative_transfer_coefficients.eta_s_no_field_no_fine_structure(
+        eta_sI_analytic = radiative_transfer_coefficients.eta_s_no_field_no_fine_structure(
             rho=rho, stokes_component_index=0
         )
-        assert (abs(eta_sI - eta_s_analytic) < 1e-10).all()
+        assert (abs(eta_sI - eta_sI_analytic) < 1e-10).all()
 
         eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
         eta_sQ_analytic = radiative_transfer_coefficients.eta_s_no_field_no_fine_structure(
@@ -140,7 +140,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         assert (abs(rho_aV - rho_aV_analytic) < 1e-10).all()
 
         epsilon_I = radiative_transfer_coefficients.epsilon(eta_s=eta_sI, nu=nu)
-        epsilon_I_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_s_analytic, nu=nu)
+        epsilon_I_analytic = radiative_transfer_coefficients.epsilon(eta_s=eta_sI_analytic, nu=nu)
         assert (abs(epsilon_I - epsilon_I_analytic) < 1e-10).all()
 
         epsilon_Q = radiative_transfer_coefficients.epsilon(eta_s=eta_sQ, nu=nu)
