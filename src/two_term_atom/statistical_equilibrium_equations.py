@@ -68,8 +68,8 @@ class TwoTermAtom:
         for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
             Kʹ=TRIANGULAR(K, 1),
             Qʹ=PROJECTION("Kʹ"),
-            Jʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.L, level.S)),
-            Jʹʹʹ=INTERSECTION(TRIANGULAR(J, 1), TRIANGULAR(level.L, level.S)),
+            Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
+            Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
         ):
             n = self.n(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
@@ -255,7 +255,10 @@ class TwoTermAtom:
             * wigner_3j(K, Kʹ, 1, -Q, Q, 0)
             * (
                 delta(Jʹ, Jʹʹʹ) * self.gamma(level=level, J=J, Jʹ=Jʹʹ) * wigner_6j(K, Kʹ, 1, Jʹʹ, J, Jʹ)
-                + delta(J, Jʹʹ) * self.gamma(level=level, J=Jʹʹʹ, Jʹ=Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
+                + delta(J, Jʹʹ)
+                * m1p(K - Kʹ)
+                * self.gamma(level=level, J=Jʹʹʹ, Jʹ=Jʹ)
+                * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
             )
         )
         return result

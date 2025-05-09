@@ -19,9 +19,15 @@ _vtk = vtk  # This is a hack for Windows to enable LaTeX rendering in PyVista
 logging_config.init(logging.INFO)
 
 # Vector B
-Bx, By, Bz = 0, 10000, 10000
+chi_B = 0
+theta_B = pi / 4
+BB = 100
+Bx, By, Bz = BB * np.cos(chi_B) * np.sin(theta_B), BB * np.sin(chi_B) * np.sin(theta_B), BB * np.cos(theta_B)
+
+
+# Bx, By, Bz = 0, 0, 10
 chi = 0
-theta = pi / 2
+theta = pi / 4
 gamma = 0
 
 
@@ -59,10 +65,16 @@ sun = pv.Sphere(radius=Rsun, center=origin - np.array([0, 0, Rsun]), theta_resol
 plotter.add_mesh(sun, color="#ffbf00", show_edges=False, opacity=1)
 
 # Vector B
-arrow = pv.Arrow(
-    start=B_origin, direction=B * vector_length, tip_length=0.1, tip_radius=0.02, shaft_radius=0.01, scale="auto"
-)
-plotter.add_mesh(arrow, color="blue")
+if B_norm > 1e-3:
+    arrow = pv.Arrow(
+        start=B_origin,
+        direction=B * vector_length * 0.99,
+        tip_length=0.1,
+        tip_radius=0.02,
+        shaft_radius=0.01,
+        scale="auto",
+    )
+    plotter.add_mesh(arrow, color="blue")
 
 # Vector omega
 arrow = pv.Arrow(
@@ -84,47 +96,50 @@ logging_config.init(logging.INFO)
 term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
 nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e8)  # Hz
 
-atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=B_norm, delta_v_thermal_cm_sm1=5_000_00)
-radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=0.725 * height)
-
-# Rotate the radiation tensor from the Sun to the B field
-D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
-J_B = rotate_J(J=radiation_tensor, D=D)
-
-atom = TwoTermAtom(
-    term_registry=term_registry,
-    transition_registry=transition_registry,
-    atmosphere_parameters=atmosphere_parameters,
-    radiation_tensor=J_B,
-    disable_r_s=True,
-    disable_n=True,
-)
-
-atom.add_all_equations()
-rho = atom.get_solution_direct()
-
-radiative_transfer_coefficients = RadiativeTransferCoefficients(
-    atmosphere_parameters=atmosphere_parameters,
-    transition_registry=transition_registry,
-    nu=nu,
-    chi=chi,
-    theta=theta,
-    gamma=gamma,
-    chi_B=chi_B,
-    theta_B=theta_B,
-)
-
-eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
-eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
-eta_sU = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=2)
-eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
-norm = np.max(np.abs(eta_sI))
 fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True)
+for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
+    logging.info(f"Bscale: {Bscale}")
+    B_norm_scaled = B_norm * Bscale
+    atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled, delta_v_thermal_cm_sm1=5_000_00)
+    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=0.725 * height)
 
-ax[0].plot(nu, eta_sI / norm, "g-", label=r"$\eta_s^I$")
-ax[1].plot(nu, eta_sQ / norm, "r-", label=r"$\eta_s^Q$")
-ax[2].plot(nu, eta_sU / norm, "y-", label=r"$\eta_s^U$")
-ax[3].plot(nu, eta_sV / norm, "b-", label=r"$\eta_s^V$")
+    # Rotate the radiation tensor from the Sun to the B field
+    D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+    J_B = rotate_J(J=radiation_tensor, D=D)
+
+    atom = TwoTermAtom(
+        term_registry=term_registry,
+        transition_registry=transition_registry,
+        atmosphere_parameters=atmosphere_parameters,
+        radiation_tensor=J_B,
+        # disable_r_s=True,
+        # disable_n=True,
+    )
+
+    atom.add_all_equations()
+    rho = atom.get_solution_direct()
+
+    radiative_transfer_coefficients = RadiativeTransferCoefficients(
+        atmosphere_parameters=atmosphere_parameters,
+        transition_registry=transition_registry,
+        nu=nu,
+        chi=chi,
+        theta=theta,
+        gamma=gamma,
+        chi_B=chi_B,
+        theta_B=theta_B,
+    )
+
+    eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
+    eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
+    eta_sU = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=2)
+    eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
+    norm = np.max(np.abs(eta_sI))
+
+    ax[0].plot(nu, eta_sI / norm, label=rf"$\eta_s^I$ B={B_norm_scaled}")
+    ax[1].plot(nu, eta_sQ / norm, label=rf"$\eta_s^Q$ B={B_norm_scaled}")
+    ax[2].plot(nu, eta_sU / norm, label=rf"$\eta_s^U$ B={B_norm_scaled}")
+    ax[3].plot(nu, eta_sV / norm, label=rf"$\eta_s^V$ B={B_norm_scaled}")
 
 plt.xlabel("Frequency (Hz)")
 for i in range(4):
