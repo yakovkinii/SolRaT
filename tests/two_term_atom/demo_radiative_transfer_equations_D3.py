@@ -2,6 +2,7 @@ import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
+from numpy import real
 from yatools import logging_config
 
 from src.core.physics.functions import lambda_cm_to_frequency_hz
@@ -49,11 +50,18 @@ def main():
         transition_registry=transition_registry,
         nu=nu,
     )
+    # logging.warning('START')
+    # eta_sIpr = radiative_transfer_coefficients.precompute_eta_s(rho=rho, stokes_component_index=0)
+    # logging.warning('END')
+    eta_sIpr = real(radiative_transfer_coefficients.precompute_eta_s(rho=rho, stokes_component_index=0))
     eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
+    eta_sVpr = real(radiative_transfer_coefficients.precompute_eta_s(rho=rho, stokes_component_index=3))
     eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
 
     plt.plot(lambda_A - reference_lambda_A, eta_sI / max(eta_sI), label=r"$\eta_s$ (Stokes $I$)")
+    plt.plot(lambda_A - reference_lambda_A, eta_sIpr / max(eta_sIpr),':', label=r"$\eta_s$ pr (Stokes $I$)")
     plt.plot(lambda_A - reference_lambda_A, eta_sV / max(eta_sI), label=r"$\eta_s$ (Stokes $V$)")
+    plt.plot(lambda_A - reference_lambda_A, eta_sVpr / max(eta_sIpr),":", label=r"$\eta_s$ pr (Stokes $V$)")
     plt.xlabel(r"$\Delta\lambda$ ($\AA$)")
     plt.ylabel(r"$\eta_s$ (a.u.)")
     plt.title(rf"He I D3: $\eta_s$ vs $\Delta\lambda$. $B_z = {atmosphere_parameters.magnetic_field_gauss//1000}$ kG")

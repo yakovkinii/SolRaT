@@ -112,7 +112,7 @@ for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     )
 
     # Compute stokes
-    etas = [rtc.eta_s(rho=rho, stokes_component_index=i) for i in range(4)]
+    etas = [rtc.precompute_eta_s(rho=rho, stokes_component_index=i) for i in range(4)]
     norm = np.max(np.abs(etas[0]))
 
     labels = ["I", "Q", "U", "V"]

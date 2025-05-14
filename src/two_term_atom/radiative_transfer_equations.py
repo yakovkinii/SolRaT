@@ -1,11 +1,14 @@
 import logging
 
 import numpy as np
+import pandas as pd
 from numpy import imag, pi, real, sqrt
 
+from src.core.engine.functions.decorators import log_method
 from src.core.engine.functions.general import m1p, n_proj
 from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from src.core.engine.generators.multiply import multiply
+from src.core.engine.generators.nested_loops import nested_loops
 from src.core.engine.generators.summate import summate
 from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from src.core.physics.functions import energy_cmm1_to_frequency_hz
@@ -147,6 +150,7 @@ class RadiativeTransferCoefficients:
             )
         return result
 
+    @log_method
     def eta_s(self, rho: Rho, stokes_component_index: int):
         """
         Reference:
@@ -237,6 +241,254 @@ class RadiativeTransferCoefficients:
                 tqdm_level=1,
             )
         return result
+
+    @log_method
+    def precompute_eta_s(self, rho: Rho, stokes_component_index: int):
+        """
+        Reference:
+        (7.47b)
+        """
+        logging.info("Radiative Transfer Equations: calculate eta_s")
+        rows = []
+        rows_c = []
+        rows_rho = []
+        rows_phi = []
+        rows_tkq = []
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
+            logging.info(f"Processing {level_upper.level_id} -> {level_lower.level_id}")
+
+            Ll = level_lower.L
+            Lu = level_upper.L
+            if abs(Lu - Ll) > 1:
+                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
+                continue
+
+            S = level_lower.S
+            for ju, Ju, Jʹu, Jʹʹu, jl, Jl, Jʹl, Mu, Mʹu, Ml, K, Ku, Qu, q, qʹ, Q in nested_loops(
+                ju=TRIANGULAR(Lu, S),
+                Ju=TRIANGULAR(Lu, S),
+                Jʹu=TRIANGULAR(Lu, S),
+                Jʹʹu=TRIANGULAR(Lu, S),
+                jl=TRIANGULAR(Ll, S),
+                Jl=INTERSECTION(TRIANGULAR(Ll, S), TRIANGULAR("Ju", 1)),
+                Jʹl=INTERSECTION(TRIANGULAR(Ll, S), TRIANGULAR("Jʹu", 1)),
+                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("Jʹʹu"), PROJECTION("ju")),
+                Mʹu=PROJECTION("Jʹu"),
+                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹl"), PROJECTION("jl")),
+                K=FROMTO(0, 2),
+                Ku=TRIANGULAR("Jʹu", "Jʹʹu"),
+                Qu=INTERSECTION(PROJECTION("Ku"), VALUE("Mʹu - Mu")),
+                q=VALUE("Ml - Mu"),
+                qʹ=VALUE("Ml - Mʹu"),
+                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
+            ):
+                eta_rho_s_1 = multiply(
+                    lambda: 1,
+                    lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
+                    lambda: m1p(1 + Jʹu - Mu + qʹ),
+                    lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                    lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
+                    lambda: wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    lambda: wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
+                    lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+                )
+                rows.append(
+                    {
+                        "level_upper_id": level_upper.level_id,
+                        "level_lower_id": level_lower.level_id,
+                        "transition_id": transition.transition_id,
+                        "ju": ju,
+                        "Ju": Ju,
+                        "Jʹu": Jʹu,
+                        "Jʹʹu": Jʹʹu,
+                        "jl": jl,
+                        "Jl": Jl,
+                        "Jʹl": Jʹl,
+                        "Mu": Mu,
+                        "Mʹu": Mʹu,
+                        "Ml": Ml,
+                        "K": K,
+                        "Ku": Ku,
+                        "Qu": Qu,
+                        "q": q,
+                        "qʹ": qʹ,
+                        "Q": Q,
+                        "eta_rho_s_1": eta_rho_s_1,
+                    }
+                )
+
+        result = pd.DataFrame(rows)
+        logging.warning('Start full calc from precalc')
+
+
+
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.info(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
+            logging.info(f"Processing {level_upper.level_id} -> {level_lower.level_id}")
+
+            Ll = level_lower.L
+            Lu = level_upper.L
+            if abs(Lu - Ll) > 1:
+                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
+                continue
+
+            S = level_lower.S
+            lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
+                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+            )
+            upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
+                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+            )
+
+            for ju, Ju, Mu in nested_loops(
+                ju=TRIANGULAR(Lu, S),
+                Ju=TRIANGULAR(Lu, S),
+                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("ju")),
+            ):
+                rows_c.append(
+                    {
+                        "level_id": level_upper.level_id,
+                        "j": ju,
+                        "J": Ju,
+                        "M": Mu,
+                        "cpb": upper_pb_eigenvectors(j=ju, J=Ju, level=level_upper, M=Mu),
+                    }
+                )
+
+            for jl, Jl, Ml in nested_loops(
+                jl=TRIANGULAR(Ll, S),
+                Jl=TRIANGULAR(Ll, S),
+                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("jl")),
+            ):
+                rows_c.append(
+                    {
+                        "level_id": level_lower.level_id,
+                        "j": jl,
+                        "J": Jl,
+                        "M": Ml,
+                        "cpb": lower_pb_eigenvectors(j=jl, J=Jl, level=level_lower, M=Ml),
+                    }
+                )
+
+            for J, Jʹ, K, Q in nested_loops(
+                J=TRIANGULAR(Lu, S),
+                Jʹ=TRIANGULAR(Lu, S),
+                K=TRIANGULAR("J", "Jʹ"),
+                Q=INTERSECTION(PROJECTION("K")),
+            ):
+                rows_rho.append(
+                    {
+                        "transition_id": transition.transition_id,
+                        "level_upper_id": level_upper.level_id,
+                        "J": J,
+                        "Jʹ": Jʹ,
+                        "K": K,
+                        "Q": Q,
+                        "rho": rho(level=level_upper, K=K, Q=Q, J=J, Jʹ=Jʹ),
+                    }
+                )
+
+            for ju, jl, Mu, Ml in nested_loops(
+                ju=TRIANGULAR(Lu, S),
+                jl=TRIANGULAR(Ll, S),
+                Mu=INTERSECTION(PROJECTION("ju")),
+                Ml=INTERSECTION(PROJECTION("jl")),
+            ):
+                rows_phi.append(
+                    {
+                        "level_upper_id": level_upper.level_id,
+                        "level_lower_id": level_lower.level_id,
+                        "transition_id": transition.transition_id,
+                        "ju": ju,
+                        "jl": jl,
+                        "Mu": Mu,
+                        "Ml": Ml,
+                        "phi": self.phi(
+                            nui=energy_cmm1_to_frequency_hz(
+                                upper_pb_eigenvalues(j=ju, level=level_upper, M=Mu)
+                                - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
+                            ),
+                            nu=self.nu,
+                        ),
+                    }
+                )
+
+        for K, Q in nested_loops(
+            K=FROMTO(0, 2),
+            Q=PROJECTION("K"),
+        ):
+            rows_tkq.append(
+                {
+                    "K": K,
+                    "Q": Q,
+                    "t_k_q": T_K_Q_double_rotation(
+                        K=K,
+                        Q=Q,
+                        stokes_component_index=stokes_component_index,
+                        D_inverse_omega=self.D_inverse_omega,
+                        D_magnetic=self.D_magnetic,
+                    ),
+                }
+            )
+
+        logging.warning("To dataframe")
+
+        result_c = pd.DataFrame(rows_c)
+        result_rho = pd.DataFrame(rows_rho)
+        result_tkq = pd.DataFrame(rows_tkq)
+        result_phi = pd.DataFrame(rows_phi)
+        logging.warning("done")
+
+        frame = (
+            result.merge(
+                result_c.rename(columns={"level_id": "level_lower_id", "j": "jl", "J": "Jl", "M": "Ml", "cpb": "cpb1"})
+            )
+            .merge(
+                result_c.rename(columns={"level_id": "level_upper_id", "j": "ju", "J": "Ju", "M": "Mu", "cpb": "cpb2"})
+            )
+            .merge(
+                result_c.rename(columns={"level_id": "level_lower_id", "j": "jl", "J": "Jʹl", "M": "Ml", "cpb": "cpb3"})
+            )
+            .merge(
+                result_c.rename(
+                    columns={"level_id": "level_upper_id", "j": "ju", "J": "Jʹʹu", "M": "Mu", "cpb": "cpb4"}
+                )
+            )
+            .merge(result_tkq)
+            .merge(result_phi)
+            .merge(result_rho.rename(columns={"K": "Ku", "Q": "Qu", "J": "Jʹu", "Jʹ": "Jʹʹu"}))
+        )
+        return (
+            h_erg_s
+            * self.nu
+            / 4
+            / pi
+            * self.N
+            * np.prod(
+                frame[["eta_rho_s_1", "cpb1", "cpb2", "cpb3", "cpb4", "rho", "t_k_q", "phi"]].values, axis=1
+            ).sum()
+        )
 
     def rho_a(self, rho: Rho, stokes_component_index: int):
         """
