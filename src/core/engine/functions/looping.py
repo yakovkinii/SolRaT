@@ -1,11 +1,13 @@
+from functools import lru_cache
+
 import numpy as np
 
 
 def fromto(a, b):
     """Inclusive Range"""
-    if int(a) == a and int(b) == b:
-        return list(range(int(a), int(b) + 1))
-    return [float(x) for x in np.arange(a, b + 1)]
+    # if int(a) == a and int(b) == b:
+    #     return tuple(range(int(a), int(b) + 1))
+    return (float(x) for x in np.arange(a, b + 1))
 
 
 def FROMTO(a, b):
@@ -26,7 +28,7 @@ def TRIANGULAR(a, b):
 def intersection(*args):
     """Intersect ranges"""
     sets = [set(arg) for arg in args]
-    return list(set.intersection(*sets))
+    return tuple(set.intersection(*sets))
 
 
 def INTERSECTION(*args):
@@ -34,6 +36,7 @@ def INTERSECTION(*args):
     return f"intersection({', '.join(args)})"
 
 
+# @lru_cache(maxsize=None)
 def projection(a):
     """Range from -a to a (inclusive)"""
     return fromto(-a, a)
@@ -45,5 +48,5 @@ def PROJECTION(a):
 
 
 def VALUE(a):
-    """Just single calue"""
-    return f"[{a}]"
+    """Just single value"""
+    return f"({a},)"

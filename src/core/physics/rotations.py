@@ -24,7 +24,7 @@ class WignerD:
         self.d = {}
         for K in fromto(0, K_max):
             # Note: sympy uses a different convention for angles, so I perform under-the-hood conversion here.
-            self.d[K] = wigner_d(J=K, alpha=-alpha, beta=-beta, gamma=-gamma)
+            self.d[K] = wigner_d(J=int(K), alpha=-alpha, beta=-beta, gamma=-gamma)
 
     @lru_cache(maxsize=None)
     def __call__(self, K, P, Q):

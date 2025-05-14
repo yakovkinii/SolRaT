@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+import pandas as pd
 from numpy import pi, sqrt
 from tqdm import tqdm
 
@@ -65,11 +66,11 @@ class TwoTermAtom:
         """
         Reference: (7.38)
         """
-        for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
-            Kʹ=TRIANGULAR(K, 1),
-            Qʹ=PROJECTION("Kʹ"),
-            Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
-            Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
+        for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
+            Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S), TRIANGULAR(J, 1)),
+            Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S), TRIANGULAR(Jʹ, 1)),
+            Kʹ=INTERSECTION(TRIANGULAR(K, 1), TRIANGULAR("Jʹʹ", "Jʹʹʹ")),
+            Qʹ=INTERSECTION(PROJECTION("Kʹ"), VALUE(Q)),
         ):
             n = self.n(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
@@ -82,10 +83,9 @@ class TwoTermAtom:
         for level_lower in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(level_upper=level, level_lower=level_lower):
                 continue
-
             for Jl, Jʹl, Kl, Ql in nested_loops(
-                Jl=TRIANGULAR(level_lower.L, level_lower.S),
-                Jʹl=TRIANGULAR(level_lower.L, level_lower.S),
+                Jl=INTERSECTION(TRIANGULAR(level_lower.L, level_lower.S), TRIANGULAR(J, 1)),
+                Jʹl=INTERSECTION(TRIANGULAR(level_lower.L, level_lower.S), TRIANGULAR(Jʹ, 1)),
                 Kl=TRIANGULAR("Jl", "Jʹl"),
                 Ql=PROJECTION("Kl"),
             ):
@@ -102,8 +102,8 @@ class TwoTermAtom:
                 continue
 
             for Ju, Jʹu, Ku, Qu in nested_loops(
-                Ju=TRIANGULAR(level_upper.L, level_upper.S),
-                Jʹu=TRIANGULAR(level_upper.L, level_upper.S),
+                Ju=INTERSECTION(TRIANGULAR(level_upper.L, level_upper.S), TRIANGULAR(J, 1)),
+                Jʹu=INTERSECTION(TRIANGULAR(level_upper.L, level_upper.S), TRIANGULAR(Jʹ, 1)),
                 Ku=TRIANGULAR("Ju", "Jʹu"),
                 Qu=PROJECTION("Ku"),
             ):
@@ -116,11 +116,11 @@ class TwoTermAtom:
         Reference: (7.38)
         """
         # Relaxation from selected coherence
-        for Kʹ, Qʹ, Jʹʹ, Jʹʹʹ in nested_loops(
-            Kʹ=TRIANGULAR(J, Jʹ),
-            Qʹ=PROJECTION("Kʹ"),
+        for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
             Jʹʹ=TRIANGULAR(level.L, level.S),
             Jʹʹʹ=TRIANGULAR(level.L, level.S),
+            Kʹ=INTERSECTION(TRIANGULAR(J, Jʹ), TRIANGULAR("Jʹʹ", "Jʹʹʹ")),
+            Qʹ=PROJECTION("Kʹ"),
         ):
             r_a = self.r_a(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
             r_e = self.r_e(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
@@ -149,24 +149,35 @@ class TwoTermAtom:
                     lambda: m1p(1 + Lu - S + J + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
                     lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
-                    lambda: (
-                        multiply(
-                            lambda: delta(J, Jʹʹ),
-                            lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
-                            lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
-                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
-                        )
-                        + multiply(
-                            lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
-                            lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
-                            lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
-                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
-                        )
-                    ),
+                    lambda: delta(J, Jʹʹ),
+                    lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
+                    lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
+                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
                 ),
-                Kr=FROMTO(0, 2),
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
             )
+
+            for Kr, Qr in nested_loops(
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)),
+                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
+            ):
+                result += (
+                    n_proj(L)
+                    * transition.einstein_b_lu
+                    * sqrt(n_proj(1, K, Kʹ, Kr))
+                    * m1p(1 + Lu - S + J + Qʹ)
+                    * wigner_6j(L, L, Kr, 1, 1, Lu)
+                    * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
+                    * 0.5
+                    * self.radiation_tensor(transition=transition, K=Kr, Q=Qr)
+                    * delta(Jʹ, Jʹʹʹ)
+                    * sqrt(n_proj(J, Jʹʹ))
+                    * m1p(Jʹʹ - Jʹ + K + Kʹ + Kr)
+                    * wigner_6j(L, L, Kr, Jʹʹ, J, S)
+                    * wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ)
+                )
+
         return result
 
     def r_e(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
@@ -197,22 +208,28 @@ class TwoTermAtom:
                     lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
                     lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
                     lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
-                    lambda: (
-                        multiply(
-                            lambda: delta(J, Jʹʹ),
-                            lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
-                            lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
-                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
-                        )
-                        + multiply(
-                            lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
-                            lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
-                            lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
-                            lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
-                        )
-                    ),
+                    lambda: delta(J, Jʹʹ),
+                    lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
+                    lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
+                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
                 ),
-                Kr=FROMTO(0, 2),
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)),
+                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
+            )
+            result += summate(
+                lambda Kr, Qr: multiply(
+                    lambda: n_proj(L) * transition.einstein_b_ul,
+                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
+                    lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
+                    lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
+                    lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
+                    lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                    lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
+                    lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
+                    lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
+                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                ),
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
             )
 
@@ -296,7 +313,7 @@ class TwoTermAtom:
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
                 lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
-            Kr=FROMTO(0, 2),
+            Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kl)),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
         )
 
@@ -369,7 +386,7 @@ class TwoTermAtom:
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
                 lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
-            Kr=FROMTO(0, 2),
+            Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(Ku, K)),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
         )
 

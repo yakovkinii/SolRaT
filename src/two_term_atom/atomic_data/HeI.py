@@ -1,8 +1,9 @@
+from src.core.engine.functions.decorators import log_function
 from src.core.physics.functions import lambda_cm_to_frequency_hz
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
-
+@log_function
 def get_He_I_D3_data():
     """
     Atomic model for He I atom including D3 transition.

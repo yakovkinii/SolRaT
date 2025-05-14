@@ -1,4 +1,4 @@
-from src.core.engine.functions.decorators import not_tested
+from src.core.engine.functions.decorators import log_function_not_tested
 from src.core.engine.functions.general import delta
 from src.core.engine.functions.looping import FROMTO, PROJECTION
 from src.core.engine.generators.nested_loops import nested_loops
@@ -33,7 +33,7 @@ class RadiationTensor(Container):
         return self
 
     @staticmethod
-    @not_tested
+    @log_function_not_tested
     def n_fit(lambda_A):
         """
         Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
@@ -41,7 +41,7 @@ class RadiationTensor(Container):
         return 1e-25 * lambda_A**5.83
 
     @staticmethod
-    @not_tested
+    @log_function_not_tested
     def w_fit(lambda_A, h_arcsec):
         """
         Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433

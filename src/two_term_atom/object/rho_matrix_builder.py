@@ -1,3 +1,4 @@
+import logging
 from typing import List
 
 import numpy as np
@@ -84,12 +85,15 @@ class RhoMatrixBuilder:
         assert isinstance(coefficient, np.ndarray), "Coefficient must be a numpy array"
         assert coefficient.ndim == 1, "Coefficient must be a 1D array"
         assert coefficient.shape[0] == self.rho_matrix.shape[0]
+        coherence_id = _construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
 
         if coefficient.__eq__(0).all():
+            logging.warning("Coefficient is zero, skipping addition.")
+            logging.info(f'selected_coherence: {self.selected_coherence}')
+            logging.info(f'coherence_id: {coherence_id}')
             return
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
-        coherence_id = _construct_coherence_id(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
         assert coherence_id in self.coherence_id_to_index.keys(), (
             f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
         )
