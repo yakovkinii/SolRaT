@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from yatools import logging_config
 
 from src.core.physics.functions import lambda_cm_to_frequency_hz
-from src.two_term_atom.atomic_data.HeI import get_He_I_D3_data
+from src.two_term_atom.atomic_data.HeI import fill_precomputed_He_I_D3_data, get_He_I_D3_data
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
@@ -37,10 +37,11 @@ def main():
         transition_registry=transition_registry,
         atmosphere_parameters=atmosphere_parameters,
         radiation_tensor=radiation_tensor,
-        disable_r_s=True,
-        disable_n=True,
+        disable_r_s=False,
+        disable_n=False,
+        precompute=False,
     )
-
+    fill_precomputed_He_I_D3_data(atom, root="../../")
     atom.add_all_equations()
     rho = atom.get_solution_direct()
     radiative_transfer_coefficients = RadiativeTransferCoefficients(

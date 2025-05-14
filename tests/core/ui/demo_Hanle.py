@@ -96,6 +96,16 @@ logging_config.init(logging.INFO)
 term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
 nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e8)  # Hz
 
+atom = TwoTermAtom(
+    term_registry=term_registry,
+    transition_registry=transition_registry,
+    atmosphere_parameters=...,
+    radiation_tensor=...,
+    # disable_r_s=True,
+    # disable_n=True,
+    precompute=True,
+)
+
 fig, ax = plt.subplots(nrows=4, ncols=1, sharex=True)
 for Bscale in [0, 0.01, 0.03, 0.1, 0.2, 1]:
     logging.info(f"Bscale: {Bscale}")
@@ -107,14 +117,8 @@ for Bscale in [0, 0.01, 0.03, 0.1, 0.2, 1]:
     D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
     J_B = rotate_J(J=radiation_tensor, D=D)
 
-    atom = TwoTermAtom(
-        term_registry=term_registry,
-        transition_registry=transition_registry,
-        atmosphere_parameters=atmosphere_parameters,
-        radiation_tensor=J_B,
-        # disable_r_s=True,
-        # disable_n=True,
-    )
+    atom.radiation_tensor = J_B
+    atom.atmosphere_parameters = atmosphere_parameters
 
     atom.add_all_equations()
     rho = atom.get_solution_direct()
@@ -151,5 +155,5 @@ plotter.show(interactive_update=True)
 plt.tight_layout()
 
 del plotter
-# plt.show()
+plt.show()
 # plotter.close()

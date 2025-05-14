@@ -134,4 +134,5 @@ def rotate_J(J: RadiationTensor, D: WignerD):
                 Q=Q,
                 value=summate(lambda P: J(transition=transition, K=K, Q=P) * D(K=K, P=P, Q=Q), P=PROJECTION(K)),
             )
+    new_J.construct_df()
     return new_J

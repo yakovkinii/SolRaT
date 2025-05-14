@@ -1,12 +1,8 @@
-from functools import lru_cache
-
 import numpy as np
 
 
 def fromto(a, b):
     """Inclusive Range"""
-    # if int(a) == a and int(b) == b:
-    #     return tuple(range(int(a), int(b) + 1))
     return (float(x) for x in np.arange(a, b + 1))
 
 
@@ -36,7 +32,6 @@ def INTERSECTION(*args):
     return f"intersection({', '.join(args)})"
 
 
-# @lru_cache(maxsize=None)
 def projection(a):
     """Range from -a to a (inclusive)"""
     return fromto(-a, a)

@@ -1,11 +1,13 @@
 import logging
+
 import numpy as np
-from numpy import pi
+
 # import vtk  # hack for VTK backend
 from matplotlib import pyplot as plt
-from vedo import Sphere, Arrow, Line, Plotter
-
+from numpy import pi
+from vedo import Arrow, Line, Plotter, Sphere
 from yatools import logging_config
+
 from src.core.physics.rotations import WignerD, rotate_J
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
@@ -20,9 +22,7 @@ logging_config.init(logging.INFO)
 chi_B = 0
 theta_B = pi / 4
 BB = 500
-Bx, By, Bz = [BB * comp for comp in (np.cos(chi_B) * np.sin(theta_B),
-                                      np.sin(chi_B) * np.sin(theta_B),
-                                      np.cos(theta_B))]
+Bx, By, Bz = [BB * comp for comp in (np.cos(chi_B) * np.sin(theta_B), np.sin(chi_B) * np.sin(theta_B), np.cos(theta_B))]
 
 # Observation angles
 chi, theta, gamma = 0, pi / 4, 0
@@ -41,38 +41,37 @@ B_xy = np.array([Bx, By, 0]) / B_norm
 B_z = np.array([0, 0, Bz]) / B_norm
 theta_B = np.arctan2(np.linalg.norm(B_xy), np.linalg.norm(B_z))
 chi_B = np.arctan2(By, Bx)
-omega = np.array([np.cos(chi)*np.sin(theta), np.sin(chi)*np.sin(theta), np.cos(theta)])
+omega = np.array([np.cos(chi) * np.sin(theta), np.sin(chi) * np.sin(theta), np.cos(theta)])
 
 logging.info(f"theta_B: {theta_B}, chi_B: {chi_B}")
 logging.info(f"theta: {theta}, chi: {chi}, gamma: {gamma}")
 
 # Set up Vedo plotter
-plt3d = Plotter(bg='#333377', title='SolRaT')
+plt3d = Plotter(bg="#333377", title="SolRaT")
 
 # Draw volume sphere at B origin
 vol_sphere = Sphere(r=2).pos(*B_origin)
-plt3d.add(vol_sphere.c('white').alpha(1))
+plt3d.add(vol_sphere.c("white").alpha(1))
 
 # Draw Sun as large sphere
 R_sun = 696340 / 1e3  # in same units
-sun = Sphere(r=R_sun, c='#ffbf00').pos(*(origin - np.array([0,0,R_sun])))
+sun = Sphere(r=R_sun, c="#ffbf00").pos(*(origin - np.array([0, 0, R_sun])))
 sun.texture(r"C:\pc\SolRaT\earth.jpg")
 
 plt3d.add(sun.alpha(1))
 
 # Draw magnetic field arrow
 if B_norm > 1e-3:
-    b_arrow = Arrow(start_pt=B_origin, end_pt=B_origin + B*vector_length)
-    plt3d.add(b_arrow.c('#7777ff'))
+    b_arrow = Arrow(start_pt=B_origin, end_pt=B_origin + B * vector_length)
+    plt3d.add(b_arrow.c("#7777ff"))
 
 # Draw omega arrow
-om_arrow = Arrow(start_pt=B_origin, end_pt=B_origin + omega*vector_length)
-plt3d.add(om_arrow.c('white'))
+om_arrow = Arrow(start_pt=B_origin, end_pt=B_origin + omega * vector_length)
+plt3d.add(om_arrow.c("white"))
 
 # Draw line from 2*B_origin to origin
-line = Line(p0=2*B_origin, p1=origin)
-plt3d.add(line.c('white').lw(1))
-
+line = Line(p0=2 * B_origin, p1=origin)
+plt3d.add(line.c("white").lw(1))
 
 
 # ========== Frequency plots using matplotlib ==========
@@ -81,13 +80,14 @@ nu = np.arange(ref_nu - 1e11, ref_nu + 1e11, 1e8)
 
 # Prepare subplots
 fig, axs = plt.subplots(4, 1, sharex=True)
-
+atom = TwoTermAtom(
+    term_registry=term_reg, transition_registry=trans_reg, atmosphere_parameters=..., radiation_tensor=...
+)
 for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
-# for Bscale in [1]:
+    # for Bscale in [1]:
     B_norm_scaled = B_norm * Bscale
     logging.info(f"Bscale: {Bscale}")
-    atm_params = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled,
-                                     delta_v_thermal_cm_sm1=5_000_00)
+    atm_params = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled, delta_v_thermal_cm_sm1=5_000_00)
     rad_tensor = RadiationTensor(transition_registry=trans_reg)
     rad_tensor.fill_NLTE_w(h_arcsec=0.725 * height)
 
@@ -95,31 +95,34 @@ for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
     J_B = rotate_J(J=rad_tensor, D=D)
 
-    atom = TwoTermAtom(term_registry=term_reg,
-                       transition_registry=trans_reg,
-                       atmosphere_parameters=atm_params,
-                       radiation_tensor=J_B)
+    atom.atmosphere_parameters = atm_params
+    atom.radiation_tensor = J_B
     atom.add_all_equations()
     rho = atom.get_solution_direct()
 
-    rtc = RadiativeTransferCoefficients(atmosphere_parameters=atm_params,
-                                        transition_registry=trans_reg,
-                                        nu=nu,
-                                        chi=chi, theta=theta, gamma=gamma,
-                                        chi_B=chi_B, theta_B=theta_B)
+    rtc = RadiativeTransferCoefficients(
+        atmosphere_parameters=atm_params,
+        transition_registry=trans_reg,
+        nu=nu,
+        chi=chi,
+        theta=theta,
+        gamma=gamma,
+        chi_B=chi_B,
+        theta_B=theta_B,
+    )
 
     # Compute stokes
     etas = [rtc.eta_s(rho=rho, stokes_component_index=i) for i in range(4)]
     norm = np.max(np.abs(etas[0]))
 
-    labels = ['I','Q','U','V']
+    labels = ["I", "Q", "U", "V"]
     for i, eta in enumerate(etas):
-        axs[i].plot(nu, eta/norm, label=f"eta^{{{labels[i]}}} B={B_norm_scaled}")
+        axs[i].plot(nu, eta / norm, label=f"eta^{{{labels[i]}}} B={B_norm_scaled}")
 
 for ax in axs:
     ax.set_ylim(-1.05, 1.05)
     ax.grid(True)
-axs[-1].set_xlabel('Frequency (Hz)')
+axs[-1].set_xlabel("Frequency (Hz)")
 axs[0].legend()
 plt.tight_layout()
 

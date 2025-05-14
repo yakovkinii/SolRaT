@@ -1,7 +1,11 @@
+import pandas as pd
+
 from src.core.engine.functions.decorators import log_function
 from src.core.physics.functions import lambda_cm_to_frequency_hz
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+
 
 @log_function
 def get_He_I_D3_data():
@@ -119,3 +123,17 @@ def get_He_I_D3_data():
     reference_lambda_A = 5877.25
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
     return term_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+
+
+def fill_precomputed_He_I_D3_data(
+    atom: TwoTermAtom,
+    root="",
+):
+    directory = root + "src/two_term_atom/atomic_data/HeI_precomputed/"
+    atom.coherence_decay_df = pd.read_parquet(directory + "coherence_decay_df.parquet")
+    atom.absorption_df = pd.read_parquet(directory + "absorption_df.parquet")
+    atom.emission_df_e = pd.read_parquet(directory + "emission_df_e.parquet")
+    atom.emission_df_s = pd.read_parquet(directory + "emission_df_s.parquet")
+    atom.relaxation_df_a = pd.read_parquet(directory + "relaxation_df_a.parquet")
+    atom.relaxation_df_e = pd.read_parquet(directory + "relaxation_df_e.parquet")
+    atom.relaxation_df_s = pd.read_parquet(directory + "relaxation_df_s.parquet")

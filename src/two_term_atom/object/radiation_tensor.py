@@ -1,3 +1,5 @@
+import pandas as pd
+
 from src.core.engine.functions.decorators import log_function_not_tested
 from src.core.engine.functions.general import delta
 from src.core.engine.functions.looping import FROMTO, PROJECTION
@@ -18,6 +20,7 @@ class RadiationTensor(Container):
         """
         super().__init__()
         self.transition_registry = transition_registry
+        self.df: pd.DataFrame = None
 
     def fill_planck(self, T_K: float):
         """
@@ -29,7 +32,7 @@ class RadiationTensor(Container):
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = planck * delta(K, 0) * delta(Q, 0)
-
+        self.construct_df()
         return self
 
     @staticmethod
@@ -67,10 +70,15 @@ class RadiationTensor(Container):
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
+        self.construct_df()
         return self
 
     def __call__(self, transition: Transition, K: int, Q: int) -> float:
         result = self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
+        return result
+
+    def get(self, transition_id: str, K: int, Q: int) -> float:
+        result = self.data[self.get_key(transition_id=transition_id, K=K, Q=Q)]
         return result
 
     def add(self, transition: Transition, K: int, Q: int, value):
@@ -79,3 +87,22 @@ class RadiationTensor(Container):
             self.data[key] += value
         else:
             self.data[key] = value
+
+    def construct_df(self):
+        dfs = []
+        for transition in self.transition_registry.transitions.values():
+            for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
+                key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
+                value = self.data[key]
+                dfs.append(
+                    pd.DataFrame(
+                        {
+                            "transition_id": transition.transition_id,
+                            "K": K,
+                            "Q": Q,
+                            "radiation_tensor": value,
+                        },
+                        index=[0],
+                    )
+                )
+        self.df = pd.concat(dfs, ignore_index=True)
