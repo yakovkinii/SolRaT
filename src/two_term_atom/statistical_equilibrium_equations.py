@@ -30,8 +30,8 @@ class TwoTermAtom:
         self,
         term_registry: TermRegistry,
         transition_registry: TransitionRegistry,
-        atmosphere_parameters: AtmosphereParameters,
-        radiation_tensor: RadiationTensor,
+        # atmosphere_parameters: AtmosphereParameters,
+        # radiation_tensor: RadiationTensor,
         # n_frequencies: int = 1,
         disable_r_s: bool = False,
         disable_n: bool = False,
@@ -43,8 +43,8 @@ class TwoTermAtom:
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
             levels=list(self.term_registry.levels.values()), n_frequencies=n_frequencies
         )
-        self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
-        self.radiation_tensor: RadiationTensor = radiation_tensor
+        # self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
+        # self.radiation_tensor: RadiationTensor = radiation_tensor
         self.disable_r_s = disable_r_s
         self.disable_n = disable_n
 
@@ -113,17 +113,23 @@ class TwoTermAtom:
         self.relaxation_df_s = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_s, value_columns=["r_s_1"])
 
     @log_method
-    def add_all_equations(self):
+    def add_all_equations(
+        self,
+        atmosphere_parameters: AtmosphereParameters,
+        radiation_tensor: RadiationTensor,
+    ):
         """
         Loops through all equations.
 
         Reference: (7.38)
         """
         self.matrix_builder.reset_matrix()
-        self.add_precomputed_coherence_decay(self.coherence_decay_df)
-        self.add_precomputed_absorption(self.absorption_df)
-        self.add_precomputed_emission(self.emission_df_e, self.emission_df_s)
-        self.add_precomputed_relaxation(self.relaxation_df_a, self.relaxation_df_e, self.relaxation_df_s)
+        self.add_precomputed_coherence_decay(self.coherence_decay_df, atmosphere_parameters=atmosphere_parameters)
+        self.add_precomputed_absorption(self.absorption_df, radiation_tensor=radiation_tensor)
+        self.add_precomputed_emission(self.emission_df_e, self.emission_df_s, radiation_tensor=radiation_tensor)
+        self.add_precomputed_relaxation(
+            self.relaxation_df_a, self.relaxation_df_e, self.relaxation_df_s, radiation_tensor=radiation_tensor
+        )
 
     def precompute_coherence_decay(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
         """
@@ -142,12 +148,13 @@ class TwoTermAtom:
             dfs.append(df)
         return dfs
 
-    def add_precomputed_coherence_decay(self, df):
+    @log_method
+    def add_precomputed_coherence_decay(self, df, atmosphere_parameters: AtmosphereParameters):
         """
         N = n_0 + n_1 * nu_larmor
         Reference: (7.38)
         """
-        df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * self.atmosphere_parameters.nu_larmor)
+        df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * atmosphere_parameters.nu_larmor)
         self.matrix_builder.add_coefficient_from_df(df)
 
     def precompute_absorption(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
@@ -176,9 +183,10 @@ class TwoTermAtom:
                 dfs.extend(t_a_dfs)
         return dfs
 
-    def add_precomputed_absorption(self, df):
+    @log_method
+    def add_precomputed_absorption(self, df, radiation_tensor: RadiationTensor):
         df = df.merge(
-            self.radiation_tensor.df.rename(
+            radiation_tensor.df.rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -226,11 +234,12 @@ class TwoTermAtom:
                 dfs_s.extend(t_s_dfs)
         return dfs_e, dfs_s
 
-    def add_precomputed_emission(self, df_e, df_s):
+    @log_method
+    def add_precomputed_emission(self, df_e, df_s, radiation_tensor: RadiationTensor):
         self.matrix_builder.add_coefficient_from_df(df_e)
 
         df_s = df_s.merge(
-            self.radiation_tensor.df.rename(
+            radiation_tensor.df.rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -272,9 +281,10 @@ class TwoTermAtom:
 
         return dfs_a, dfs_e, dfs_s
 
-    def add_precomputed_relaxation(self, df_a, df_e, df_s):
+    @log_method
+    def add_precomputed_relaxation(self, df_a, df_e, df_s, radiation_tensor):
         df_a = df_a.merge(
-            self.radiation_tensor.df.rename(
+            radiation_tensor.df.rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -286,7 +296,7 @@ class TwoTermAtom:
         self.matrix_builder.add_coefficient_from_df(df_e)
 
         df_s = df_s.merge(
-            self.radiation_tensor.df.rename(
+            radiation_tensor.df.rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",

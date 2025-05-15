@@ -46,7 +46,7 @@ def log_method(method):
             LOGGING_LEVEL,
             source_file,
             line_number,
-            ident + f"{class_name}.{method.__name__} finished in {end_time - start_time:.4f}s",
+            ident + f"{end_time - start_time:.4f}s",
             {},
             None,
             "",
