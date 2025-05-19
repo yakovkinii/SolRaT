@@ -7,7 +7,7 @@ from yatools import logging_config
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
+from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients, Angles
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
 
 
@@ -31,32 +31,42 @@ def main():
     atom = TwoTermAtom(
         term_registry=term_registry,
         transition_registry=transition_registry,
-        atmosphere_parameters=atmosphere_parameters,
-        radiation_tensor=radiation_tensor,
+        # atmosphere_parameters=atmosphere_parameters,
+        # radiation_tensor=radiation_tensor,
         disable_r_s=True,
         disable_n=True,
     )
 
-    atom.add_all_equations()
+    atom.add_all_equations(
+        atmosphere_parameters=atmosphere_parameters,
+        radiation_tensor=radiation_tensor,
+    )
     rho = atom.get_solution_direct()
 
     radiative_transfer_coefficients = RadiativeTransferCoefficients(
-        atmosphere_parameters=atmosphere_parameters,
+        term_registry=term_registry,
+        # atmosphere_parameters=atmosphere_parameters,
         transition_registry=transition_registry,
         nu=nu,
-        theta=np.pi / 8,
-        gamma=np.pi / 8,
-        chi=np.pi / 8,
+        # theta=np.pi / 8,
+        # gamma=np.pi / 8,
+        # chi=np.pi / 8,
     )
-
-    eta_sI = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=0)
-    eta_sI_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=0)
-    eta_sQ = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=1)
-    eta_sQ_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=1)
-    eta_sU = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=2)
-    eta_sU_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=2)
-    eta_sV = radiative_transfer_coefficients.eta_s(rho=rho, stokes_component_index=3)
-    eta_sV_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=3)
+    angles = Angles(
+        chi=np.pi / 7,
+        theta=np.pi/7,
+        gamma=np.pi/7,
+        chi_B=np.pi/5,
+        theta_B=np.pi/5,
+    )
+    eta_sI, eta_sQ, eta_sU, eta_sV = radiative_transfer_coefficients.eta_rho_s(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sI_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    # eta_sQ = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=1)
+    eta_sQ_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    # eta_sU = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=2)
+    eta_sU_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    # eta_sV = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=3)
+    eta_sV_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles)
 
     plt.plot(nu, eta_sI, "g-", label=r"$\eta_s^I$")
     plt.plot(nu, eta_sI_analytic, "k:", linewidth=2, label=r"$\eta_s^I$ (analytical solution)")

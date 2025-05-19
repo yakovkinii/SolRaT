@@ -57,6 +57,9 @@ class TwoTermAtom:
         self.relaxation_df_s = None
         if precompute:
             self.precompute_all_equations()
+        else:
+            assert not disable_n
+            assert not disable_r_s
 
     def concat_and_finalize_precomputed_dfs(self, dfs: List[pd.DataFrame], value_columns: List[str]) -> pd.DataFrame:
         assert len(dfs) > 0, "Empty precomputed of dataframe"
@@ -138,8 +141,8 @@ class TwoTermAtom:
         """
         dfs = []
         for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
-            Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S), TRIANGULAR(J, 1)),
-            Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S), TRIANGULAR(Jʹ, 1)),
+            Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
+            Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
             Kʹ=INTERSECTION(TRIANGULAR(K, 1), TRIANGULAR("Jʹʹ", "Jʹʹʹ")),
             Qʹ=INTERSECTION(PROJECTION("Kʹ"), VALUE(Q)),
         ):

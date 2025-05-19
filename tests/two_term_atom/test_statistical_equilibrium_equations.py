@@ -52,12 +52,14 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         atom = TwoTermAtom(
             term_registry=term_registry,
             transition_registry=transition_registry,
-            atmosphere_parameters=atmosphere_parameters,
-            radiation_tensor=radiation_tensor,
+
             disable_r_s=True,
         )
 
-        atom.add_all_equations()
+        atom.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor=radiation_tensor,
+        )
         solution = atom.get_solution_direct()
 
         # Analytic:

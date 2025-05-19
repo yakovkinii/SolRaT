@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 from numpy import real
+from tqdm import tqdm
 from yatools import logging_config
 
 from src.core.physics.functions import lambda_cm_to_frequency_hz
@@ -29,7 +30,7 @@ def main():
     term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_He_I_D3_data()
 
     # Calculation needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda_A - 2, reference_lambda_A + 2, 1e-3)
+    lambda_A = np.arange(reference_lambda_A - 2, reference_lambda_A + 2, 5e-3)
     nu = lambda_cm_to_frequency_hz(lambda_A * 1e-8)
 
     # Set up the atom (i.e. the statistical equilibrium equations).
@@ -38,10 +39,11 @@ def main():
         term_registry=term_registry,
         transition_registry=transition_registry,
         precompute=False,
+        # disable_r_s=True,
+        # disable_n=True,
     )
     fill_precomputed_He_I_D3_data(atom, root="../../")
 
-    # Set up RTE
     # angles input is optional. But since we know the angles beforehand,
     # it will pre-compute the coefficients for the angles, significantly speeding things up
     radiative_transfer_coefficients = RadiativeTransferCoefficients(
@@ -60,13 +62,14 @@ def main():
     )
 
     # Fill the radiation tensor with anisotropic radiation field 30 arcsec away from the Sun
-    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=30)
+    # radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=30)
+    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_planck(5000)
 
     # Set up the plotter
-    plotter = StokesPlotterTwoPanel(title=rf"He I D3: $\eta_s$ vs $\Delta\lambda$.")
+    plotter = StokesPlotterTwoPanel(title=rf"He I D3: Emission coefficient vs wavelength.")
 
     # loop through the magnetic field values
-    for Bz in [20000, 40000, 60000, 80000, 100000]:
+    for Bz in tqdm([20000, 40000, 60000, 80000, 100000]):
         # Set up the atmosphere parameters
         atmosphere_parameters = AtmosphereParameters(
             magnetic_field_gauss=Bz,
