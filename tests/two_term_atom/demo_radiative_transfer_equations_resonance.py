@@ -6,10 +6,10 @@ from yatools import logging_config
 
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.legacy.radiative_transfer_equations_legacy import TwoTermAtomRTELegacy
+from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.radiative_transfer_equations import TwoTermAtomRTE
-from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 
 
@@ -39,7 +39,7 @@ def main():
 
     see.add_all_equations(
         atmosphere_parameters=atmosphere_parameters,
-        radiation_tensor=radiation_tensor,
+        radiation_tensor_in_magnetic_frame=radiation_tensor,
     )
     rho = see.get_solution_direct()
 
@@ -54,16 +54,24 @@ def main():
     )
     angles = Angles(
         chi=np.pi / 7,
-        theta=np.pi/7,
-        gamma=np.pi/7,
-        chi_B=np.pi/5,
-        theta_B=np.pi/5,
+        theta=np.pi / 7,
+        gamma=np.pi / 7,
+        chi_B=np.pi / 5,
+        theta_B=np.pi / 5,
     )
     eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sI_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sQ_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sU_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sV_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sI_analytic = rte_legacy.eta_s_no_field(
+        rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles
+    )
+    eta_sQ_analytic = rte_legacy.eta_s_no_field(
+        rho=rho, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles
+    )
+    eta_sU_analytic = rte_legacy.eta_s_no_field(
+        rho=rho, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles
+    )
+    eta_sV_analytic = rte_legacy.eta_s_no_field(
+        rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles
+    )
 
     plt.plot(nu, eta_sI, "g-", label=r"$\eta_s^I$")
     plt.plot(nu, eta_sI_analytic, "k:", linewidth=2, label=r"$\eta_s^I$ (analytical solution)")

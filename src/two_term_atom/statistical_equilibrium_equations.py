@@ -119,7 +119,7 @@ class TwoTermAtomSEE:
     def add_all_equations(
         self,
         atmosphere_parameters: AtmosphereParameters,
-        radiation_tensor: RadiationTensor,
+        radiation_tensor_in_magnetic_frame: RadiationTensor,
     ):
         """
         Loops through all equations.
@@ -128,10 +128,17 @@ class TwoTermAtomSEE:
         """
         self.matrix_builder.reset_matrix()
         self.add_precomputed_coherence_decay(self.coherence_decay_df, atmosphere_parameters=atmosphere_parameters)
-        self.add_precomputed_absorption(self.absorption_df, radiation_tensor=radiation_tensor)
-        self.add_precomputed_emission(self.emission_df_e, self.emission_df_s, radiation_tensor=radiation_tensor)
+        self.add_precomputed_absorption(self.absorption_df, radiation_tensor=radiation_tensor_in_magnetic_frame)
+        self.add_precomputed_emission(
+            self.emission_df_e,
+            self.emission_df_s,
+            radiation_tensor=radiation_tensor_in_magnetic_frame,
+        )
         self.add_precomputed_relaxation(
-            self.relaxation_df_a, self.relaxation_df_e, self.relaxation_df_s, radiation_tensor=radiation_tensor
+            self.relaxation_df_a,
+            self.relaxation_df_e,
+            self.relaxation_df_s,
+            radiation_tensor=radiation_tensor_in_magnetic_frame,
         )
 
     def precompute_coherence_decay(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
@@ -322,7 +329,7 @@ class TwoTermAtomSEE:
             Lu = level_upper.L
 
             for Kr, Qr in nested_loops(
-                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)),
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ), TRIANGULAR(L, L)),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
             ):
                 r_a_1 = multiply(
@@ -415,7 +422,8 @@ class TwoTermAtomSEE:
             transition = self.transition_registry.get_transition(level_upper=level, level_lower=level_lower)
             Ll = level_lower.L
             for Kr, Qr in nested_loops(
-                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ)), Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q))
+                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ), TRIANGULAR(L, L)),
+                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
             ):
                 r_s_1 = multiply(
                     lambda: n_proj(L) * transition.einstein_b_ul,

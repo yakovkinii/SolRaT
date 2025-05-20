@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 import numpy as np
 from numpy import real
@@ -7,10 +8,10 @@ from yatools import logging_config
 from src.core.physics.functions import lambda_cm_to_frequency_hz
 from src.core.ui.plots.plot_stokes_profiles import StokesPlotter_IV
 from src.two_term_atom.atomic_data.HeI import fill_precomputed_He_I_D3_data, get_He_I_D3_data
+from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.radiative_transfer_equations import TwoTermAtomRTE
-from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 
 
@@ -39,7 +40,7 @@ def main():
         transition_registry=transition_registry,
         precompute=False,
     )
-    fill_precomputed_He_I_D3_data(see, root="../../")
+    fill_precomputed_He_I_D3_data(see, root=Path(__file__).resolve().parent.parent.parent.as_posix())
 
     # Set up the radiative transfer equations
     # Angles input is optional. But since we know the angles in advance,
@@ -75,7 +76,9 @@ def main():
         )
 
         # Construct all equations for rho
-        see.add_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor=radiation_tensor)
+        see.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+        )
 
         # Solve all equations for rho
         rho = see.get_solution_direct()

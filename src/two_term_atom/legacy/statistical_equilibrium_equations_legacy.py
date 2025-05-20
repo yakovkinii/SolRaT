@@ -43,7 +43,9 @@ class TwoTermAtomSEELegacy:
         self.disable_r_s = disable_r_s
         self.disable_n = disable_n
 
-    def add_all_equations(self, atmosphere_parameters: AtmosphereParameters, radiation_tensor: RadiationTensor):
+    def add_all_equations(
+        self, atmosphere_parameters: AtmosphereParameters, radiation_tensor_in_magnetic_frame: RadiationTensor
+    ):
         """
         Loops through all equations.
         Reference: (7.38)
@@ -72,7 +74,7 @@ class TwoTermAtomSEELegacy:
                     Q=Q,
                     J=J,
                     Jʹ=Jʹ,
-                    radiation_tensor=radiation_tensor,
+                    radiation_tensor=radiation_tensor_in_magnetic_frame,
                 )
                 self.add_emission(
                     level=level,
@@ -80,7 +82,7 @@ class TwoTermAtomSEELegacy:
                     Q=Q,
                     J=J,
                     Jʹ=Jʹ,
-                    radiation_tensor=radiation_tensor,
+                    radiation_tensor=radiation_tensor_in_magnetic_frame,
                 )
                 self.add_relaxation(
                     level=level,
@@ -88,7 +90,7 @@ class TwoTermAtomSEELegacy:
                     Q=Q,
                     J=J,
                     Jʹ=Jʹ,
-                    radiation_tensor=radiation_tensor,
+                    radiation_tensor=radiation_tensor_in_magnetic_frame,
                 )
 
     def add_coherence_decay(

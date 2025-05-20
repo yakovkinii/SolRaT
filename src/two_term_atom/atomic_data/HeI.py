@@ -129,7 +129,7 @@ def fill_precomputed_He_I_D3_data(
     atom: TwoTermAtomSEE,
     root="",
 ):
-    directory = root + "src/two_term_atom/atomic_data/HeI_precomputed/"
+    directory = root + "/src/two_term_atom/atomic_data/HeI_precomputed/"
     atom.coherence_decay_df = pd.read_parquet(directory + "coherence_decay_df.parquet")
     atom.absorption_df = pd.read_parquet(directory + "absorption_df.parquet")
     atom.emission_df_e = pd.read_parquet(directory + "emission_df_e.parquet")

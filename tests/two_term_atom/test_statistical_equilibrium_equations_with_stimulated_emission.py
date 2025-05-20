@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.core.engine.functions.looping import TRIANGULAR, PROJECTION
+from src.core.engine.functions.looping import PROJECTION, TRIANGULAR
 from src.core.engine.generators.nested_loops import nested_loops
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.legacy.statistical_equilibrium_equations_legacy import TwoTermAtomSEELegacy
@@ -40,8 +40,14 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             disable_n=False,
         )
 
-        see_legacy.add_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor=radiation_tensor)
-        see.add_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor=radiation_tensor)
+        see_legacy.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor_in_magnetic_frame=radiation_tensor,
+        )
+        see.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor_in_magnetic_frame=radiation_tensor,
+        )
 
         rho_legacy = see_legacy.get_solution_direct()
         rho = see.get_solution_direct()

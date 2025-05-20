@@ -54,10 +54,7 @@ def multiply(*args, is_complex=False):
 
     result = np.array([1.0], dtype=np.float64) if not is_complex else np.array([1.0], dtype=np.complex128)
     for arg in args:
-        if callable(arg):
-            value = arg()
-        else:
-            value = arg
+        value = arg()
 
         if not isinstance(value, np.ndarray):  # Short circuit only scalars for now
             if value == 0:

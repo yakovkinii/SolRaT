@@ -21,8 +21,9 @@ def _w3j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_dou
     ( J1 J2 J3 )
     ( M1 M2 M3 )
     """
-    if m1_doubled + m2_doubled + m3_doubled != 0:
-        return 0.0
+
+    assert m1_doubled + m2_doubled + m3_doubled == 0, "M1 + M2 + M3 != 0."
+
     if (abs(m1_doubled) > j1_doubled) or (abs(m2_doubled) > j2_doubled) or (abs(m3_doubled) > j3_doubled):
         return 0.0
     a = j1_doubled + j2_doubled
@@ -34,8 +35,11 @@ def _w3j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_dou
     j_sum = j3_doubled + a
     c = j1_doubled - m1_doubled
     d = j2_doubled - m2_doubled
-    if (j_sum % 2 != 0) or (c % 2 != 0) or (d % 2 != 0):
-        return 0.0
+
+    assert j_sum % 2 == 0, "J1 + J2 + J3 != even."
+    assert c % 2 == 0, "J1 - M1 != even."
+    assert d % 2 == 0, "J2 - M2 != even."
+
     e = j3_doubled - j2_doubled + m1_doubled
     f = j3_doubled - j1_doubled - m2_doubled
     z_min = max(0, -e, -f)
@@ -89,8 +93,11 @@ def _w6j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_dou
     h = l1_doubled - l2_doubled
 
     if (a < j3_doubled) or (c < l3_doubled) or (e < l3_doubled) or (g < j3_doubled):
+        # logging.warning("Performance warning: J1 + J2 < J3 or L1 + L2 < L3 or L1 + J2 < L3 or L1 + L2 < J3")
         return 0.0
+
     if (abs(b) > j3_doubled) or (abs(d) > l3_doubled) or (abs(f) > l3_doubled) or (abs(h) > j3_doubled):
+        # logging.warning("Performance warning: J1 - J2 > J3 or J1 - L2 > L3 or L1 - J2 > L3 or L1 - L2 > J3")
         return 0.0
 
     sum_1 = a + j3_doubled
@@ -98,8 +105,9 @@ def _w6j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, l1_doubled, l2_dou
     sum_3 = e + l3_doubled
     sum_4 = g + j3_doubled
 
-    if (sum_1 % 2 != 0) or (sum_2 % 2 != 0) or (sum_3 % 2 != 0) or (sum_4 % 2 != 0):
-        return 0.0
+    assert sum_1 % 2 == 0, "J1 + J2 + J3 != even."
+    assert sum_2 % 2 == 0, "J1 + L2 + L3 != even."
+    assert sum_3 % 2 == 0, "L1 + J2 + L3 != even."
 
     w_min = max(sum_1, sum_2, sum_3, sum_4)
     i = a + g

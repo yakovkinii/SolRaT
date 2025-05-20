@@ -12,6 +12,7 @@ from src.core.physics.functions import energy_cmm1_to_frequency_hz
 from src.core.physics.rotations import T_K_Q_double_rotation, WignerD
 from src.core.physics.voigt_profile import voigt
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
+from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.rho_matrix_builder import Rho
 from src.two_term_atom.physics.paschen_back import calculate_paschen_back
@@ -65,7 +66,7 @@ class TwoTermAtomRTELegacy:
         cutoff = (
             self.maximum_delta_v_thermal_units_cutoff * nui * atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         )
-        if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
+        if min(nu) > nui + cutoff or max(nu) < nui - cutoff:  # pragma: no cover
             return True
         return False
 
@@ -74,18 +75,14 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.47a)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -97,7 +94,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -171,18 +168,14 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.47b)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -194,7 +187,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -205,9 +198,6 @@ class TwoTermAtomRTELegacy:
 
             Ll = level_lower.L
             Lu = level_upper.L
-            if abs(Lu - Ll) > 1:
-                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
-                continue
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
@@ -279,18 +269,14 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.47a)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -302,7 +288,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -382,18 +368,15 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.47b)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -404,7 +387,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -415,9 +398,6 @@ class TwoTermAtomRTELegacy:
 
             Ll = level_lower.L
             Lu = level_upper.L
-            if abs(Lu - Ll) > 1:
-                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
-                continue
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
@@ -496,18 +476,14 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         eta_a = real(eta_rho_a)
         rho_a = imag(eta_rho_a)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -519,7 +495,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -591,18 +567,14 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         eta_s = real(eta_rho_s)
         rho_s = imag(eta_rho_s)
         """
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -614,7 +586,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -625,9 +597,6 @@ class TwoTermAtomRTELegacy:
 
             Ll = level_lower.L
             Lu = level_upper.L
-            if abs(Lu - Ll) > 1:
-                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
-                continue
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
@@ -695,19 +664,15 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.48a)
         """
         assert atmosphere_parameters.magnetic_field_gauss == 0
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -719,7 +684,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -766,11 +731,7 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         No magnetic field, no fine structure splitting.
@@ -778,8 +739,9 @@ class TwoTermAtomRTELegacy:
         (7.48d)
         """
         assert atmosphere_parameters.magnetic_field_gauss == 0
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -790,7 +752,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -801,9 +763,6 @@ class TwoTermAtomRTELegacy:
 
             Ll = level_lower.L
             Lu = level_upper.L
-            if abs(Lu - Ll) > 1:
-                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
-                continue
 
             S = level_lower.S
 
@@ -842,19 +801,15 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         Reference:
         (7.48a)
         """
         assert atmosphere_parameters.magnetic_field_gauss == 0
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -866,7 +821,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -913,11 +868,7 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         No magnetic field, no fine structure splitting.
@@ -925,8 +876,8 @@ class TwoTermAtomRTELegacy:
         (7.48d)
         """
         assert atmosphere_parameters.magnetic_field_gauss == 0
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
@@ -938,7 +889,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -949,9 +900,6 @@ class TwoTermAtomRTELegacy:
 
             Ll = level_lower.L
             Lu = level_upper.L
-            if abs(Lu - Ll) > 1:
-                logging.info(f"Cutting off the transition because |Lu-Ll| > 1")
-                continue
 
             S = level_lower.S
 
@@ -990,11 +938,7 @@ class TwoTermAtomRTELegacy:
         rho: Rho,
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
+        angles: Angles,
     ):
         """
         No magnetic field.
@@ -1002,8 +946,9 @@ class TwoTermAtomRTELegacy:
         (10.127)
         """
         assert atmosphere_parameters.magnetic_field_gauss == 0
-        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -1015,7 +960,7 @@ class TwoTermAtomRTELegacy:
                 level_lower=level_lower,
                 nu=self.nu,
                 atmosphere_parameters=atmosphere_parameters,
-            ):
+            ):  # pragma: no cover
                 logging.info(f"Cutting off the transition because it is out of frequency range")
                 continue
 

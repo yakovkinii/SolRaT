@@ -1,12 +1,16 @@
+from typing import Union
+
 import pandas as pd
 
 from src.core.engine.functions.decorators import log_function_not_tested
 from src.core.engine.functions.general import delta
 from src.core.engine.functions.looping import FROMTO, PROJECTION
 from src.core.engine.generators.nested_loops import nested_loops
+from src.core.engine.generators.summate import summate
 from src.core.engine.objects.container import Container
 from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt2
 from src.core.physics.functions import frequency_hz_to_lambda_A, get_planck_BP
+from src.core.physics.rotations import WignerD
 from src.two_term_atom.terms_levels_transitions.transition_registry import Transition, TransitionRegistry
 
 
@@ -20,12 +24,13 @@ class RadiationTensor(Container):
         """
         super().__init__()
         self.transition_registry = transition_registry
-        self.df: pd.DataFrame = None
+        self.df: Union[pd.DataFrame, None] = None
 
     def fill_planck(self, T_K: float):
         """
         Flat-spectrum approximation, i.e. J needs to be defined for each transition, not for each frequency.
         """
+        assert self.df is None, "Cannot modify radiation tensor after it has been constructed"
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
             planck = get_planck_BP(nu_sm1=nu_ul, T_K=T_K)
@@ -60,6 +65,7 @@ class RadiationTensor(Container):
         (19) in A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
         1'' = 725 km
         """
+        assert self.df is None, "Cannot modify radiation tensor after it has been constructed"
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
             lambda_ul_A = frequency_hz_to_lambda_A(nu_ul)
@@ -77,16 +83,9 @@ class RadiationTensor(Container):
         result = self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
         return result
 
-    def get(self, transition_id: str, K: int, Q: int) -> float:
-        result = self.data[self.get_key(transition_id=transition_id, K=K, Q=Q)]
-        return result
-
-    def add(self, transition: Transition, K: int, Q: int, value):
+    def set(self, transition: Transition, K: int, Q: int, value):
         key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
-        if key in self.data:
-            self.data[key] += value
-        else:
-            self.data[key] = value
+        self.data[key] = value
 
     def construct_df(self):
         dfs = []
@@ -106,3 +105,28 @@ class RadiationTensor(Container):
                     )
                 )
         self.df = pd.concat(dfs, ignore_index=True)
+
+    def rotate(self, D: WignerD):
+        """
+        (2.78), or more precisely, equation above (2.80)
+        And also using the fact that J has K <= 2 for electric dipole transitions
+        """
+
+        new_J = RadiationTensor(transition_registry=self.transition_registry)
+        for transition in self.transition_registry.transitions.values():
+            for K, Q in nested_loops(
+                K=FROMTO(0, 2),
+                Q=PROJECTION("K"),
+            ):
+                new_J.set(
+                    transition=transition,
+                    K=K,
+                    Q=Q,
+                    value=summate(lambda P: self(transition=transition, K=K, Q=P) * D(K=K, P=P, Q=Q), P=PROJECTION(K)),
+                )
+        new_J.construct_df()
+        return new_J
+
+    def rotate_to_magnetic_frame(self, chi_B, theta_B):
+        D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+        return self.rotate(D=D)

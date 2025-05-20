@@ -17,11 +17,28 @@ from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 class TestRadiativeTransferEquations(unittest.TestCase):
     def test_radiative_transfer_equations(self):
         logging_config.init(logging.INFO)
-        term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data(fine_structure=False)
+        term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data(
+            fine_structure=False
+        )
         nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e9)  # Hz
 
+        angles = Angles(
+            chi=np.pi / 5,
+            theta=np.pi / 7,
+            gamma=np.pi / 9,
+            chi_B=np.pi / 3,
+            theta_B=np.pi / 5,
+        )
+
         atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=5_000_00)
-        radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_planck(T_K=5000)
+        radiation_tensor = (
+            RadiationTensor(transition_registry=transition_registry)
+            .fill_planck(T_K=5000)
+            .rotate_to_magnetic_frame(
+                chi_B=angles.chi_B,
+                theta_B=angles.theta_B,
+            )
+        )
 
         see_legacy = TwoTermAtomSEELegacy(
             term_registry=term_registry,
@@ -36,8 +53,12 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             disable_n=True,
         )
 
-        see_legacy.add_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor=radiation_tensor)
-        see.add_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor=radiation_tensor)
+        see_legacy.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+        )
+        see.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+        )
         rho_legacy = see_legacy.get_solution_direct()
         rho = see.get_solution_direct()
 
@@ -54,104 +75,94 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
-            angles=Angles(
-                chi=np.pi / 5,
-                theta=np.pi / 7,
-                gamma=np.pi / 9,
-                chi_B=np.pi / 3,
-                theta_B=np.pi / 5,
-            ),
+            angles=angles,
         )
 
         eta_sI_legacy = rte_legacy.eta_rho_s(
             rho=rho_legacy,
             stokes_component_index=0,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
         eta_sI_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=0,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
+        )
+        rho_sI_analytic = rte_legacy.rho_s_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=0,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
         )
         scale = np.max(np.abs(eta_sI_analytic))
-        assert np.allclose(eta_sI/scale, eta_sI_legacy/scale, atol=1e-10, rtol=1e-10)
-        assert np.allclose(np.real(eta_sI)/scale, eta_sI_analytic/scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(eta_sI / scale, eta_sI_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_sI) / scale, eta_sI_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_sI) / scale, rho_sI_analytic / scale, atol=1e-10, rtol=1e-10)
 
         eta_sQ_legacy = rte_legacy.eta_rho_s(
             rho=rho_legacy,
             stokes_component_index=1,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
         eta_sQ_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=1,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
-        assert np.allclose(eta_sQ/scale, eta_sQ_legacy/scale, atol=1e-10, rtol=1e-10)
-        assert np.allclose(np.real(eta_sQ)/scale, eta_sQ_analytic/scale, atol=1e-10, rtol=1e-10)
+        rho_sQ_analytic = rte_legacy.rho_s_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=1,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_sQ / scale, eta_sQ_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_sQ) / scale, eta_sQ_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_sQ) / scale, rho_sQ_analytic / scale, atol=1e-10, rtol=1e-10)
 
         eta_sU_legacy = rte_legacy.eta_rho_s(
             rho=rho_legacy,
             stokes_component_index=2,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
         eta_sU_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=2,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
-        assert np.allclose(eta_sU/scale, eta_sU_legacy/scale, atol=1e-10, rtol=1e-10)
-        assert np.allclose(np.real(eta_sU)/scale, eta_sU_analytic/scale, atol=1e-10, rtol=1e-10)
+        rho_sU_analytic = rte_legacy.rho_s_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=2,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_sU / scale, eta_sU_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_sU) / scale, eta_sU_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_sU) / scale, rho_sU_analytic / scale, atol=1e-10, rtol=1e-10)
 
         eta_sV_legacy = rte_legacy.eta_rho_s(
             rho=rho_legacy,
             stokes_component_index=3,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
         eta_sV_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=3,
             atmosphere_parameters=atmosphere_parameters,
-            chi=np.pi / 5,
-            theta=np.pi / 7,
-            gamma=np.pi / 9,
-            chi_B=np.pi / 3,
-            theta_B=np.pi / 5,
+            angles=angles,
         )
-        assert np.allclose(eta_sV/scale, eta_sV_legacy/scale, atol=1e-10, rtol=1e-10)
-        assert np.allclose(np.real(eta_sV)/scale, eta_sV_analytic/scale, atol=1e-10, rtol=1e-10)
+        rho_sV_analytic = rte_legacy.rho_s_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=3,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_sV / scale, eta_sV_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_sV) / scale, eta_sV_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_sV) / scale, rho_sV_analytic / scale, atol=1e-10, rtol=1e-10)

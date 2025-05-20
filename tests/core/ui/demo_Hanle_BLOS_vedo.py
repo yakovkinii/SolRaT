@@ -81,19 +81,18 @@ nu = np.arange(ref_nu - 1e11, ref_nu + 1e11, 1e8)
 
 # Prepare subplots
 fig, axs = plt.subplots(4, 1, sharex=True)
-see = TwoTermAtomSEE(
-    term_registry=term_reg, transition_registry=trans_reg
-)
+see = TwoTermAtomSEE(term_registry=term_reg, transition_registry=trans_reg)
 rte = TwoTermAtomRTE(
     term_registry=term_reg,
     transition_registry=trans_reg,
     nu=nu,
     angles=Angles(
-    chi=chi,
-    theta=theta,
-    gamma=gamma,
-    chi_B=chi_B,
-    theta_B=theta_B,)
+        chi=chi,
+        theta=theta,
+        gamma=gamma,
+        chi_B=chi_B,
+        theta_B=theta_B,
+    ),
 )
 
 rad_tensor = RadiationTensor(transition_registry=trans_reg)
@@ -107,7 +106,7 @@ for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     B_norm_scaled = B_norm * Bscale
     atm_params = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled, delta_v_thermal_cm_sm1=5_000_00)
 
-    see.add_all_equations(atmosphere_parameters=atm_params, radiation_tensor=rad_tensor)
+    see.add_all_equations(atmosphere_parameters=atm_params, radiation_tensor_in_magnetic_frame=rad_tensor)
     rho = see.get_solution_direct()
 
     # Compute stokes

@@ -503,3 +503,11 @@ class TwoTermAtomRTE:
         if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
             return True
         return False
+
+    @staticmethod
+    def epsilon(eta_s: np.ndarray, nu: np.ndarray):
+        """
+        Reference:
+        (7.47e)
+        """
+        return 2 * h_erg_s * nu**3 / c_cm_sm1**2 * np.real(eta_s)
