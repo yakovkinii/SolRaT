@@ -84,4 +84,4 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
 
         # Check that the result did not change from previous runs
-        assert pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV) == 3.256320699849048e-51
+        assert pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV) == 2.313240321824078e-16

@@ -2,7 +2,6 @@ from typing import Union
 
 import pandas as pd
 
-from src.core.engine.functions.decorators import log_function_not_tested
 from src.core.engine.functions.general import delta
 from src.core.engine.functions.looping import FROMTO, PROJECTION
 from src.core.engine.generators.nested_loops import nested_loops
@@ -41,22 +40,22 @@ class RadiationTensor(Container):
         return self
 
     @staticmethod
-    @log_function_not_tested
     def n_fit(lambda_A):
         """
         Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
         """
-        return 1e-25 * lambda_A**5.83
+        assert lambda_A >= 2750, "n_fit is only valid for lambda_A >= 2750"
+        assert lambda_A <= 12000, "n_fit is not tested for lambda_A >= 12000"
+        return 3e-10 * (lambda_A - 2500) ** 2.1
 
     @staticmethod
-    @log_function_not_tested
     def w_fit(lambda_A, h_arcsec):
         """
         Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
         """
-        w0 = 0.19 + 0.0035 * h_arcsec
-        alpha = 0.90 - 0.013 * h_arcsec
-        return w0 * (lambda_A / 4000.0) ** (-alpha)
+        assert lambda_A >= 3800, "w_fit is only valid for lambda_A >= 3800"
+        assert lambda_A <= 12000, "w_fit is not tested for lambda_A >= 12000"
+        return 0.02 + h_arcsec**0.6 * 0.0175 + 4e2 / (lambda_A - 1600 + h_arcsec * 20)
 
     def fill_NLTE_n_w_parametrized(self, h_arcsec):
         """
@@ -70,7 +69,7 @@ class RadiationTensor(Container):
             nu_ul = transition.get_mean_transition_frequency_sm1()
             lambda_ul_A = frequency_hz_to_lambda_A(nu_ul)
 
-            J00 = self.n_fit(h_arcsec) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+            J00 = self.n_fit(lambda_ul_A) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
             J20 = J00 * self.w_fit(lambda_ul_A, h_arcsec) / sqrt2
 
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
