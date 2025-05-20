@@ -53,7 +53,7 @@ class RadiationTensor(Container):
         alpha = 0.90 - 0.013 * h_arcsec
         return w0 * (lambda_A / 4000.0) ** (-alpha)
 
-    def fill_NLTE_w(self, h_arcsec):
+    def fill_NLTE_n_w_parametrized(self, h_arcsec):
         """
         Reference: (12.1)
         Assume flat spectrum.

@@ -5,10 +5,12 @@ from matplotlib import pyplot as plt
 from yatools import logging_config
 
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
+from src.two_term_atom.legacy.radiative_transfer_equations_legacy import TwoTermAtomRTELegacy
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients, Angles
-from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
+from src.two_term_atom.radiative_transfer_equations import TwoTermAtomRTE
+from src.two_term_atom.object.angles import Angles
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 
 
 def main():
@@ -26,31 +28,29 @@ def main():
     nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e8)  # Hz
 
     atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=5_000_00)
-    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=30)
+    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(h_arcsec=30)
 
-    atom = TwoTermAtom(
+    see = TwoTermAtomSEE(
         term_registry=term_registry,
         transition_registry=transition_registry,
-        # atmosphere_parameters=atmosphere_parameters,
-        # radiation_tensor=radiation_tensor,
         disable_r_s=True,
         disable_n=True,
     )
 
-    atom.add_all_equations(
+    see.add_all_equations(
         atmosphere_parameters=atmosphere_parameters,
         radiation_tensor=radiation_tensor,
     )
-    rho = atom.get_solution_direct()
+    rho = see.get_solution_direct()
 
-    radiative_transfer_coefficients = RadiativeTransferCoefficients(
-        term_registry=term_registry,
-        # atmosphere_parameters=atmosphere_parameters,
+    rte_legacy = TwoTermAtomRTELegacy(
         transition_registry=transition_registry,
         nu=nu,
-        # theta=np.pi / 8,
-        # gamma=np.pi / 8,
-        # chi=np.pi / 8,
+    )
+    rte = TwoTermAtomRTE(
+        term_registry=term_registry,
+        transition_registry=transition_registry,
+        nu=nu,
     )
     angles = Angles(
         chi=np.pi / 7,
@@ -59,14 +59,11 @@ def main():
         chi_B=np.pi/5,
         theta_B=np.pi/5,
     )
-    eta_sI, eta_sQ, eta_sU, eta_sV = radiative_transfer_coefficients.eta_rho_s(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sI_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    # eta_sQ = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=1)
-    eta_sQ_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    # eta_sU = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=2)
-    eta_sU_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    # eta_sV = radiative_transfer_coefficients.eta_rho_s(rho=rho, stokes_component_index=3)
-    eta_sV_analytic = radiative_transfer_coefficients.eta_s_no_field(rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sI_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sQ_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sU_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles)
+    eta_sV_analytic = rte.eta_s_no_field(rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles)
 
     plt.plot(nu, eta_sI, "g-", label=r"$\eta_s^I$")
     plt.plot(nu, eta_sI_analytic, "k:", linewidth=2, label=r"$\eta_s^I$ (analytical solution)")

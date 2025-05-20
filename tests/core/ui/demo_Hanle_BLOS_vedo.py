@@ -10,10 +10,11 @@ from yatools import logging_config
 
 from src.core.physics.rotations import WignerD, rotate_J
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
+from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.radiative_transfer_equations import RadiativeTransferCoefficients
-from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
+from src.two_term_atom.radiative_transfer_equations import TwoTermAtomRTE
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 
 # Initialize logging
 logging_config.init(logging.INFO)
@@ -80,39 +81,40 @@ nu = np.arange(ref_nu - 1e11, ref_nu + 1e11, 1e8)
 
 # Prepare subplots
 fig, axs = plt.subplots(4, 1, sharex=True)
-atom = TwoTermAtom(
-    term_registry=term_reg, transition_registry=trans_reg, atmosphere_parameters=..., radiation_tensor=...
+see = TwoTermAtomSEE(
+    term_registry=term_reg, transition_registry=trans_reg
 )
+rte = TwoTermAtomRTE(
+    term_registry=term_reg,
+    transition_registry=trans_reg,
+    nu=nu,
+    angles=Angles(
+    chi=chi,
+    theta=theta,
+    gamma=gamma,
+    chi_B=chi_B,
+    theta_B=theta_B,)
+)
+
+rad_tensor = RadiationTensor(transition_registry=trans_reg)
+rad_tensor.fill_NLTE_n_w_parametrized(h_arcsec=0.725 * height)
+# Rotate to B-frame
+D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+J_B = rotate_J(J=rad_tensor, D=D)
+
 for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     # for Bscale in [1]:
     B_norm_scaled = B_norm * Bscale
-    logging.info(f"Bscale: {Bscale}")
     atm_params = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled, delta_v_thermal_cm_sm1=5_000_00)
-    rad_tensor = RadiationTensor(transition_registry=trans_reg)
-    rad_tensor.fill_NLTE_w(h_arcsec=0.725 * height)
 
-    # Rotate to B-frame
-    D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
-    J_B = rotate_J(J=rad_tensor, D=D)
-
-    atom.atmosphere_parameters = atm_params
-    atom.radiation_tensor = J_B
-    atom.add_all_equations()
-    rho = atom.get_solution_direct()
-
-    rtc = RadiativeTransferCoefficients(
-        atmosphere_parameters=atm_params,
-        transition_registry=trans_reg,
-        nu=nu,
-        chi=chi,
-        theta=theta,
-        gamma=gamma,
-        chi_B=chi_B,
-        theta_B=theta_B,
-    )
+    see.add_all_equations(atmosphere_parameters=atm_params, radiation_tensor=rad_tensor)
+    rho = see.get_solution_direct()
 
     # Compute stokes
-    etas = [rtc.eta_rho_s(rho=rho, stokes_component_index=i) for i in range(4)]
+    etas = rte.eta_rho_s(
+        rho=rho,
+        atmosphere_parameters=atm_params,
+    )
     norm = np.max(np.abs(etas[0]))
 
     labels = ["I", "Q", "U", "V"]

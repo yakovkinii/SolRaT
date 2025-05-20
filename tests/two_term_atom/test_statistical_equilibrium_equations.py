@@ -4,10 +4,11 @@ import unittest
 from numpy import sqrt
 from yatools import logging_config
 
+from src.two_term_atom.legacy.statistical_equilibrium_equations_legacy import TwoTermAtomSEELegacy
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.two_term_atom.object.radiation_tensor import RadiationTensor
 from src.two_term_atom.physics.einstein_coefficients import b_lu_from_b_ul_two_term_atom, b_ul_from_a_ul_two_term_atom
-from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
@@ -48,18 +49,30 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         )
 
         atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=500_00)
-        radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_w(h_arcsec=30)
-        atom = TwoTermAtom(
+        radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(
+            h_arcsec=30
+        )
+
+        atom_legacy = TwoTermAtomSEELegacy(
             term_registry=term_registry,
             transition_registry=transition_registry,
-
+            disable_r_s=True,
+        )
+        atom = TwoTermAtomSEE(
+            term_registry=term_registry,
+            transition_registry=transition_registry,
             disable_r_s=True,
         )
 
+        atom_legacy.add_all_equations(
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor=radiation_tensor,
+        )
         atom.add_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor=radiation_tensor,
         )
+        solution_legacy = atom_legacy.get_solution_direct()
         solution = atom.get_solution_direct()
 
         # Analytic:
@@ -76,6 +89,14 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         trace = 1 + sqrt(3) * rho_u_0_0
         rho_l_0_0 = 1 / trace
         rho_u_0_0 = rho_u_0_0 / trace
+        assert (
+            abs(rho_l_0_0 - solution_legacy(level=term_registry.get_level(beta="1s", L=0, S=0), K=0, Q=0, J=0, Jʹ=0))
+            < 1e-15
+        ).all()
+        assert (
+            abs(rho_u_0_0 - solution_legacy(level=term_registry.get_level(beta="2p", L=1, S=0), K=0, Q=0, J=1, Jʹ=1))
+            < 1e-15
+        ).all()
         assert (
             abs(rho_l_0_0 - solution(level=term_registry.get_level(beta="1s", L=0, S=0), K=0, Q=0, J=0, Jʹ=0)) < 1e-15
         ).all()

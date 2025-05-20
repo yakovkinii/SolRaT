@@ -9,6 +9,7 @@ level = 0
 def log_method(method):
     """
     A decorator to log the name of a class method when it is executed.
+    todo fix type hinting
     """
 
     def decorator(self, *args, **kwargs):

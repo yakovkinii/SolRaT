@@ -16,9 +16,8 @@ from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 
 class TestRadiativeTransferEquations(unittest.TestCase):
     def test_radiative_transfer_equations(self):
-        # (10.127)
         logging_config.init(logging.INFO)
-        term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
+        term_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data(fine_structure=False)
         nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e9)  # Hz
 
         atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=5_000_00)
@@ -74,7 +73,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        eta_sI_analytic = rte_legacy.eta_s_no_field(
+        eta_sI_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=0,
             atmosphere_parameters=atmosphere_parameters,
@@ -98,7 +97,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        eta_sQ_analytic = rte_legacy.eta_s_no_field(
+        eta_sQ_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=1,
             atmosphere_parameters=atmosphere_parameters,
@@ -121,7 +120,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        eta_sU_analytic = rte_legacy.eta_s_no_field(
+        eta_sU_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=2,
             atmosphere_parameters=atmosphere_parameters,
@@ -144,7 +143,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        eta_sV_analytic = rte_legacy.eta_s_no_field(
+        eta_sV_analytic = rte_legacy.eta_s_no_field_no_fine_structure(
             rho=rho,
             stokes_component_index=3,
             atmosphere_parameters=atmosphere_parameters,

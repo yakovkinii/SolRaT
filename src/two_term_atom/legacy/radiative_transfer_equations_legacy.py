@@ -19,65 +19,85 @@ from src.two_term_atom.terms_levels_transitions.term_registry import Level
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
-class RadiativeTransferCoefficientsLegacy:
+class TwoTermAtomRTELegacy:
+    """
+    This is a legacy RTE implementation.
+    It is not vectorized and therefore the new RTE implementation should be preferred for synthesis/inversion.
+    This one is kept for reference and testing purposes.
+    It also contains analytical expressions under further assumptions, which are used for testing.
+
+    Note some minor differences from the new vectorized implementation:
+    1. Cutoff condition is defined slightly differently.
+
+    Todo:
+    1. Check, assert, and document the 'further assumptions'
+    """
+
     def __init__(
         self,
-        atmosphere_parameters: AtmosphereParameters,
         transition_registry: TransitionRegistry,
         nu: np.ndarray,
         maximum_delta_v_thermal_units_cutoff=5,
-        chi=0,
-        theta=0,
-        gamma=0,
-        chi_B=0,
-        theta_B=0,
         N=1,
     ):
-        self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
         self.maximum_delta_v_thermal_units_cutoff = maximum_delta_v_thermal_units_cutoff
-        self.D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
-        self.D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
         self.N = N  # Atom concentration
 
-    def phi(self, nui, nu):
+    def phi(self, nui, nu, atmosphere_parameters: AtmosphereParameters):
         """
         Reference: (5.43 - 5.45)
         """
-        delta_nu_D = nui * self.atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1  # Doppler width
+        delta_nu_D = nui * atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1  # Doppler width
 
         nu_round = (nui - nu) / delta_nu_D  # nui already accounts for magnetic shifts
-        nu_round_A = (
-            self.atmosphere_parameters.macroscopic_velocity_cm_sm1 / self.atmosphere_parameters.delta_v_thermal_cm_sm1
-        )
+        nu_round_A = atmosphere_parameters.macroscopic_velocity_cm_sm1 / atmosphere_parameters.delta_v_thermal_cm_sm1
 
-        complex_voigt = voigt(nu=nu_round - nu_round_A, a=self.atmosphere_parameters.voigt_a) / sqrt_pi / delta_nu_D
+        complex_voigt = voigt(nu=nu_round - nu_round_A, a=atmosphere_parameters.voigt_a) / sqrt_pi / delta_nu_D
         return complex_voigt
 
-    def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray):
+    def cutoff_condition(self, level_upper: Level, level_lower: Level, nu: np.ndarray, atmosphere_parameters):
+        """
+        If the transition is far away from the requested frequency range, it does not contribute to RTE.
+        """
         nui = energy_cmm1_to_frequency_hz(level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1())
         cutoff = (
-            self.maximum_delta_v_thermal_units_cutoff
-            * nui
-            * self.atmosphere_parameters.delta_v_thermal_cm_sm1
-            / c_cm_sm1
+            self.maximum_delta_v_thermal_units_cutoff * nui * atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         )
         if min(nu) > nui + cutoff or max(nu) < nui - cutoff:
             return True
         return False
 
-    def eta_a(self, rho: Rho, stokes_component_index: int):
+    def eta_a(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.47a)
         """
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -88,10 +108,10 @@ class RadiativeTransferCoefficientsLegacy:
             Lu = level_upper.L
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -112,9 +132,7 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -122,6 +140,7 @@ class RadiativeTransferCoefficientsLegacy:
                                     - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                             is_complex=True,
                         )
@@ -147,19 +166,35 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def eta_s(self, rho: Rho, stokes_component_index: int):
+    def eta_s(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.47b)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_s")
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -176,10 +211,10 @@ class RadiativeTransferCoefficientsLegacy:
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -204,8 +239,8 @@ class RadiativeTransferCoefficientsLegacy:
                                 K=K,
                                 Q=Q,
                                 stokes_component_index=stokes_component_index,
-                                D_inverse_omega=self.D_inverse_omega,
-                                D_magnetic=self.D_magnetic,
+                                D_inverse_omega=D_inverse_omega,
+                                D_magnetic=D_magnetic,
                             ),
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
@@ -214,6 +249,7 @@ class RadiativeTransferCoefficientsLegacy:
                                     - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                         )
                     ),
@@ -238,17 +274,35 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def rho_a(self, rho: Rho, stokes_component_index: int):
+    def rho_a(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.47a)
         """
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -259,10 +313,10 @@ class RadiativeTransferCoefficientsLegacy:
             Lu = level_upper.L
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -287,8 +341,8 @@ class RadiativeTransferCoefficientsLegacy:
                                 K=K,
                                 Q=Q,
                                 stokes_component_index=stokes_component_index,
-                                D_inverse_omega=self.D_inverse_omega,
-                                D_magnetic=self.D_magnetic,
+                                D_inverse_omega=D_inverse_omega,
+                                D_magnetic=D_magnetic,
                             ),
                             lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
@@ -297,6 +351,7 @@ class RadiativeTransferCoefficientsLegacy:
                                     - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                             is_complex=True,
                         )
@@ -322,18 +377,34 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def rho_s(self, rho: Rho, stokes_component_index: int):
+    def rho_s(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.47b)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_s")
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -350,10 +421,10 @@ class RadiativeTransferCoefficientsLegacy:
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -374,9 +445,7 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
@@ -384,6 +453,7 @@ class RadiativeTransferCoefficientsLegacy:
                                     - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                         )
                     ),
@@ -418,22 +488,38 @@ class RadiativeTransferCoefficientsLegacy:
 
     """
     Combined
-    Note:
-    1. Returning complex values for eta_rho gives 2x performance benefit.
-    2. Likely there is a possibility of calculating multiple Stokes parameters by overloading summate/multiply.
+    Returning complex values for eta_rho gives 2x performance benefit.
     """
 
-    def eta_rho_a(self, rho: Rho, stokes_component_index: int):
+    def eta_rho_a(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         eta_a = real(eta_rho_a)
         rho_a = imag(eta_rho_a)
         """
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -444,10 +530,10 @@ class RadiativeTransferCoefficientsLegacy:
             Lu = level_upper.L
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -467,9 +553,7 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
-                        lambda: T_K_Q_double_rotation(
-                            K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                        ),
+                        lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                         lambda: rho(level=level_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
@@ -477,6 +561,7 @@ class RadiativeTransferCoefficientsLegacy:
                                 - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                             ),
                             nu=self.nu,
+                            atmosphere_parameters=atmosphere_parameters,
                         ),
                         is_complex=True,
                     ),
@@ -501,19 +586,35 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def eta_rho_s(self, rho: Rho, stokes_component_index: int):
+    def eta_rho_s(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         eta_s = real(eta_rho_s)
         rho_s = imag(eta_rho_s)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_rho_s")
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -530,10 +631,10 @@ class RadiativeTransferCoefficientsLegacy:
 
             S = level_lower.S
             lower_pb_eigenvalues, lower_pb_eigenvectors = calculate_paschen_back(
-                level=level_lower, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_lower, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
             upper_pb_eigenvalues, upper_pb_eigenvectors = calculate_paschen_back(
-                level=level_upper, magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss
+                level=level_upper, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
             )
 
             result = result + summate(
@@ -553,9 +654,7 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
-                        lambda: T_K_Q_double_rotation(
-                            K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                        ),
+                        lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                         lambda: rho(level=level_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
@@ -563,6 +662,7 @@ class RadiativeTransferCoefficientsLegacy:
                                 - lower_pb_eigenvalues(j=jl, level=level_lower, M=Ml),
                             ),
                             nu=self.nu,
+                            atmosphere_parameters=atmosphere_parameters,
                         ),
                     ),
                 ),
@@ -590,18 +690,36 @@ class RadiativeTransferCoefficientsLegacy:
     The following are some analytical expressions under further assumptions for validation.
     """
 
-    def eta_a_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+    def eta_a_no_field_no_fine_structure(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.48a)
         """
+        assert atmosphere_parameters.magnetic_field_gauss == 0
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -622,15 +740,14 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(1, 1, K, Ll, Ll, Lu),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                             is_complex=True,
                         )
@@ -644,19 +761,36 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def eta_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+    def eta_s_no_field_no_fine_structure(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         No magnetic field, no fine structure splitting.
         Reference:
         (7.48d)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_s")
+        assert atmosphere_parameters.magnetic_field_gauss == 0
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -683,15 +817,14 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(1, 1, K, Lu, Lu, Ll),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                         )
                     ),
@@ -704,17 +837,36 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def rho_a_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+    def rho_a_no_field_no_fine_structure(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         Reference:
         (7.48a)
         """
+        assert atmosphere_parameters.magnetic_field_gauss == 0
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
+
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -735,15 +887,14 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(1, 1, K, Ll, Ll, Lu),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                             is_complex=True,
                         )
@@ -757,20 +908,37 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def rho_s_no_field_no_fine_structure(self, rho: Rho, stokes_component_index: int):
+    def rho_s_no_field_no_fine_structure(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         No magnetic field, no fine structure splitting.
         Reference:
         (7.48d)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_s")
+        assert atmosphere_parameters.magnetic_field_gauss == 0
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
 
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(
                     f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
                     f"because it does not contribute to the specified frequency range"
@@ -797,15 +965,14 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(1, 1, K, Lu, Lu, Ll),
                     lambda: imag(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     level_upper.get_mean_energy_cmm1() - level_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
+                                atmosphere_parameters=atmosphere_parameters,
                             ),
                         )
                     ),
@@ -818,20 +985,37 @@ class RadiativeTransferCoefficientsLegacy:
             )
         return result
 
-    def eta_s_no_field(self, rho: Rho, stokes_component_index: int):
+    def eta_s_no_field(
+        self,
+        rho: Rho,
+        stokes_component_index: int,
+        atmosphere_parameters: AtmosphereParameters,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
+    ):
         """
         No magnetic field.
         Reference:
         (10.127)
         """
-        logging.info("Radiative Transfer Equations: calculate eta_s_analytic_resonance")
+        assert atmosphere_parameters.magnetic_field_gauss == 0
+        D_inverse_omega = WignerD(alpha=-gamma, beta=-theta, gamma=-chi, K_max=2)
+        D_magnetic = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
         result = 0
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
             level_lower = transition.level_lower
 
             logging.info(f"{level_upper.level_id} -> {level_lower.level_id}")
-            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+            if self.cutoff_condition(
+                level_upper=level_upper,
+                level_lower=level_lower,
+                nu=self.nu,
+                atmosphere_parameters=atmosphere_parameters,
+            ):
                 logging.info(f"Cutting off the transition because it is out of frequency range")
                 continue
 
@@ -849,9 +1033,7 @@ class RadiativeTransferCoefficientsLegacy:
                     lambda: wigner_6j(1, 1, K, Ju, Jʹu, Jl),
                     lambda: real(
                         multiply(
-                            lambda: T_K_Q_double_rotation(
-                                K, Q, stokes_component_index, self.D_inverse_omega, self.D_magnetic
-                            ),
+                            lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(level=level_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: 0.5
                             * (
@@ -860,6 +1042,7 @@ class RadiativeTransferCoefficientsLegacy:
                                         level_upper.get_term(J=Ju).energy_cmm1 - level_lower.get_term(J=Jl).energy_cmm1,
                                     ),
                                     nu=self.nu,
+                                    atmosphere_parameters=atmosphere_parameters,
                                 )
                                 + np.conjugate(
                                     self.phi(
@@ -868,6 +1051,7 @@ class RadiativeTransferCoefficientsLegacy:
                                             - level_lower.get_term(J=Jl).energy_cmm1,
                                         ),
                                         nu=self.nu,
+                                        atmosphere_parameters=atmosphere_parameters,
                                     )
                                 )
                             ),

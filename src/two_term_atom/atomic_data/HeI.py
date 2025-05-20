@@ -2,7 +2,7 @@ import pandas as pd
 
 from src.core.engine.functions.decorators import log_function
 from src.core.physics.functions import lambda_cm_to_frequency_hz
-from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtom
+from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
 from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistry
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
@@ -126,7 +126,7 @@ def get_He_I_D3_data():
 
 
 def fill_precomputed_He_I_D3_data(
-    atom: TwoTermAtom,
+    atom: TwoTermAtomSEE,
     root="",
 ):
     directory = root + "src/two_term_atom/atomic_data/HeI_precomputed/"

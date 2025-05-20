@@ -18,14 +18,19 @@ from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistr
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
-class TwoTermAtomLegacy:
+class TwoTermAtomSEELegacy:
+    """
+    This is a legacy SEE implementation.
+    It is not vectorized and therefore the new SEE implementation should be preferred for synthesis/inversion.
+    This one is kept for reference and testing purposes.
+    Also, for one-off calculations this one can actually be faster, as pre-computing time in the vectorized
+    implementation is comparable to a couple of runs in this implementation.
+    """
+
     def __init__(
         self,
         term_registry: TermRegistry,
         transition_registry: TransitionRegistry,
-        atmosphere_parameters: AtmosphereParameters,
-        radiation_tensor: RadiationTensor,
-        # n_frequencies: int = 1,
         disable_r_s: bool = False,
         disable_n: bool = False,
     ):
@@ -35,15 +40,12 @@ class TwoTermAtomLegacy:
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
             levels=list(self.term_registry.levels.values()), n_frequencies=n_frequencies
         )
-        self.atmosphere_parameters: AtmosphereParameters = atmosphere_parameters
-        self.radiation_tensor: RadiationTensor = radiation_tensor
         self.disable_r_s = disable_r_s
         self.disable_n = disable_n
 
-    def add_all_equations(self):
+    def add_all_equations(self, atmosphere_parameters: AtmosphereParameters, radiation_tensor: RadiationTensor):
         """
         Loops through all equations.
-
         Reference: (7.38)
         """
         logging.info("Populate Statistical Equilibrium Equations")
@@ -56,12 +58,48 @@ class TwoTermAtomLegacy:
                 Q=PROJECTION("K"),
             ):
                 self.matrix_builder.select_equation(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
-                self.add_coherence_decay(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
-                self.add_absorption(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
-                self.add_emission(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
-                self.add_relaxation(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ)
+                self.add_coherence_decay(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    atmosphere_parameters=atmosphere_parameters,
+                )
+                self.add_absorption(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    radiation_tensor=radiation_tensor,
+                )
+                self.add_emission(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    radiation_tensor=radiation_tensor,
+                )
+                self.add_relaxation(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    radiation_tensor=radiation_tensor,
+                )
 
-    def add_coherence_decay(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
+    def add_coherence_decay(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        atmosphere_parameters: AtmosphereParameters,
+    ):
         """
         Reference: (7.38)
         """
@@ -71,10 +109,29 @@ class TwoTermAtomLegacy:
             Jʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
             Jʹʹʹ=INTERSECTION(TRIANGULAR(level.L, level.S)),
         ):
-            n = self.n(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
+            n = self.n(
+                level=level,
+                K=K,
+                Q=Q,
+                J=J,
+                Jʹ=Jʹ,
+                Kʹ=Kʹ,
+                Qʹ=Qʹ,
+                Jʹʹ=Jʹʹ,
+                Jʹʹʹ=Jʹʹʹ,
+                atmosphere_parameters=atmosphere_parameters,
+            )
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
 
-    def add_absorption(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
+    def add_absorption(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        radiation_tensor: RadiationTensor,
+    ):
         """
         Reference: (7.38)
         """
@@ -89,10 +146,30 @@ class TwoTermAtomLegacy:
                 Kl=TRIANGULAR("Jl", "Jʹl"),
                 Ql=PROJECTION("Kl"),
             ):
-                t_a = self.t_a(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_lower=level_lower, Kl=Kl, Ql=Ql, Jl=Jl, Jʹl=Jʹl)
+                t_a = self.t_a(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    level_lower=level_lower,
+                    Kl=Kl,
+                    Ql=Ql,
+                    Jl=Jl,
+                    Jʹl=Jʹl,
+                    radiation_tensor=radiation_tensor,
+                )
                 self.matrix_builder.add_coefficient(level=level_lower, K=Kl, Q=Ql, J=Jl, Jʹ=Jʹl, coefficient=t_a)
 
-    def add_emission(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
+    def add_emission(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        radiation_tensor: RadiationTensor,
+    ):
         """
         Reference: (7.38)
         """
@@ -107,11 +184,42 @@ class TwoTermAtomLegacy:
                 Ku=TRIANGULAR("Ju", "Jʹu"),
                 Qu=PROJECTION("Ku"),
             ):
-                t_e = self.t_e(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_upper=level_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu)
-                t_s = self.t_s(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, level_upper=level_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu)
+                t_e = self.t_e(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    level_upper=level_upper,
+                    Ku=Ku,
+                    Qu=Qu,
+                    Ju=Ju,
+                    Jʹu=Jʹu,
+                )
+                t_s = self.t_s(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    level_upper=level_upper,
+                    Ku=Ku,
+                    Qu=Qu,
+                    Ju=Ju,
+                    Jʹu=Jʹu,
+                    radiation_tensor=radiation_tensor,
+                )
                 self.matrix_builder.add_coefficient(level=level_upper, K=Ku, Q=Qu, J=Ju, Jʹ=Jʹu, coefficient=t_e + t_s)
 
-    def add_relaxation(self, level: Level, K: int, Q: int, J: float, Jʹ: float):
+    def add_relaxation(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        radiation_tensor: RadiationTensor,
+    ):
         """
         Reference: (7.38)
         """
@@ -122,15 +230,59 @@ class TwoTermAtomLegacy:
             Jʹʹ=TRIANGULAR(level.L, level.S),
             Jʹʹʹ=TRIANGULAR(level.L, level.S),
         ):
-            r_a = self.r_a(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
-            r_e = self.r_e(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
+            r_a = self.r_a(
+                level=level,
+                K=K,
+                Q=Q,
+                J=J,
+                Jʹ=Jʹ,
+                Kʹ=Kʹ,
+                Qʹ=Qʹ,
+                Jʹʹ=Jʹʹ,
+                Jʹʹʹ=Jʹʹʹ,
+                radiation_tensor=radiation_tensor,
+            )
+            r_e = self.r_e(
+                level=level,
+                K=K,
+                Q=Q,
+                J=J,
+                Jʹ=Jʹ,
+                Kʹ=Kʹ,
+                Qʹ=Qʹ,
+                Jʹʹ=Jʹʹ,
+                Jʹʹʹ=Jʹʹʹ,
+            )
             if self.disable_r_s:
                 r_s = 0
             else:
-                r_s = self.r_s(level=level, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
+                r_s = self.r_s(
+                    level=level,
+                    K=K,
+                    Q=Q,
+                    J=J,
+                    Jʹ=Jʹ,
+                    Kʹ=Kʹ,
+                    Qʹ=Qʹ,
+                    Jʹʹ=Jʹʹ,
+                    Jʹʹʹ=Jʹʹʹ,
+                    radiation_tensor=radiation_tensor,
+                )
             self.matrix_builder.add_coefficient(level=level, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-(r_a + r_e + r_s))
 
-    def r_a(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
+    def r_a(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        Kʹ: int,
+        Qʹ: int,
+        Jʹʹ: float,
+        Jʹʹʹ: float,
+        radiation_tensor: RadiationTensor,
+    ):
         L = level.L
         S = level.S
 
@@ -148,7 +300,7 @@ class TwoTermAtomLegacy:
                     lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
                     lambda: m1p(1 + Lu - S + J + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * radiation_tensor(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -169,7 +321,18 @@ class TwoTermAtomLegacy:
             )
         return result
 
-    def r_e(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
+    def r_e(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        Kʹ: int,
+        Qʹ: int,
+        Jʹʹ: float,
+        Jʹʹʹ: float,
+    ):
         result = 0
         for level_lower in self.term_registry.levels.values():
             if not self.transition_registry.is_transition_registered(level_upper=level, level_lower=level_lower):
@@ -178,7 +341,19 @@ class TwoTermAtomLegacy:
             result += delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * transition.einstein_a_ul
         return result
 
-    def r_s(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
+    def r_s(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        Kʹ: int,
+        Qʹ: int,
+        Jʹʹ: float,
+        Jʹʹʹ: float,
+        radiation_tensor: RadiationTensor,
+    ):
         # (7.46c)
         L = level.L
         S = level.S
@@ -196,7 +371,7 @@ class TwoTermAtomLegacy:
                     lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
                     lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * radiation_tensor(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -234,7 +409,19 @@ class TwoTermAtomLegacy:
         )
         return result
 
-    def n(self, level: Level, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
+    def n(
+        self,
+        level: Level,
+        K: int,
+        Q: int,
+        J: float,
+        Jʹ: float,
+        Kʹ: int,
+        Qʹ: int,
+        Jʹʹ: float,
+        Jʹʹʹ: float,
+        atmosphere_parameters: AtmosphereParameters,
+    ):
         """
         Reference: (7.41)
         """
@@ -249,7 +436,7 @@ class TwoTermAtomLegacy:
 
         result += (
             delta(Q, Qʹ)
-            * self.atmosphere_parameters.nu_larmor
+            * atmosphere_parameters.nu_larmor
             * m1p(J + Jʹ - Q)
             * sqrt((2 * K + 1) * (2 * Kʹ + 1))
             * wigner_3j(K, Kʹ, 1, -Q, Q, 0)
@@ -275,6 +462,7 @@ class TwoTermAtomLegacy:
         Ql: int,
         Jl: float,
         Jʹl: float,
+        radiation_tensor: RadiationTensor,
     ):
         """
         Reference: (7.45a)
@@ -294,7 +482,7 @@ class TwoTermAtomLegacy:
                 lambda: wigner_6j(L, Ll, 1, Jl, J, S),
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
-                lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                lambda: radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -348,6 +536,7 @@ class TwoTermAtomLegacy:
         Qu: int,
         Ju: float,
         Jʹu: float,
+        radiation_tensor: RadiationTensor,
     ):
         """
         Reference: (7.45c)
@@ -367,7 +556,7 @@ class TwoTermAtomLegacy:
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
-                lambda: self.radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                lambda: radiation_tensor(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),

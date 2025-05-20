@@ -25,7 +25,7 @@ from src.two_term_atom.terms_levels_transitions.term_registry import TermRegistr
 from src.two_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 
 
-class TwoTermAtom:
+class TwoTermAtomSEE:
     def __init__(
         self,
         term_registry: TermRegistry,
