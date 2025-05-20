@@ -1,10 +1,15 @@
 import unittest
+import warnings
+
 import yatools.logging_config
 
+# for coverage:
+# coverage run -m unittest discover
+# coverage html
+
+
 if __name__ == "__main__":
-    # for coverage:
-    # coverage run -m unittest discover
-    # coverage html
+    warnings.filterwarnings("error", category=DeprecationWarning)  # Raise error on DeprecationWarning
     yatools.logging_config.init()
     loader = unittest.TestLoader()
     start_dir = "tests/"

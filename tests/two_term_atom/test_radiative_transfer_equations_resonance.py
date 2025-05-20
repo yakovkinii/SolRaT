@@ -67,6 +67,40 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         rte_legacy = TwoTermAtomRTELegacy(transition_registry=transition_registry, nu=nu)
         rte = TwoTermAtomRTE(term_registry=term_registry, transition_registry=transition_registry, nu=nu)
 
+        eta_aI, eta_aQ, eta_aU, eta_aV = rte.eta_rho_a(
+            rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+
+        eta_aI_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_aI_legacy_real = rte_legacy.eta_a(
+            rho=rho_legacy, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_aI_legacy_imag = rte_legacy.rho_a(
+            rho=rho_legacy, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+
+        scale = np.max(np.abs(eta_aI_legacy))
+        assert np.allclose(eta_aI / scale, eta_aI_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_aI) / scale, eta_aI_legacy_real / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_aI) / scale, eta_aI_legacy_imag / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aQ_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy, stokes_component_index=1, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        assert np.allclose(eta_aQ / scale, eta_aQ_legacy / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aU_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy, stokes_component_index=2, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        assert np.allclose(eta_aU / scale, eta_aU_legacy / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aV_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        assert np.allclose(eta_aV / scale, eta_aV_legacy / scale, atol=1e-10, rtol=1e-10)
+
         eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(
             rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
         )

@@ -51,8 +51,10 @@ class TwoTermAtomRTE:
         if self.delta_nu_cutoff is None:
             self.delta_nu_cutoff = max(10 * (np.max(nu) - np.min(nu)), np.mean(nu) * 1e-3)
         self.N = N  # Atom concentration
+        self.frame_a_id_columns = []
         self.frame_s_id_columns = []
-        self.frame_s = self.precompute_eta_s_frame()
+        self.frame_a = self.precompute_a_frame()
+        self.frame_s = self.precompute_s_frame()
         self.magnetic_field_gauss = magnetic_field_gauss
         self.t_k_q_reduction_performed = False
         self.c_reduction_performed = False
@@ -60,12 +62,15 @@ class TwoTermAtomRTE:
 
         if angles is not None:
             logging.info("Reducing the frame by pre-computing T_K_Q")
-            self.reduce_frame_using_t_k_q(angles=angles)
+            self.reduce_a_frame_using_t_k_q(angles=angles)
+            self.reduce_s_frame_using_t_k_q(angles=angles)
             self.t_k_q_reduction_performed = True
 
         if magnetic_field_gauss is not None:
             logging.info("Reducing the frame by pre-computing C")
-            self.reduce_frame_using_c(magnetic_field_gauss=magnetic_field_gauss)
+            assert angles is not None, "angles must be provided for pre-computing C"
+            self.reduce_a_frame_using_c(magnetic_field_gauss=magnetic_field_gauss)
+            self.reduce_s_frame_using_c(magnetic_field_gauss=magnetic_field_gauss)
             self.c_reduction_performed = True
 
         if rho is not None:
@@ -74,19 +79,120 @@ class TwoTermAtomRTE:
             # incompatible rho and atmospheric parameters by accident
             assert magnetic_field_gauss is not None, "magnetic_field_gauss must be provided for pre-computing Rho"
             assert self.c_reduction_performed, "C reduction must be performed before Rho reduction"
-            self.reduce_frame_using_rho(rho=rho)
+            self.reduce_a_frame_using_rho(rho=rho)
+            self.reduce_s_frame_using_rho(rho=rho)
             self.rho_reduction_performed = True
 
+        self.frame_a_precomputed = self.frame_a.copy()
         self.frame_s_precomputed = self.frame_s.copy()
+        self.frame_a_precomputed_id_columns = self.frame_a_id_columns.copy()
         self.frame_s_precomputed_id_columns = self.frame_s_id_columns.copy()
 
     @log_method
     def reset_frames(self):
+        self.frame_a = self.frame_a_precomputed.copy()
         self.frame_s = self.frame_s_precomputed.copy()
+        self.frame_a_id_columns = self.frame_a_precomputed_id_columns.copy()
         self.frame_s_id_columns = self.frame_s_precomputed_id_columns.copy()
 
     @log_method
-    def precompute_eta_s_frame(self):
+    def precompute_a_frame(self):
+        rows = []
+        for transition in self.transition_registry.transitions.values():
+            level_upper = transition.level_upper
+            level_lower = transition.level_lower
+
+            logging.debug(f"Processing {level_upper.level_id} -> {level_lower.level_id}")
+            if self.cutoff_condition(level_upper=level_upper, level_lower=level_lower, nu=self.nu):
+                logging.debug(
+                    f"Cutting off the transition {level_upper.level_id} -> {level_lower.level_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
+            Ll = level_lower.L
+            Lu = level_upper.L
+
+            S = level_lower.S
+            for jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, K, Kl, Ql, q, qʹ, Q in nested_loops(
+                jl=TRIANGULAR(Ll, S),
+                Jl=TRIANGULAR(Ll, S),
+                Jʹl=TRIANGULAR(Ll, S),
+                Jʹʹl=TRIANGULAR(Ll, S),
+                ju=TRIANGULAR(Lu, S),
+                Ju=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jl", 1)),
+                Jʹu=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jʹl", 1)),
+                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹʹl"), PROJECTION("jl")),
+                Mʹl=PROJECTION("Jʹl"),
+                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("Jʹu"), PROJECTION("ju")),
+                K=FROMTO(0, 2),
+                Kl=TRIANGULAR("Jʹl", "Jʹʹl"),
+                Ql=INTERSECTION(PROJECTION("Kl"), VALUE("Ml - Mʹl")),
+                q=VALUE("Ml - Mu"),
+                qʹ=VALUE("Mʹl - Mu"),
+                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
+            ):
+                coefficient = multiply(
+                    lambda: n_proj(Ll),
+                    lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
+                    lambda: m1p(1 + Jʹʹl - Ml + qʹ),
+                    lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                    lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+                    lambda: wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    lambda: wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+                    lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+                )
+                rows.append(
+                    {
+                        "level_upper_id": level_upper.level_id,
+                        "level_lower_id": level_lower.level_id,
+                        "transition_id": transition.transition_id,
+                        "jl": jl,
+                        "Jl": Jl,
+                        "Jʹl": Jʹl,
+                        "Jʹʹl": Jʹʹl,
+                        "ju": ju,
+                        "Ju": Ju,
+                        "Jʹu": Jʹu,
+                        "Ml": Ml,
+                        "Mʹl": Mʹl,
+                        "Mu": Mu,
+                        "K": K,
+                        "Kl": Kl,
+                        "Ql": Ql,
+                        "q": q,
+                        "qʹ": qʹ,
+                        "Q": Q,
+                        "coefficient": coefficient,
+                    }
+                )
+        self.frame_a_id_columns = [
+            "level_upper_id",
+            "level_lower_id",
+            "transition_id",
+            "jl",
+            "Jl",
+            "Jʹl",
+            "Jʹʹl",
+            "ju",
+            "Ju",
+            "Jʹu",
+            "Ml",
+            "Mʹl",
+            "Mu",
+            "K",
+            "Kl",
+            "Ql",
+            "q",
+            "qʹ",
+            "Q",
+        ]
+        return pd.DataFrame(rows)
+
+    @log_method
+    def precompute_s_frame(self):
         rows = []
         for transition in self.transition_registry.transitions.values():
             level_upper = transition.level_upper
@@ -182,7 +288,25 @@ class TwoTermAtomRTE:
         return pd.DataFrame(rows)
 
     @log_method
-    def reduce_frame_using_t_k_q(self, angles: Angles):
+    def reduce_a_frame_using_t_k_q(self, angles: Angles):
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+
+        self.frame_a = self.frame_a.merge(
+            self.construct_t_k_q_frame(D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic),
+            on=["K", "Q"],
+        )
+        self.frame_a["coefficient_t_k_q_I"] = self.frame_a["coefficient"] * self.frame_a["t_k_q_I"]
+        self.frame_a["coefficient_t_k_q_Q"] = self.frame_a["coefficient"] * self.frame_a["t_k_q_Q"]
+        self.frame_a["coefficient_t_k_q_U"] = self.frame_a["coefficient"] * self.frame_a["t_k_q_U"]
+        self.frame_a["coefficient_t_k_q_V"] = self.frame_a["coefficient"] * self.frame_a["t_k_q_V"]
+
+        columns_to_reduce = ["K", "Q", "coefficient", "t_k_q_I", "t_k_q_Q", "t_k_q_U", "t_k_q_V"]
+        self.frame_a_id_columns = [col for col in self.frame_a_id_columns if col not in columns_to_reduce]
+        self.frame_a = self.frame_a.drop(columns=columns_to_reduce).groupby(self.frame_a_id_columns).sum().reset_index()
+
+    @log_method
+    def reduce_s_frame_using_t_k_q(self, angles: Angles):
         D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
         D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
 
@@ -200,7 +324,57 @@ class TwoTermAtomRTE:
         self.frame_s = self.frame_s.drop(columns=columns_to_reduce).groupby(self.frame_s_id_columns).sum().reset_index()
 
     @log_method
-    def reduce_frame_using_c(self, magnetic_field_gauss):
+    def reduce_a_frame_using_c(self, magnetic_field_gauss):
+        c_frame = self.construct_c_frame(magnetic_field_gauss=magnetic_field_gauss)
+        self.frame_a = (
+            self.frame_a.merge(
+                c_frame.rename(columns={"level_id": "level_lower_id", "j": "jl", "J": "Jl", "M": "Ml", "cpb": "c_1"}),
+                on=["level_lower_id", "jl", "Jl", "Ml"],
+            )
+            .merge(
+                c_frame.rename(columns={"level_id": "level_lower_id", "j": "jl", "J": "Jʹʹl", "M": "Ml", "cpb": "c_2"}),
+                on=["level_lower_id", "jl", "Jʹʹl", "Ml"],
+            )
+            .merge(
+                c_frame.rename(columns={"level_id": "level_upper_id", "j": "ju", "J": "Ju", "M": "Mu", "cpb": "c_3"}),
+                on=["level_upper_id", "ju", "Ju", "Mu"],
+            )
+            .merge(
+                c_frame.rename(columns={"level_id": "level_upper_id", "j": "ju", "J": "Jʹu", "M": "Mu", "cpb": "c_4"}),
+                on=["level_upper_id", "ju", "Jʹu", "Mu"],
+            )
+        )
+        self.frame_a["coefficient_t_k_q_I_c"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_I", "c_1", "c_2", "c_3", "c_4"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_Q_c"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_Q", "c_1", "c_2", "c_3", "c_4"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_U_c"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_U", "c_1", "c_2", "c_3", "c_4"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_V_c"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_V", "c_1", "c_2", "c_3", "c_4"]].values, axis=1
+        )
+
+        columns_to_reduce = [
+            "Ju",
+            "Jʹu",
+            "Jl",
+            "coefficient_t_k_q_I",
+            "coefficient_t_k_q_Q",
+            "coefficient_t_k_q_U",
+            "coefficient_t_k_q_V",
+            "c_1",
+            "c_2",
+            "c_3",
+            "c_4",
+        ]
+        self.frame_a_id_columns = [col for col in self.frame_a_id_columns if col not in columns_to_reduce]
+        self.frame_a = self.frame_a.drop(columns=columns_to_reduce).groupby(self.frame_a_id_columns).sum().reset_index()
+
+    @log_method
+    def reduce_s_frame_using_c(self, magnetic_field_gauss):
         c_frame = self.construct_c_frame(magnetic_field_gauss=magnetic_field_gauss)
         self.frame_s = (
             self.frame_s.merge(
@@ -250,7 +424,43 @@ class TwoTermAtomRTE:
         self.frame_s = self.frame_s.drop(columns=columns_to_reduce).groupby(self.frame_s_id_columns).sum().reset_index()
 
     @log_method
-    def reduce_frame_using_rho(self, rho: Rho):
+    def reduce_a_frame_using_rho(self, rho: Rho):
+        self.frame_a = self.frame_a.merge(
+            self.construct_rho_frame(rho=rho).rename(
+                columns={"level_id": "level_lower_id", "K": "Kl", "Q": "Ql", "J": "Jʹʹl", "Jʹ": "Jʹl"}
+            ),
+            on=["level_lower_id", "Kl", "Ql", "Jʹʹl", "Jʹl"],
+        )
+
+        self.frame_a["coefficient_t_k_q_I_c_rho"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_I_c", "rho"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_Q_c_rho"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_Q_c", "rho"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_U_c_rho"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_U_c", "rho"]].values, axis=1
+        )
+        self.frame_a["coefficient_t_k_q_V_c_rho"] = np.prod(
+            self.frame_a[["coefficient_t_k_q_V_c", "rho"]].values, axis=1
+        )
+
+        columns_to_reduce = [
+            "Kl",
+            "Ql",
+            "Jʹʹl",
+            "Jʹl",
+            "coefficient_t_k_q_I_c",
+            "coefficient_t_k_q_Q_c",
+            "coefficient_t_k_q_U_c",
+            "coefficient_t_k_q_V_c",
+            "rho",
+        ]  # C should already be merged, so Jʹʹl is no longer needed
+        self.frame_a_id_columns = [col for col in self.frame_a_id_columns if col not in columns_to_reduce]
+        self.frame_a = self.frame_a.drop(columns=columns_to_reduce).groupby(self.frame_a_id_columns).sum().reset_index()
+
+    @log_method
+    def reduce_s_frame_using_rho(self, rho: Rho):
         self.frame_s = self.frame_s.merge(
             self.construct_rho_frame(rho=rho).rename(
                 columns={"level_id": "level_upper_id", "K": "Ku", "Q": "Qu", "J": "Jʹu", "Jʹ": "Jʹʹu"}
@@ -428,6 +638,64 @@ class TwoTermAtomRTE:
         return pd.DataFrame(rows_phi)
 
     @log_method
+    def eta_rho_a(self, atmosphere_parameters: AtmosphereParameters, angles: Angles = None, rho: Rho = None):
+        """
+        Reference:
+        (7.47b)
+        """
+        self.reset_frames()
+
+        if not self.t_k_q_reduction_performed:
+            assert angles is not None, "Angles should be provided if T_K_Q reduction is not performed"
+            self.reduce_a_frame_using_t_k_q(angles=angles)
+        else:
+            assert angles is None, "Angles should not be provided if T_K_Q reduction is already performed"
+
+        if not self.c_reduction_performed:
+            self.reduce_a_frame_using_c(magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss)
+        else:
+            assert (
+                atmosphere_parameters.magnetic_field_gauss == self.magnetic_field_gauss
+            ), "Atmosphere parameters magnetic field gauss should be the same as the one used for C reduction"
+
+        if not self.rho_reduction_performed:
+            assert rho is not None, "Rho should be provided if Rho reduction is not performed"
+            self.reduce_a_frame_using_rho(rho=rho)
+        else:
+            assert rho is None, "Rho should not be provided if Rho reduction is already performed"
+
+        phi_frame = self.construct_phi_frame(atmosphere_parameters=atmosphere_parameters)
+        final_frame = self.frame_a.merge(
+            phi_frame,
+            on=[
+                "level_upper_id",
+                "level_lower_id",
+                "transition_id",
+                "ju",
+                "jl",
+                "Mu",
+                "Ml",
+            ],
+        )
+
+        results = [
+            np.prod(
+                final_frame[[t_k_q, "phi"]].values,
+                axis=1,
+            ).sum()
+            for t_k_q in [
+                "coefficient_t_k_q_I_c_rho",
+                "coefficient_t_k_q_Q_c_rho",
+                "coefficient_t_k_q_U_c_rho",
+                "coefficient_t_k_q_V_c_rho",
+            ]
+        ]
+
+        result_I, result_Q, result_U, result_V = [h_erg_s * self.nu / 4 / pi * self.N * result for result in results]
+
+        return result_I, result_Q, result_U, result_V
+
+    @log_method
     def eta_rho_s(self, atmosphere_parameters: AtmosphereParameters, angles: Angles = None, rho: Rho = None):
         """
         Reference:
@@ -437,12 +705,12 @@ class TwoTermAtomRTE:
 
         if not self.t_k_q_reduction_performed:
             assert angles is not None, "Angles should be provided if T_K_Q reduction is not performed"
-            self.reduce_frame_using_t_k_q(angles=angles)
+            self.reduce_s_frame_using_t_k_q(angles=angles)
         else:
             assert angles is None, "Angles should not be provided if T_K_Q reduction is already performed"
 
         if not self.c_reduction_performed:
-            self.reduce_frame_using_c(magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss)
+            self.reduce_s_frame_using_c(magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss)
         else:
             assert (
                 atmosphere_parameters.magnetic_field_gauss == self.magnetic_field_gauss
@@ -450,7 +718,7 @@ class TwoTermAtomRTE:
 
         if not self.rho_reduction_performed:
             assert rho is not None, "Rho should be provided if Rho reduction is not performed"
-            self.reduce_frame_using_rho(rho=rho)
+            self.reduce_s_frame_using_rho(rho=rho)
         else:
             assert rho is None, "Rho should not be provided if Rho reduction is already performed"
 

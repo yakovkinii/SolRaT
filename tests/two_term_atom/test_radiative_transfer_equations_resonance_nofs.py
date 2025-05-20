@@ -72,6 +72,101 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             nu=nu,
         )
 
+        eta_aI, eta_aQ, eta_aU, eta_aV = rte.eta_rho_a(
+            rho=rho,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+
+        eta_aI_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy,
+            stokes_component_index=0,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        eta_aI_analytic = rte_legacy.eta_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=0,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        rho_aI_analytic = rte_legacy.rho_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=0,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        scale = np.max(np.abs(eta_aI_analytic))
+        assert np.allclose(eta_aI / scale, eta_aI_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_aI) / scale, eta_aI_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_aI) / scale, rho_aI_analytic / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aQ_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy,
+            stokes_component_index=1,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        eta_aQ_analytic = rte_legacy.eta_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=1,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        rho_aQ_analytic = rte_legacy.rho_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=1,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_aQ / scale, eta_aQ_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_aQ) / scale, eta_aQ_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_aQ) / scale, rho_aQ_analytic / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aU_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy,
+            stokes_component_index=2,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        eta_aU_analytic = rte_legacy.eta_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=2,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        rho_aU_analytic = rte_legacy.rho_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=2,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_aU / scale, eta_aU_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_aU) / scale, eta_aU_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_aU) / scale, rho_aU_analytic / scale, atol=1e-10, rtol=1e-10)
+
+        eta_aV_legacy = rte_legacy.eta_rho_a(
+            rho=rho_legacy,
+            stokes_component_index=3,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        eta_aV_analytic = rte_legacy.eta_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=3,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        rho_aV_analytic = rte_legacy.rho_a_no_field_no_fine_structure(
+            rho=rho,
+            stokes_component_index=3,
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+        )
+        assert np.allclose(eta_aV / scale, eta_aV_legacy / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.real(eta_aV) / scale, eta_aV_analytic / scale, atol=1e-10, rtol=1e-10)
+        assert np.allclose(np.imag(eta_aV) / scale, rho_aV_analytic / scale, atol=1e-10, rtol=1e-10)
+
         eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,

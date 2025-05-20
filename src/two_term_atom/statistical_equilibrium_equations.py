@@ -26,6 +26,10 @@ from src.two_term_atom.terms_levels_transitions.transition_registry import Trans
 
 
 class TwoTermAtomSEE:
+    """
+    Todo list of dicts instead of dfs
+    """
+
     def __init__(
         self,
         term_registry: TermRegistry,
@@ -64,9 +68,10 @@ class TwoTermAtomSEE:
     def concat_and_finalize_precomputed_dfs(self, dfs: List[pd.DataFrame], value_columns: List[str]) -> pd.DataFrame:
         assert len(dfs) > 0, "Empty precomputed of dataframe"
         df = pd.concat(dfs, ignore_index=True)
-        # df = df.loc[~((df.n_1 == 0) & (df.n_2 == 0)), :].copy()
-        for col in value_columns:
-            df[col] = df[col].apply(lambda x: np.array([x]) if np.isscalar(x) else x)
+        # df = df.loc[~((df.n_1 == 0) & (df.n_2 == 0)), :].copy()  # can do optimization like this
+        # for col in value_columns:
+        # df[col] = df[col].apply(lambda x: np.array([x]) if np.isscalar(x) else x)
+        # df[col] = df[col].apply(lambda x: x if np.isscalar(x) else x.item())
         df = self.add_equation_index0(
             df=df,
             level_id="level_id",
@@ -342,6 +347,7 @@ class TwoTermAtomSEE:
                     lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                     lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                     lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                    is_scalar=True,
                 )
                 r_a_1 += (
                     n_proj(L)
@@ -436,6 +442,7 @@ class TwoTermAtomSEE:
                     lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                     lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                     lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                    is_scalar=True,
                 )
 
                 r_s_1 += multiply(
@@ -449,6 +456,7 @@ class TwoTermAtomSEE:
                     lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
                     lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
                     lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                    is_scalar=True,
                 )
                 if self.disable_r_s:
                     r_s_1 = r_s_1 * 0
@@ -574,6 +582,7 @@ class TwoTermAtomSEE:
                 lambda: wigner_6j(L, Ll, 1, Jl, J, S),
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
+                is_scalar=True,
             )
             dfs.append(
                 pd.DataFrame(
@@ -631,6 +640,7 @@ class TwoTermAtomSEE:
             lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
             lambda: wigner_6j(Lu, L, 1, J, Ju, S),
             lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
+            is_scalar=True,
         )
 
         return [
@@ -687,6 +697,7 @@ class TwoTermAtomSEE:
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
+                is_scalar=True,
             )
 
             dfs.append(
