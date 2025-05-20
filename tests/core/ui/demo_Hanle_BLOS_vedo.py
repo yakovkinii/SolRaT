@@ -1,14 +1,11 @@
 import logging
 
 import numpy as np
-
-# import vtk  # hack for VTK backend
 from matplotlib import pyplot as plt
 from numpy import pi
 from vedo import Arrow, Line, Plotter, Sphere
 from yatools import logging_config
 
-from src.core.physics.rotations import WignerD, rotate_J
 from src.two_term_atom.atomic_data.mock import get_mock_atom_data
 from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
@@ -96,10 +93,7 @@ rte = TwoTermAtomRTE(
 )
 
 rad_tensor = RadiationTensor(transition_registry=trans_reg)
-rad_tensor.fill_NLTE_n_w_parametrized(h_arcsec=0.725 * height)
-# Rotate to B-frame
-D = WignerD(alpha=chi_B, beta=theta_B, gamma=0, K_max=2)
-J_B = rotate_J(J=rad_tensor, D=D)
+rad_tensor.fill_NLTE_n_w_parametrized(h_arcsec=0.725 * height).rotate_to_magnetic_frame(chi_B=chi_B, theta_B=theta_B)
 
 for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     # for Bscale in [1]:
@@ -125,7 +119,7 @@ for ax in axs:
     ax.grid(True)
 axs[-1].set_xlabel("Frequency (Hz)")
 axs[0].legend()
-plt.tight_layout()
+# plt.tight_layout()
 
 
 # Focus camera on B_origin and show axes
