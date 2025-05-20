@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Tuple
 
 import numpy as np
@@ -45,6 +46,7 @@ def _g_ls(L, S, J):
     return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
 
 
+@lru_cache(maxsize=None)  # Todo check if this works correctly
 def calculate_paschen_back(
     level: Level, magnetic_field_gauss: float
 ) -> Tuple[PaschenBackEigenvalues, PaschenBackCoefficients]:

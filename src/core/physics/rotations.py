@@ -6,11 +6,9 @@ from numpy import cos, exp, sin
 from sympy.physics.wigner import wigner_d
 
 from src.core.engine.functions.general import delta, m1p
-from src.core.engine.functions.looping import FROMTO, PROJECTION, fromto
+from src.core.engine.functions.looping import PROJECTION, fromto
 from src.core.engine.generators.nested_loops import nested_loops
-from src.core.engine.generators.summate import summate
 from src.core.physics.constants import sqrt2, sqrt3
-from src.two_term_atom.object.radiation_tensor import RadiationTensor
 
 
 class WignerD:
@@ -24,7 +22,7 @@ class WignerD:
         self.d = {}
         for K in fromto(0, K_max):
             # Note: sympy uses a different convention for angles, so I perform under-the-hood conversion here.
-            self.d[K] = wigner_d(J=K, alpha=-alpha, beta=-beta, gamma=-gamma)
+            self.d[K] = wigner_d(J=int(K), alpha=-alpha, beta=-beta, gamma=-gamma)
 
     @lru_cache(maxsize=None)
     def __call__(self, K, P, Q):
@@ -114,24 +112,3 @@ def T_K_Q(K, Q, stokes_component_index, chi, theta, gamma):
     if Q == 0:
         return sqrt3 / sqrt2 * cos(theta) + 0j
     return -0.5 * sqrt3 * sin(theta) * exp(1j * chi)
-
-
-def rotate_J(J: RadiationTensor, D: WignerD):
-    """
-    (2.78), or more precisely, equation above (2.80)
-    And also using the fact that J has K <= 2 for electric dipole transitions
-    """
-
-    new_J = RadiationTensor(transition_registry=J.transition_registry)
-    for transition in J.transition_registry.transitions.values():
-        for K, Q in nested_loops(
-            K=FROMTO(0, 2),
-            Q=PROJECTION("K"),
-        ):
-            new_J.add(
-                transition=transition,
-                K=K,
-                Q=Q,
-                value=summate(lambda P: J(transition=transition, K=K, Q=P) * D(K=K, P=P, Q=Q), P=PROJECTION(K)),
-            )
-    return new_J

@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def multiply(*args, is_complex=False):
+def multiply(*args, is_complex=False, is_scalar=False):
     """
     DO NOT DELAY EVALUATION!
     DO NOT PUT multiply INSIDE DELAYED-EVALUATION FUNCTIONS/CALLABLES!
@@ -51,13 +51,13 @@ def multiply(*args, is_complex=False):
         ))
     results = [c() for c in callables]
     """
+    if is_scalar:
+        result = 1.0
+    else:
+        result = np.array([1.0], dtype=np.float64) if not is_complex else np.array([1.0], dtype=np.complex128)
 
-    result = np.array([1.0], dtype=np.float64) if not is_complex else np.array([1.0], dtype=np.complex128)
     for arg in args:
-        if callable(arg):
-            value = arg()
-        else:
-            value = arg
+        value = arg()
 
         if not isinstance(value, np.ndarray):  # Short circuit only scalars for now
             if value == 0:
