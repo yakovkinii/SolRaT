@@ -104,7 +104,7 @@ def log_function(function):
     return decorator
 
 
-def log_function_not_tested(function):
+def log_function_not_tested(function):  # pragma: no cover
     """
     A decorator to log the name of a function when it is executed.
     """
