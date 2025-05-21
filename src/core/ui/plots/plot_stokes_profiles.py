@@ -112,3 +112,54 @@ class StokesPlotter_IV:
             fontsize="x-small",
         )
         plt.show()
+
+
+class StokesPlotter:
+    def __init__(self, title=""):
+        self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        self.next_color_index = 0
+        self.fig, self.axs = plt.subplots(4, 1, sharex=True, constrained_layout=True, figsize=(8, 8), num=title)
+        self.axs[0].set_ylabel(r"Stokes $I$")
+        self.axs[1].set_ylabel(r"Stokes $Q$")
+        self.axs[2].set_ylabel(r"Stokes $U$")
+        self.axs[3].set_ylabel(r"Stokes $V$")
+
+    def add(self, lambda_A, reference_lambda_A, stokes_I, stokes_Q, stokes_U, stokes_V, color=None, label=""):
+        if color == "auto":
+            color = self.colors[self.next_color_index % len(self.colors)]
+            self.next_color_index += 1
+
+        if stokes_I is not None:
+            self.axs[0].plot(
+                lambda_A - reference_lambda_A, stokes_I, label=label, color=color, linewidth=1
+            )
+
+        if stokes_Q is not None:
+            self.axs[1].plot(
+                lambda_A - reference_lambda_A, stokes_Q, label=label, color=color, linewidth=1
+            )
+
+        if stokes_U is not None:
+            self.axs[2].plot(
+                lambda_A - reference_lambda_A, stokes_U, label=label, color=color, linewidth=1
+            )
+
+        if stokes_V is not None:
+            self.axs[3].plot(
+                lambda_A - reference_lambda_A, stokes_V, label=label, color=color, linewidth=1
+            )
+
+    def show(self):
+        self.axs[0].grid(True)
+        self.axs[1].grid(True)
+        self.axs[2].grid(True)
+        self.axs[3].grid(True)
+        self.axs[3].set_xlabel(r"$\Delta\lambda$ ($\AA$)")
+
+        self.axs[0].legend(
+            loc="upper left",
+            bbox_to_anchor=(1.02, 1),  # Centered above the axes
+            fontsize="x-small",
+        )
+
+        plt.show()

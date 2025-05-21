@@ -16,6 +16,7 @@ from src.core.physics.voigt_profile import voigt
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.two_term_atom.object.angles import Angles
 from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from src.two_term_atom.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from src.two_term_atom.object.rho_matrix_builder import Rho
 from src.two_term_atom.physics.paschen_back import calculate_paschen_back
 from src.two_term_atom.terms_levels_transitions.term_registry import Level, TermRegistry
@@ -752,6 +753,42 @@ class TwoTermAtomRTE:
         result_I, result_Q, result_U, result_V = [h_erg_s * self.nu / 4 / pi * self.N * result for result in results]
 
         return result_I, result_Q, result_U, result_V
+
+    @log_method
+    def compute_all_coefficients(
+        self, atmosphere_parameters: AtmosphereParameters, angles: Angles = None, rho: Rho = None
+    ):
+        eta_rho_aI, eta_rho_aQ, eta_rho_aU, eta_rho_aV = self.eta_rho_a(
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+            rho=rho,
+        )
+
+        eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = self.eta_rho_s(
+            atmosphere_parameters=atmosphere_parameters,
+            angles=angles,
+            rho=rho,
+        )
+
+        epsilonI = self.epsilon(eta_rho_aI, self.nu)
+        epsilonQ = self.epsilon(eta_rho_aQ, self.nu)
+        epsilonU = self.epsilon(eta_rho_aU, self.nu)
+        epsilonV = self.epsilon(eta_rho_aV, self.nu)
+
+        return RadiativeTransferCoefficients(
+            eta_rho_aI=eta_rho_aI,
+            eta_rho_aQ=eta_rho_aQ,
+            eta_rho_aU=eta_rho_aU,
+            eta_rho_aV=eta_rho_aV,
+            eta_rho_sI=eta_rho_sI,
+            eta_rho_sQ=eta_rho_sQ,
+            eta_rho_sU=eta_rho_sU,
+            eta_rho_sV=eta_rho_sV,
+            epsilonI=epsilonI,
+            epsilonQ=epsilonQ,
+            epsilonU=epsilonU,
+            epsilonV=epsilonV,
+        )
 
     def phi(self, nui, nu, macroscopic_velocity_cm_sm1, delta_v_thermal_cm_sm1, voigt_a):
         """
