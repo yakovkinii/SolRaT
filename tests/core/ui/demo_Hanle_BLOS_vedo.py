@@ -6,12 +6,12 @@ from numpy import pi
 from vedo import Arrow, Line, Plotter, Sphere
 from yatools import logging_config
 
-from src.two_term_atom.atomic_data.mock import get_mock_atom_data
-from src.two_term_atom.object.angles import Angles
-from src.two_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.two_term_atom.object.radiation_tensor import RadiationTensor
-from src.two_term_atom.radiative_transfer_equations import TwoTermAtomRTE
-from src.two_term_atom.statistical_equilibrium_equations import TwoTermAtomSEE
+from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
+from src.multi_term_atom.object.angles import Angles
+from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from src.multi_term_atom.object.radiation_tensor import RadiationTensor
+from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
+from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 
 # Initialize logging
 logging_config.init(logging.INFO)
@@ -73,14 +73,14 @@ plt3d.add(line.c("white").lw(1))
 
 
 # ========== Frequency plots using matplotlib ==========
-term_reg, trans_reg, ref_lambdaA, ref_nu = get_mock_atom_data()
+level_reg, trans_reg, ref_lambdaA, ref_nu = get_mock_atom_data()
 nu = np.arange(ref_nu - 1e11, ref_nu + 1e11, 1e8)
 
 # Prepare subplots
 fig, axs = plt.subplots(4, 1, sharex=True)
-see = TwoTermAtomSEE(term_registry=term_reg, transition_registry=trans_reg)
-rte = TwoTermAtomRTE(
-    term_registry=term_reg,
+see = MultiTermAtomSEE(level_registry=level_reg, transition_registry=trans_reg)
+rte = MultiTermAtomRTE(
+    level_registry=level_reg,
     transition_registry=trans_reg,
     nu=nu,
     angles=Angles(

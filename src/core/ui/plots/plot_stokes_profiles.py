@@ -130,24 +130,16 @@ class StokesPlotter:
             self.next_color_index += 1
 
         if stokes_I is not None:
-            self.axs[0].plot(
-                lambda_A - reference_lambda_A, stokes_I, label=label, color=color, linewidth=1
-            )
+            self.axs[0].plot(lambda_A - reference_lambda_A, stokes_I, label=label, color=color, linewidth=1)
 
         if stokes_Q is not None:
-            self.axs[1].plot(
-                lambda_A - reference_lambda_A, stokes_Q, label=label, color=color, linewidth=1
-            )
+            self.axs[1].plot(lambda_A - reference_lambda_A, stokes_Q, label=label, color=color, linewidth=1)
 
         if stokes_U is not None:
-            self.axs[2].plot(
-                lambda_A - reference_lambda_A, stokes_U, label=label, color=color, linewidth=1
-            )
+            self.axs[2].plot(lambda_A - reference_lambda_A, stokes_U, label=label, color=color, linewidth=1)
 
         if stokes_V is not None:
-            self.axs[3].plot(
-                lambda_A - reference_lambda_A, stokes_V, label=label, color=color, linewidth=1
-            )
+            self.axs[3].plot(lambda_A - reference_lambda_A, stokes_V, label=label, color=color, linewidth=1)
 
     def show(self):
         self.axs[0].grid(True)
