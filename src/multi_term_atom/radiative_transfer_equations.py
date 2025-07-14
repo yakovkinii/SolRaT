@@ -9,8 +9,9 @@ from src.core.engine.functions.general import m1p, n_proj
 from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from src.core.engine.generators.multiply import multiply
 from src.core.engine.generators.nested_loops import nested_loops
+from src.core.engine.generators.summate import summate
 from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt_pi
-from src.core.physics.functions import energy_cmm1_to_frequency_hz
+from src.core.physics.functions import energy_cmm1_to_frequency_hz, get_planck_BP
 from src.core.physics.rotations import T_K_Q_double_rotation, WignerD
 from src.core.physics.voigt_profile import voigt
 from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
@@ -771,6 +772,37 @@ class MultiTermAtomRTE:
         )
 
         epsilonI = self.epsilon(eta_rho_aI, self.nu)
+        #
+        # for transition in self.transition_registry.transitions.values():
+        #     term_upper = transition.term_upper
+        #     term_lower = transition.term_lower
+        #     Lu = term_upper.L
+        #     Ll = term_lower.L
+        #     S = term_lower.S
+        #     epsilon_prime = 1
+        #
+        #     k_A_M = h_erg_s * self.nu / 4 / pi * self.N * transition.einstein_b_lu
+        #
+        #     epsilonI += 100*summate(
+        #         lambda Ju, Jl: epsilon_prime
+        #         / (1 + epsilon_prime)
+        #         * k_A_M
+        #         * get_planck_BP(nu_sm1= energy_cmm1_to_frequency_hz(term_upper.get_level(Ju).energy_cmm1 - term_lower.get_level(Jl).energy_cmm1), T_K=1000000)
+        #         * n_proj(Ju, Jl)
+        #         / n_proj(S)
+        #         * (wigner_6j(Lu, Ll, 1, Jl, Ju, S)) ** 2
+        #         * np.real(
+        #             self.phi(
+        #                 nui= energy_cmm1_to_frequency_hz(term_upper.get_level(Ju).energy_cmm1 - term_lower.get_level(Jl).energy_cmm1),
+        #                 nu=self.nu,
+        #                 macroscopic_velocity_cm_sm1=atmosphere_parameters.macroscopic_velocity_cm_sm1,
+        #                 delta_v_thermal_cm_sm1=atmosphere_parameters.delta_v_thermal_cm_sm1/3,
+        #                 voigt_a=atmosphere_parameters.voigt_a,
+        #             )
+        #         ),
+        #         Ju=TRIANGULAR(Lu, S),
+        #         Jl=TRIANGULAR(Ll, S),
+        #     )
         epsilonQ = self.epsilon(eta_rho_aQ, self.nu)
         epsilonU = self.epsilon(eta_rho_aU, self.nu)
         epsilonV = self.epsilon(eta_rho_aV, self.nu)

@@ -1,5 +1,6 @@
 from typing import Union
 
+import numpy as np
 import pandas as pd
 
 from src.core.engine.functions.general import delta
@@ -77,6 +78,20 @@ class RadiationTensor(Container):
                 self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
         self.construct_df()
         return self
+
+    def get_NLTE_n_w_parametrized_stokes_I(self, h_arcsec, theta, nu):
+        """
+        Get Stokes I that is consistent with NLTE n and w JKQ tensor.
+        I = J00 + 5 * J20 * P2(cos(theta))
+        """
+        stokesI = np.zeros_like(nu)
+        for i, nui in enumerate(nu):  # Todo can be vectorized
+            lambdai = frequency_hz_to_lambda_A(nui)
+            J00 = self.n_fit(lambdai) * 2 * h_erg_s * nui**3 / c_cm_sm1**2
+            J20 = J00 * self.w_fit(lambdai, h_arcsec) / sqrt2
+            stokesI[i] = J00 + 5 * J20 * (3 * np.cos(theta) ** 2 - 1) / 2
+
+        return stokesI
 
     def __call__(self, transition: Transition, K: int, Q: int) -> float:
         result = self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
