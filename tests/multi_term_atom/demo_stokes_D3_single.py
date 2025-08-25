@@ -182,32 +182,21 @@ def main():
     # ----- ADDED DELO-CONST METHOD -----
     from scipy.linalg import expm
 
-    # Precompute coefficients
-    K_tau = rtc.K_tau()  # Shape: (n_nu, 4, 4)
-    epsilon_tau = rtc.epsilon_tau()  # Shape: (n_nu, 4, 1)
-    stokes_delo = np.zeros_like(stokes_los_prev)  # Initialize output
+    K_tau = rtc.K_tau()
+    epsilon_tau = rtc.epsilon_tau()[:, :, 0]  # Remove last dim
 
-    for i in range(len(nu)):
-        # Extract matrices/vectors for current frequency
-        K_tau_i = K_tau[i, :, :]
-        epsilon_tau_i = epsilon_tau[i, :, 0]
-        I0 = stokes_los_prev[i, :, 0]
+    # Batched solve for S
+    S = np.stack([np.linalg.solve(K, eps) if np.linalg.det(K) > 1e-10
+                  else np.zeros(4)
+                  for K, eps in zip(K_tau, epsilon_tau)])
 
-        # Solve for source function S = K_tau^{-1} @ epsilon_tau
-        try:
-            S = np.linalg.solve(K_tau_i, epsilon_tau_i)
-        except np.linalg.LinAlgError:
-            # Fallback if matrix is singular
-            S = np.zeros(4)
+    # Compute all matrix exponentials
+    expM = np.stack([expm(K * dtau) for K in K_tau])
 
-        # Compute M = K_tau * dtau
-        M = K_tau_i * dtau
-
-        # Compute matrix exponential
-        expM = expm(M)
-
-        # DELO-constant solution: I = S + expM @ (I0 - S)
-        stokes_delo[i, :, 0] = S + expM @ (I0 - S)
+    # Final computation
+    stokes_delo = S[:, :, np.newaxis] + np.einsum('ijk,ik->ij', expM,
+                                                  stokes_los_prev[:, :, 0] - S)[:, :, np.newaxis]
+    stokes_delo = stokes_delo[:, :, np.newaxis]  # Restore last dimension
 
     plotter.add(
         lambda_A=lambda_A,
