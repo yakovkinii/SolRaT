@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.core.physics.voigt_profile import voigt
+from src.common.voigt_profile import voigt
 
 
 class TestMathUtils(unittest.TestCase):

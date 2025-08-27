@@ -1,7 +1,7 @@
 import unittest
 
-from src.core.engine.functions.looping import FROMTO, PROJECTION, fromto
-from src.core.engine.generators.summate import summate
+from src.engine.functions.looping import FROMTO, PROJECTION, fromto
+from src.engine.generators.summate import summate
 
 
 class TestSummate(unittest.TestCase):

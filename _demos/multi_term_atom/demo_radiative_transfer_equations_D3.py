@@ -5,8 +5,8 @@ import numpy as np
 from numpy import real
 from yatools import logging_config
 
-from src.core.physics.functions import lambda_cm_to_frequency_hz
-from src.core.ui.plots.plot_stokes_profiles import StokesPlotter_IV
+from src.common.functions import lambda_cm_to_frequency_hz
+from src.gui.plots.plot_stokes_profiles import StokesPlotter_IV
 from src.multi_term_atom.atomic_data.HeI import fill_precomputed_He_I_D3_data, get_He_I_D3_data
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters

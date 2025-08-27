@@ -1,6 +1,6 @@
 from tqdm import tqdm
 
-from src.core.engine.functions.looping import fromto, intersection, projection, triangular
+from src.engine.functions.looping import fromto, intersection, projection, triangular
 
 
 def summate(expression: callable, tqdm_level=0, **kwargs):

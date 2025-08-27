@@ -2,7 +2,7 @@ from typing import Dict, Union
 
 import numpy as np
 
-from src.core.engine.functions.general import half_int_to_str
+from src.engine.functions.general import half_int_to_str
 
 
 class Container:

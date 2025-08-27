@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from numpy import abs, sqrt
 
-from src.core.engine.functions.general import fact2
+from src.engine.functions.general import fact2
 
 
 def _w3j_doubled_argument(j1_doubled, j2_doubled, j3_doubled, m1_doubled, m2_doubled, m3_doubled):

@@ -3,14 +3,14 @@ from typing import Union
 import numpy as np
 import pandas as pd
 
-from src.core.engine.functions.general import delta
-from src.core.engine.functions.looping import FROMTO, PROJECTION
-from src.core.engine.generators.nested_loops import nested_loops
-from src.core.engine.generators.summate import summate
-from src.core.engine.objects.container import Container
-from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt2
-from src.core.physics.functions import frequency_hz_to_lambda_A, get_planck_BP
-from src.core.physics.rotations import WignerD
+from src.engine.functions.general import delta
+from src.engine.functions.looping import FROMTO, PROJECTION
+from src.engine.generators.nested_loops import nested_loops
+from src.engine.generators.summate import summate
+from src.engine.objects.container import Container
+from src.common.constants import c_cm_sm1, h_erg_s, sqrt2
+from src.common.functions import frequency_hz_to_lambda_A, get_planck_BP
+from src.common.rotations import WignerD
 from src.multi_term_atom.terms_levels_transitions.transition_registry import Transition, TransitionRegistry
 
 

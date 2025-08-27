@@ -1,6 +1,6 @@
 from typing import Dict
 
-from src.core.physics.functions import energy_cmm1_to_frequency_hz
+from src.common.functions import energy_cmm1_to_frequency_hz
 from src.multi_term_atom.physics.einstein_coefficients import (
     b_lu_from_b_ul_multi_term_atom,
     b_ul_from_a_ul_multi_term_atom,

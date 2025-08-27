@@ -1,4 +1,4 @@
-from src.core.physics.functions import nu_larmor
+from src.common.functions import nu_larmor
 
 
 class AtmosphereParameters:

@@ -4,8 +4,8 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.core.engine.functions.looping import PROJECTION, TRIANGULAR
-from src.core.engine.generators.nested_loops import nested_loops
+from src.engine.functions.looping import PROJECTION, TRIANGULAR
+from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
 from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import MultiTermAtomSEELegacy
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters

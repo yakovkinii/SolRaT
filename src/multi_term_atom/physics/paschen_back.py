@@ -4,9 +4,9 @@ from typing import Tuple
 import numpy as np
 from numpy import sqrt
 
-from src.core.engine.functions.general import half_int_to_str
-from src.core.engine.functions.looping import fromto
-from src.core.physics.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
+from src.engine.functions.general import half_int_to_str
+from src.engine.functions.looping import fromto
+from src.common.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
 from src.multi_term_atom.terms_levels_transitions.level_registry import Term
 
 

@@ -3,15 +3,15 @@ import logging
 import numpy as np
 from numpy import imag, pi, real, sqrt
 
-from src.core.engine.functions.general import m1p, n_proj
-from src.core.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
-from src.core.engine.generators.multiply import multiply
-from src.core.engine.generators.summate import summate
-from src.core.physics.constants import c_cm_sm1, h_erg_s, sqrt_pi
-from src.core.physics.functions import energy_cmm1_to_frequency_hz
-from src.core.physics.rotations import T_K_Q_double_rotation, WignerD
-from src.core.physics.voigt_profile import voigt
-from src.core.physics.wigner_3j_6j_9j import wigner_3j, wigner_6j
+from src.engine.functions.general import m1p, n_proj
+from src.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
+from src.engine.generators.multiply import multiply
+from src.engine.generators.summate import summate
+from src.common.constants import c_cm_sm1, h_erg_s, sqrt_pi
+from src.common.functions import energy_cmm1_to_frequency_hz
+from src.common.rotations import T_K_Q_double_rotation, WignerD
+from src.common.voigt_profile import voigt
+from src.common.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.rho_matrix_builder import Rho

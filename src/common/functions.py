@@ -3,7 +3,7 @@ from typing import Union
 import numpy as np
 from numpy import exp
 
-from src.core.physics.constants import c_cm_sm1, h_erg_s, kB_erg_Km1, mu0_erg_gaussm1
+from src.common.constants import c_cm_sm1, h_erg_s, kB_erg_Km1, mu0_erg_gaussm1
 
 
 def get_planck_BP(nu_sm1: float, T_K: float) -> float:

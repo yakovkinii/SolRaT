@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 from yatools import logging_config
 
-from src.core.engine.functions.special import pseudo_hash
-from src.core.physics.functions import lambda_cm_to_frequency_hz
+from src.engine.functions.special import pseudo_hash
+from src.common.functions import lambda_cm_to_frequency_hz
 from src.multi_term_atom.atomic_data.HeI import fill_precomputed_He_I_D3_data, get_He_I_D3_data
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters

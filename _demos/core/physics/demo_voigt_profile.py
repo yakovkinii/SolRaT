@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
-from src.core.physics.constants import c_cm_sm1, sqrt_pi
-from src.core.physics.voigt_profile import voigt
+from src.common.constants import c_cm_sm1, sqrt_pi
+from src.common.voigt_profile import voigt
 
 
 def main():

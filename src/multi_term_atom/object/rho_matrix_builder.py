@@ -3,9 +3,9 @@ from typing import List
 import numpy as np
 from numpy import sqrt
 
-from src.core.engine.functions.general import half_int_to_str
-from src.core.engine.functions.looping import PROJECTION, TRIANGULAR
-from src.core.engine.generators.nested_loops import nested_loops
+from src.engine.functions.general import half_int_to_str
+from src.engine.functions.looping import PROJECTION, TRIANGULAR
+from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.terms_levels_transitions.level_registry import Term
 
 

@@ -1,4 +1,4 @@
-from src.core.physics.constants import c_cm_sm1, h_erg_s
+from src.common.constants import c_cm_sm1, h_erg_s
 
 
 def b_ul_from_a_ul_multi_term_atom(a_ul_sm1, nu_ul):

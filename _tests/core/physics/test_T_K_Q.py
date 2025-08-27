@@ -4,9 +4,9 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.core.engine.functions.looping import FROMTO, PROJECTION
-from src.core.engine.generators.nested_loops import nested_loops
-from src.core.physics.rotations import T_K_Q, T_K_Q_double_rotation, WignerD
+from src.engine.functions.looping import FROMTO, PROJECTION
+from src.engine.generators.nested_loops import nested_loops
+from src.common.rotations import T_K_Q, T_K_Q_double_rotation, WignerD
 
 
 class TestTKQ(unittest.TestCase):

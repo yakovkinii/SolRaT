@@ -1,7 +1,7 @@
 import unittest
 
-from src.core.engine.functions.general import delta, fact2
-from src.core.engine.generators.multiply import multiply
+from src.engine.functions.general import delta, fact2
+from src.engine.generators.multiply import multiply
 
 
 class TestMultiply(unittest.TestCase):
