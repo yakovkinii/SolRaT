@@ -21,7 +21,7 @@ class TransitionRegistry:
         einstein_b_lu: float,
     ):
         """
-        Einstein coefficients are on betaLS->betaLS term, so need to sum over J in advance.
+        Einstein coefficients are on betaLS->betaLS level, so need to sum over J in advance.
         A_ul = spontaneous emission
         B_ul = stimulated emission
         B_lu = absorption

@@ -29,9 +29,6 @@ class MultiTermAtomRTELegacy:
 
     Note some minor differences from the new vectorized implementation:
     1. Cutoff condition is defined slightly differently.
-
-    Todo:
-    1. Check, assert, and document the 'further assumptions'
     """
 
     def __init__(

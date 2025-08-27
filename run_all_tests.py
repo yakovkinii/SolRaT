@@ -12,7 +12,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("error", category=DeprecationWarning)  # Raise error on DeprecationWarning
     yatools.logging_config.init()
     loader = unittest.TestLoader()
-    start_dir = "tests/"
+    start_dir = "_tests/"
     suite = loader.discover(start_dir)
 
     runner = unittest.TextTestRunner()
