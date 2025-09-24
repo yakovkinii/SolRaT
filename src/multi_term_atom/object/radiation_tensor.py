@@ -56,6 +56,8 @@ class RadiationTensor(Container):
         """
         assert lambda_A >= 3800, "w_fit is only valid for lambda_A >= 3800"
         assert lambda_A <= 12000, "w_fit is not tested for lambda_A >= 12000"
+        assert h_arcsec >= 0, "h_arcsec must be non-negative"
+        assert h_arcsec <= 50, ""
         return 0.02 + h_arcsec**0.6 * 0.0175 + 4e2 / (lambda_A - 1600 + h_arcsec * 20)
 
     def fill_NLTE_n_w_parametrized(self, h_arcsec):

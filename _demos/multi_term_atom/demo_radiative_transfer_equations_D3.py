@@ -84,15 +84,22 @@ def main():
         rho = see.get_solution_direct()
 
         # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
-        eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = rte.eta_rho_s(
+        # eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = rte.eta_rho_s(
+        #     atmosphere_parameters=atmosphere_parameters,
+        #     # angles=...,  # We could provide angles here if they were dynamic
+        #     rho=rho,
+        # )
+
+        rtc = rte.compute_all_coefficients(
             atmosphere_parameters=atmosphere_parameters,
-            # angles=...,  # We could provide angles here if they were dynamic
             rho=rho,
         )
+        eta_rho_sI = rtc.eta_rho_sI
+        eta_rho_sV = rtc.eta_rho_sV
 
         plotter.add(
             lambda_A=lambda_A,
-            stokes_I=real(eta_rho_sI),
+            stokes_I=rtc.eta_sI(),
             stokes_V=real(eta_rho_sV),
             reference_lambda_A=reference_lambda_A,
             color="auto",

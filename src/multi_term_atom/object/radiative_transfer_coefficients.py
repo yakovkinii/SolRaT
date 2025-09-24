@@ -29,6 +29,7 @@ class RadiativeTransferCoefficients:
         self.epsilonQ = epsilonQ
         self.epsilonU = epsilonU
         self.epsilonV = epsilonV
+        self._eta_tau_scale = self._compute_eta_tau_scale()
 
     def eta_sI(self):
         return np.real(self.eta_rho_sI)
@@ -42,38 +43,45 @@ class RadiativeTransferCoefficients:
     def eta_sV(self):
         return np.real(self.eta_rho_sV)
 
-    def K(self):
-        # 6.85
-        K = np.zeros((len(self.eta_rho_sV), 4, 4), dtype=np.float64)
-        K[:, 0, 0] = -np.real(self.eta_rho_sI - self.eta_rho_aI)
-        K[:, 0, 1] = -np.real(self.eta_rho_sQ - self.eta_rho_aQ)
-        K[:, 0, 2] = -np.real(self.eta_rho_sU - self.eta_rho_aU)
-        K[:, 0, 3] = -np.real(self.eta_rho_sV - self.eta_rho_aV)
-        K[:, 1, 0] = K[:, 0, 1]
-        K[:, 1, 1] = K[:, 0, 0]
-        K[:, 1, 2] = -np.imag(self.eta_rho_sV - self.eta_rho_aV)
-        K[:, 1, 3] = -np.imag(-self.eta_rho_sU + self.eta_rho_aU)
-        K[:, 2, 0] = K[:, 0, 2]
-        K[:, 2, 1] = -K[:, 1, 2]
-        K[:, 2, 2] = K[:, 0, 0]
-        K[:, 2, 3] = -np.imag(self.eta_rho_sQ - self.eta_rho_aQ)
-        K[:, 3, 0] = K[:, 0, 3]
-        K[:, 3, 1] = -K[:, 1, 3]
-        K[:, 3, 2] = -K[:, 2, 3]
-        K[:, 3, 3] = K[:, 0, 0]
+    def _split_eta_rho(self):
+        etaI = np.real(self.eta_rho_aI)
+        etaQ = np.real(self.eta_rho_aQ)
+        etaU = np.real(self.eta_rho_aU)
+        etaV = np.real(self.eta_rho_aV)
+
+        rhoQ = np.imag(self.eta_rho_aQ)
+        rhoU = np.imag(self.eta_rho_aU)
+        rhoV = np.imag(self.eta_rho_aV)
+        return etaI, etaQ, etaU, etaV, rhoQ, rhoU, rhoV
+
+    def K_nu(self):
+        # Build K(ν) per-frequency with LL04 layout.
+        etaI, etaQ, etaU, etaV, rhoQ, rhoU, rhoV = self._split_eta_rho()
+
+        # Stack into [Nν, 4, 4]
+        K = np.empty((len(etaI), 4, 4), dtype=np.float64)
+        K[:, 0, 0] = etaI; K[:, 0, 1] = etaQ; K[:, 0, 2] = etaU; K[:, 0, 3] = etaV
+        K[:, 1, 0] = etaQ; K[:, 1, 1] = etaI; K[:, 1, 2] = rhoV; K[:, 1, 3] = -rhoU
+        K[:, 2, 0] = etaU; K[:, 2, 1] = -rhoV;K[:, 2, 2] = etaI; K[:, 2, 3] = rhoQ
+        K[:, 3, 0] = etaV; K[:, 3, 1] = rhoU; K[:, 3, 2] = -rhoQ;K[:, 3, 3] = etaI
         return K
 
-    def get_eta_for_tau(self):
-        return np.real(self.eta_rho_aI - self.eta_rho_sI).max() #[:, None, None] #.max()
-
     def K_tau(self):
-        """
-        K/eta
-        scales to line tau which is taken as max absorption
-        """
-        return self.K() / self.get_eta_for_tau()
+        # Rescale by the same scalar used for ε and ητ (see #8/#9 below)
+        K = self.K_nu()
+        return K / self._eta_tau_scale
+
+    def _compute_eta_tau_scale(self):
+        # Use the *intensity* channel of absorptive minus emissive kernels.
+        x = np.real(self.eta_rho_aI - self.eta_rho_sI)  # shape [Nν]
+        maxabs = np.max(np.abs(x))
+        maxval = np.max(x)
+        # Floor protects against near-cancellation or negative maxima.
+        floor = max(1e-12 * maxabs, 1e-20)
+        return max(maxval, floor)
 
     def epsilon(self):
+        # returns [Nν, 4, 1]
         epsilon = np.zeros((len(self.eta_rho_sV), 4, 1), dtype=np.float64)
         epsilon[:, 0, 0] = self.epsilonI
         epsilon[:, 1, 0] = self.epsilonQ
@@ -82,13 +90,9 @@ class RadiativeTransferCoefficients:
         return epsilon
 
     def epsilon_tau(self):
-        """
-        scales to 'continuum' which is taken as first frequency point
-        """
-        return self.epsilon() / self.get_eta_for_tau()
+        # just scale the already-built vector
+        return self.epsilon() / self._eta_tau_scale
 
     def eta_tau(self):
-        """
-        scales to 'continuum' which is taken as first frequency point
-        """
-        return (np.real(self.eta_rho_aI - self.eta_rho_sI) / np.real(self.eta_rho_aI - self.eta_rho_sI)[len(self.eta_rho_sV)*3//4])[:,None,None]
+        x = np.real(self.eta_rho_aI - self.eta_rho_sI)  # [Nν]
+        return x / self._eta_tau_scale

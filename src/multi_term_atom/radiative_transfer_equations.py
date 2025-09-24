@@ -770,7 +770,11 @@ class MultiTermAtomRTE:
             rho=rho,
         )
 
-        epsilonI = self.epsilon(eta_rho_aI, self.nu)
+        epsilonI = self.epsilon(eta_s=eta_rho_sI, nu=self.nu)
+        epsilonQ = self.epsilon(eta_s=eta_rho_sQ, nu=self.nu)
+        epsilonU = self.epsilon(eta_s=eta_rho_sU, nu=self.nu)
+        epsilonV = self.epsilon(eta_s=eta_rho_sV, nu=self.nu)
+
         #
         # for transition in self.transition_registry.transitions.values():
         #     term_upper = transition.term_upper
@@ -802,10 +806,6 @@ class MultiTermAtomRTE:
         #         Ju=TRIANGULAR(Lu, S),
         #         Jl=TRIANGULAR(Ll, S),
         #     )
-        epsilonQ = self.epsilon(eta_rho_aQ, self.nu)
-        epsilonU = self.epsilon(eta_rho_aU, self.nu)
-        epsilonV = self.epsilon(eta_rho_aV, self.nu)
-
         return RadiativeTransferCoefficients(
             eta_rho_aI=eta_rho_aI,
             eta_rho_aQ=eta_rho_aQ,

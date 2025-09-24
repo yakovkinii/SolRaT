@@ -155,3 +155,5 @@ class StokesPlotter:
         )
 
         plt.show()
+
+
