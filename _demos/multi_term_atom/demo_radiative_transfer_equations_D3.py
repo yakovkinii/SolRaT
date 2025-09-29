@@ -68,7 +68,8 @@ def main():
     plotter = StokesPlotter_IV(title="He I D3: Emission coefficient vs wavelength")
 
     # loop through the magnetic field values
-    for Bz in [20000, 40000, 60000, 80000, 100000]:
+    # for Bz in [20000, 40000, 60000, 80000, 100000]:
+    for Bz in [20000]:
         # Set up the atmosphere parameters
         atmosphere_parameters = AtmosphereParameters(
             magnetic_field_gauss=Bz,
