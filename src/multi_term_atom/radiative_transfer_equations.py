@@ -7,6 +7,8 @@ from numpy import pi, sqrt
 from src.engine.functions.decorators import log_method
 from src.engine.functions.general import m1p, n_proj
 from src.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
+from src.engine.generators.merge_frame import Frame
+from src.engine.generators.merge_loopers import Value, Dummy, Triangular, Projection, Intersection, FromTo
 from src.engine.generators.multiply import multiply
 from src.engine.generators.nested_loops import nested_loops
 from src.common.constants import c_cm_sm1, h_erg_s, sqrt_pi
@@ -191,6 +193,147 @@ class MultiTermAtomRTE:
             "Q",
         ]
         return pd.DataFrame(rows)
+
+    @log_method
+    def frame_a_frame(self):
+        rows = []
+        for transition in self.transition_registry.transitions.values():
+            term_upper = transition.term_upper
+            term_lower = transition.term_lower
+
+            logging.debug(f"Processing {term_upper.term_id} -> {term_lower.term_id}")
+            if self.cutoff_condition(term_upper=term_upper, term_lower=term_lower, nu=self.nu):
+                logging.debug(
+                    f"Cutting off the transition {term_upper.term_id} -> {term_lower.term_id} "
+                    f"because it does not contribute to the specified frequency range"
+                )
+                continue
+
+            rows.append(
+                {
+                    "transition_id": transition.transition_id,
+                    "term_upper_id": term_upper.term_id,
+                    "term_lower_id": term_lower.term_id,
+                    "Ll": term_lower.L,
+                    "Lu": term_upper.L,
+                    "S": term_lower.S,
+                }
+            )
+        base_frame = pd.DataFrame(rows)
+
+        Ll = Dummy()
+        Lu = Dummy()
+        S = Dummy()
+
+        jl = Triangular(Ll, S)
+        Jl = Triangular(Ll, S)
+        Jʹl = Triangular(Ll, S)
+        Jʹʹl = Triangular(Ll, S)
+        ju = Triangular(Lu, S)
+        Ju = Intersection(Triangular(Lu, S), Triangular(Jl, 1))
+        Jʹu = Intersection(Triangular(Lu, S), Triangular(Jʹl, 1))
+        Ml = Intersection(Projection(Jl), Projection(Jʹʹl), Projection(jl))
+        frame = Frame(
+            base_frame=base_frame,
+            Ll=Ll,
+            Lu=Lu,
+            S=S,
+            jl=jl,
+            Jl=Jl,
+            ju=ju,
+            Ju=Ju,
+        )
+
+
+
+
+        Mʹl = Projection(Jʹl)
+        Mu = Intersection(Projection(Ju), Projection(Jʹu), Projection(ju))
+        K = FromTo(0, 2)
+        Kl = Triangular(Jʹl, Jʹʹl)
+        Ql = Intersection(Projection(Kl), VALUE("Ml - Mʹl"))
+        q = Value("Ml - Mu")
+        qʹ = VALUE("Mʹl - Mu")
+        Q = Intersection(Projection(K), VALUE("q - qʹ"))
+
+
+
+        for jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, K, Kl, Ql, q, qʹ, Q in nested_loops(
+                jl=TRIANGULAR(Ll, S),
+                Jl=TRIANGULAR(Ll, S),
+                Jʹl=TRIANGULAR(Ll, S),
+                Jʹʹl=TRIANGULAR(Ll, S),
+                ju=TRIANGULAR(Lu, S),
+                Ju=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jl", 1)),
+                Jʹu=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jʹl", 1)),
+                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹʹl"), PROJECTION("jl")),
+                Mʹl=PROJECTION("Jʹl"),
+                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("Jʹu"), PROJECTION("ju")),
+                K=FROMTO(0, 2),
+                Kl=TRIANGULAR("Jʹl", "Jʹʹl"),
+                Ql=INTERSECTION(PROJECTION("Kl"), VALUE("Ml - Mʹl")),
+                q=VALUE("Ml - Mu"),
+                qʹ=VALUE("Mʹl - Mu"),
+                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
+            ):
+                coefficient = multiply(
+                    lambda: n_proj(Ll),
+                    lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
+                    lambda: m1p(1 + Jʹʹl - Ml + qʹ),
+                    lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                    lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+                    lambda: wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    lambda: wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+                    lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+                )
+                rows.append(
+                    {
+                        "term_upper_id": term_upper.term_id,
+                        "term_lower_id": term_lower.term_id,
+                        "transition_id": transition.transition_id,
+                        "jl": jl,
+                        "Jl": Jl,
+                        "Jʹl": Jʹl,
+                        "Jʹʹl": Jʹʹl,
+                        "ju": ju,
+                        "Ju": Ju,
+                        "Jʹu": Jʹu,
+                        "Ml": Ml,
+                        "Mʹl": Mʹl,
+                        "Mu": Mu,
+                        "K": K,
+                        "Kl": Kl,
+                        "Ql": Ql,
+                        "q": q,
+                        "qʹ": qʹ,
+                        "Q": Q,
+                        "coefficient": coefficient,
+                    }
+                )
+        self.frame_a_id_columns = [
+            "term_upper_id",
+            "term_lower_id",
+            "transition_id",
+            "jl",
+            "Jl",
+            "Jʹl",
+            "Jʹʹl",
+            "ju",
+            "Ju",
+            "Jʹu",
+            "Ml",
+            "Mʹl",
+            "Mu",
+            "K",
+            "Kl",
+            "Ql",
+            "q",
+            "qʹ",
+            "Q",
+        ]
+
 
     @log_method
     def precompute_s_frame(self):

@@ -1,41 +1,45 @@
 import logging
+import time
 
 import numpy as np
 import pandas as pd
+from yatools import logging_config
 
 from src.engine.generators.merge_frame import Frame
-from src.engine.generators.merge_loopers import FromTo, Intersection
+from src.engine.generators.merge_loopers import FromTo, Intersection, Projection, Value, Triangular
 
-logging.basicConfig(level=logging.INFO)
+logging_config.init(logging.INFO)
 
-k = FromTo(0, 2)
-q = FromTo(0, k)
-r = FromTo(q, k)
+k = FromTo(0, 10)
+s = Value(5.5)
+q = Projection(k)
+j = Triangular(k, s)
+Jʹ = Triangular(k, j)
+Jʹʹ = Triangular(k, Jʹ)
 
-frame = Frame(k=k, q=q, r=r)
+frame = Frame(k=k, s=s,q=q,j=j, Jʹ=Jʹ, Jʹʹ=Jʹʹ)
 
-nu = np.array([[1,2,3]])
+nu = np.array([[1,2,3]*100])
 
 def vector(arr):
     return pd.Series([row for row in arr])
 
-frame.evaluate(c2=lambda k: (k+1))
-frame.evaluate(c3=lambda k,q: (k+1)*(q+1))
-frame.evaluate(ar=lambda q,r: vector(nu-q-r))
+frame.set_factors(
+    c2=lambda k: (k+1),
+    c3=lambda k,q: (k+1)*(q+1),
+    c4=lambda q,j: (j+1)*(q+1),
+    ar=lambda q,s: vector(nu-q-s),
+    c8=lambda k, Jʹ,Jʹʹ: (Jʹ+1)*(Jʹʹ+1)*(k+1),
+)
 
-# frame.evaluate(mul=lambda qq, kk: qq*kk)
-full_frame = frame.construct_full_frame()
-print((full_frame['c2'] * full_frame['c3'] * full_frame['ar']).sum())
+frc=frame.copy()
+t0 = time.perf_counter()
+logging.warning(frc.debug_evaluate_legacy())
+t1 = time.perf_counter()
 
-frame.print_structure()
-print('='*40)
-print('='*40)
-print('='*40)
-frame.reduce('k')
-frame.print_structure()
+logging.warning(frame.reduce(k, Jʹ, Jʹʹ, ..., q,s))
+t2=time.perf_counter()
 
-full_frame2 = frame.construct_full_frame()
-print((full_frame2['c2_*_c3'] * full_frame2['ar']).sum())
-
+print(f"Old time: {t1-t0}, new time: {t2-t1}")
 
 a=1

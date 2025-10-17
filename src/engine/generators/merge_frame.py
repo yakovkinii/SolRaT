@@ -1,10 +1,10 @@
 import inspect
 import logging
-from functools import reduce
+from typing import List, Callable, Dict, Union
 
 import pandas as pd
 
-from src.engine.generators.merge_loopers import Looper
+from src.engine.generators.merge_loopers import Looper, Dummy
 
 
 def merge(df1, df2, on=None):
@@ -18,195 +18,170 @@ def merge(df1, df2, on=None):
 
 
 class Frame:
+    class FrameFactor:
+        def __init__(self, name:str, factor:Callable = None, dependencies:List[str]=None, merged:bool=False):
+            self.name:str = name
+            self.call:Callable = factor
+            if dependencies is not None:
+                self.dependencies: List[str] = dependencies
+            else:
+                assert factor is not None
+                self.dependencies: List[str] = [p.name for p in inspect.signature(factor).parameters.values()]
+            self.merged: bool = merged
+
     def __init__(self, base_frame:pd.DataFrame=None, **kwargs: Looper):
         if base_frame is not None:
-            self.base_frame = base_frame
+            self.frame: pd.DataFrame = base_frame.copy()
         else:
-            self.base_frame = pd.DataFrame(index=[0], columns=[])
+            self.frame: pd.DataFrame = pd.DataFrame(index=[0], columns=[])
 
-        self.sub_frames = {}
-        self.dependencies = {}
-        self.dependencies_direct = {}
-        self.sub_frame_orders = {}
-
-        # df = self.base_frame.copy()
-        for i, (looper_name, looper) in enumerate(kwargs.items()):
+        for looper_name, looper in kwargs.items():
             looper.set_name(looper_name)
+            if isinstance(looper, Dummy):
+                continue
             dependent_cols = list(looper.get_directly_dependent_columns())
             sub_frame = self.construct_sub_frame(dependent_cols)
             sub_frame_filled = looper.fill_frame(sub_frame)
-            self.sub_frames[looper_name] = sub_frame_filled
-            self.dependencies[looper_name] = list(looper.get_dependent_columns())
-            self.dependencies_direct[looper_name] = dependent_cols
-            self.sub_frame_orders[looper_name] = i
-
             assert not sub_frame_filled[looper_name].isna().any()
+            self.frame = merge(self.frame, sub_frame_filled)
 
-        self.evaluation_frames = {}
-        self.evaluation_dependencies = {}
-        self.evaluation_dependencies_direct = {}
-        self.evaluation_orders = {}
+        self.factors: Dict[str, Frame.FrameFactor] = {}
+        logging.info(f"Frame shape after initialization: {self.frame.shape}")
 
-    def print_structure(self):
-        print("Base frame:")
-        print(self.base_frame)
-        print("\nSub frames:")
-        for name, frame in self.sub_frames.items():
-            print(f"Sub frame '{name}':")
-            print(frame)
-            print(f"  Direct dependencies: {self.dependencies_direct[name]}")
-            print(f"  All dependencies: {self.dependencies[name]}")
+    def copy(self):
+        new_frame = Frame()
+        new_frame.frame = self.frame.copy()
+        new_frame.factors = {name: Frame.FrameFactor(factor.name, factor.call, factor.dependencies.copy(), factor.merged) for name, factor in self.factors.items()}
+        return new_frame
 
-        print("\nEvaluation frames:")
-        for name, frame in self.evaluation_frames.items():
-            print(f"Evaluation frame '{name}':")
-            print(frame)
-            print(f"  Direct dependencies: {self.evaluation_dependencies_direct[name]}")
-            print(f"  All dependencies: {self.evaluation_dependencies[name]}")
-
-    def construct_full_frame(self):
-        frames = [self.base_frame] + list(self.sub_frames.values())
-        full_frame = reduce(lambda left, right: merge(left, right), frames)
-        assert not full_frame.isna().any().any()
-        assert len(full_frame) == len(full_frame.drop_duplicates())
-        frames_evaluation = [full_frame]+list(self.evaluation_frames.values())
-        result = reduce(lambda left, right: merge(left, right), frames_evaluation)
-        return result.reset_index(drop=True)
-
-    def get_frame_chain(self, name, names_to_trace):
-        frame_names = []
-        columns_to_trace = set(names_to_trace).intersection(set(self.dependencies[name]))
-        frame_names.append(name)
-        for col in self.dependencies_direct[name]:
-            if all(tr not in self.dependencies[col] for tr in columns_to_trace) and col not in columns_to_trace:
-                continue
-            frame_names += self.get_frame_chain(col, names_to_trace)
-        return frame_names
-
-    def construct_sub_frame(self, columns, weights=False):
+    def construct_sub_frame(self, columns:List[str])->pd.DataFrame:
         if len(columns) == 0:
             return pd.DataFrame(index=[0], columns=[])
+        return self.frame[columns].drop_duplicates().reset_index(drop=True)
 
-        frame_names = []
+    def set_factors(self, **kwargs:Callable):
+        for name, factor_callable in kwargs.items():
+            self.factors[name] = self.FrameFactor(name, factor_callable)
+
+    def get_dependent_factors(self, column:str)->List[str]:
+        return [name for name, factor in self.factors.items() if column in factor.dependencies]
+
+    def get_merged_independent_factors(self, column:str)->List[str]:
+        return [name for name, factor in self.factors.items() if factor.merged and column not in factor.dependencies]
+
+    def merge_factor(self, factor_name:str):
+        logging.info(f"Merging factor {factor_name}")
+        factor = self.factors[factor_name]
+        factor_frame = self.construct_sub_frame(factor.dependencies)
+        arguments = {name: factor_frame[name].values.reshape(-1, 1) for name in factor.dependencies}
+        factor_frame[factor_name] = factor.call(**arguments)
+        self.frame = merge(self.frame, factor_frame)
+        factor.merged = True
+
+    def combine_merged_factors(self, factor_names:List[str]):
+        if len(factor_names) == 0:
+            raise ValueError("Trying to combine zero factors. No factors depend on a summation coefficient?")
+
+        if len(factor_names) == 1:
+            return factor_names[0]
+
+        new_factor_name = "*".join(factor_names)
+        self.frame[new_factor_name] = self.frame[factor_names].prod(axis=1)
+        dependencies = list(set().union(*[self.factors[name].dependencies for name in factor_names]))
+        self.factors[new_factor_name] = self.FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
+
+        for factor_name in factor_names:
+            del self.frame[factor_name]
+            del self.factors[factor_name]
+
+        return new_factor_name
+
+    def remove_dependency(self, column:str):
+        for factor in self.factors.values():
+            if column in factor.dependencies:
+                factor.dependencies.remove(column)
+
+    def get_other_frame_columns(self, exclude:str)->List[str]:
+        return [col for col in self.frame.columns if col != exclude and col not in self.factors]
+
+    def reduce_single_index(self, column: Union[str, Looper]):
+        if isinstance(column, Looper):
+            column = column.get_name()
+        dependent_factors = self.get_dependent_factors(column)
+        for factor_name in dependent_factors:
+            if not self.factors[factor_name].merged:
+                self.merge_factor(factor_name)
+
+        factor_name = self.combine_merged_factors(dependent_factors)
+        merged_independent_factors = self.get_merged_independent_factors(column)
+        assert self.get_dependent_factors(column) == [factor_name]
+
+        self.remove_dependency(column)
+
+        group_columns = self.get_other_frame_columns(column)
+        if len(group_columns) == 0:
+            assert len(merged_independent_factors) == 0, "There are independent merged factors: the frame can be factorized."
+            self.frame = self.frame.drop(columns=column)
+            return self.frame[factor_name].sum()
+
+        self.frame = self.frame.groupby(group_columns).agg(
+            {factor_name: 'sum',
+             **{f: 'first' for f in merged_independent_factors},
+             }
+        )
+        self.frame = self.frame.reset_index()
+        return None
+
+    def _reduce(self, columns):
+        result = None
         for col in columns:
-            frame_names.extend(self.get_frame_chain(col, columns))
+            assert col not in self.factors
+            assert col in self.frame.columns
+            result = self.reduce_single_index(col)
+        return result
 
-        frame_names = list(set(frame_names))
-        frame_names = sorted(frame_names, key=lambda x: self.sub_frame_orders[x])
+    def reduce(self, *args: Union[Looper, str]):
+        """ usage:
+        frame.reduce() to reduce all,
+        frame.reduce(col1, col2, ..., col5, col6) to specify first and last columns to reduce
+        """
+        factor_columns = list(self.factors.keys())
 
-        frames = []
-        for name in frame_names:
-            if weights or f"__weight__{name}" not in self.sub_frames[name].columns:
-                frame = self.sub_frames[name]
-            else:
-                frame = self.sub_frames[name].drop(columns=[f"__weight__{name}"])
-            frames.append(frame)
+        if len(args) == 0 or (len(args) == 1 and args[0] is Ellipsis):
+            return self._reduce(
+                [col for col in self.frame.columns[::-1] if col not in factor_columns]
+            )
+        if Ellipsis not in args:
+            result = self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
+            if result is None:
+                logging.warning("The frame is not fully reduced. Consider using Ellipsis (...) "
+                                "to reduce all remaining columns: frame.reduce(col1, col2, ...).")
+            return result
 
-        result = reduce(lambda left, right: merge(left, right), frames)
-        return result[columns].drop_duplicates().reset_index(drop=True)
+        if args.count(Ellipsis) > 1:
+            raise ValueError("Only one Ellipsis (...) is allowed in reduce() arguments.")
 
-    def evaluate(self, **kwargs)->pd.DataFrame:
-        assert len(kwargs) == 1
-        key, value = list(kwargs.items())[0]
-        signature = inspect.signature(value)
-        param_names = [p.name for p in signature.parameters.values()]
-        sub_frame = self.construct_sub_frame(param_names)
+        ellipsis_index = args.index(Ellipsis)
+        columns_before = [col.get_name() if isinstance(col, Looper) else col for col in args[:ellipsis_index]]
+        columns_after = [col.get_name() if isinstance(col, Looper) else col for col in args[ellipsis_index + 1:]]
 
-        arguments = {name: sub_frame[name].values.reshape(-1,1) for name in param_names}
-        sub_frame[key] = value(**arguments)
-        self.evaluation_frames[key] = sub_frame
-        self.evaluation_dependencies_direct[key] = param_names
-        self.evaluation_dependencies[key] = list(set(param_names).union(*[set(self.dependencies[p]) for p in param_names]))
-        self.evaluation_orders[key] = len(self.sub_frame_orders)
-        return sub_frame
+        frame_columns = [col for col in self.frame.columns if col not in factor_columns]
+        frame_columns = [col for col in frame_columns if col not in columns_before + columns_after]
+        frame_columns = columns_before + frame_columns + columns_after
+        return self._reduce(frame_columns)
 
-    # def drop(self, column):
-    #     for name, sub_frame in self.sub_frames.items():
-    #         if column in sub_frame.columns:
-    #             sub_frame.drop(columns=[column], inplace=True)
-    #     del self.sub_frames[column]
-    #     del self.dependencies[column]
-    #     del self.dependencies_direct[column]
-    #     del self.sub_frame_orders[column]
+    def debug_print_structure(self):
+        print("----- Frame -----")
+        print("Current Frame Structure:")
+        print(self.frame)
+        print("Unmerged factors:")
+        for name, factor in self.factors.items():
+            if not factor.merged:
+                print(f" - {name}: depends on {factor.dependencies}")
+        print("-----------------")
 
-    def reduce_frame(self, frame_name, column):
-        frame = self.sub_frames[frame_name]
-        weight_column = f"__weight__{frame_name}"
-        frame_columns = [col for col in frame.columns if col not in [column, weight_column]]
-
-        if weight_column not in frame.columns:
-            frame[weight_column] = 1.0
-
-        self.sub_frames[frame_name] = frame.groupby(frame_columns)[[weight_column]].agg({weight_column: 'sum'}).reset_index()
-        self.dependencies[frame_name].remove(column)
-        self.dependencies_direct[frame_name].remove(column)
-
-    def reduce_evaluation_frames(self, column):
-        evaluation_frames_to_reduce = [name for name, deps in self.evaluation_dependencies_direct.items() if column in deps]
-        if len(evaluation_frames_to_reduce) == 0:
-            return
-
-        if len(evaluation_frames_to_reduce) == 1:
-            self.reduce_single_evaluation_frame(evaluation_frames_to_reduce[0], column)
-            return
-
-        frames = [self.evaluation_frames[name] for name in evaluation_frames_to_reduce]
-        frame = reduce(lambda left, right: merge(left, right), frames)
-        product_column = "_*_".join(evaluation_frames_to_reduce)
-        frame[product_column] = frame[evaluation_frames_to_reduce].prod(axis=1)
-
-        for eval_name in evaluation_frames_to_reduce:
-            frame = frame.drop(columns=[eval_name])
-
-        self.evaluation_frames[product_column] = frame
-        self.evaluation_dependencies_direct[product_column] = list(set().union(*[set(self.evaluation_dependencies_direct[name]) for name in evaluation_frames_to_reduce]))
-        self.evaluation_dependencies[product_column] = list(set().union(*[set(self.evaluation_dependencies[name]) for name in evaluation_frames_to_reduce]))
-        self.evaluation_orders[product_column] = max([self.evaluation_orders[name] for name in evaluation_frames_to_reduce])
-
-        for eval_name in evaluation_frames_to_reduce:
-            del self.evaluation_frames[eval_name]
-            del self.evaluation_dependencies[eval_name]
-            del self.evaluation_dependencies_direct[eval_name]
-            del self.evaluation_orders[eval_name]
-
-        self.reduce_single_evaluation_frame(product_column, column)
-
-    def reduce_single_evaluation_frame(self, eval_name, column):
-        frame = self.evaluation_frames[eval_name]
-
-        frame_to_reduce = self.sub_frames[column]
-        weight_column = f"__weight__{column}"
-        if weight_column in frame_to_reduce.columns:
-            print(f"Using weight column {weight_column} for reducing evaluation frame {eval_name} by {column}")
-            print(frame_to_reduce)
-            frame = frame.merge(frame_to_reduce, on=column)
-            frame[eval_name] = frame[eval_name] * frame[weight_column]
-            frame = frame.drop(columns=[weight_column])
-
-        frame_columns = [col for col in frame.columns if col not in [column, eval_name]]
-        if len(frame_columns) == 0:
-            total = frame[eval_name].sum()
-            self.evaluation_frames[eval_name] = pd.DataFrame({eval_name: [total]})
-        else:
-            self.evaluation_frames[eval_name] = frame.groupby(frame_columns)[[eval_name]].sum().reset_index()
-        self.evaluation_dependencies[eval_name].remove(column)
-        self.evaluation_dependencies_direct[eval_name].remove(column)
-
-    def reduce(self, column):
-        assert column in self.sub_frames, f"Column {column} not found in sub_frames"
-        assert len(self.dependencies[column]) == 0, f"Cannot reduce column {column} with dependencies {self.dependencies[column]}"
-
-        logging.info(f"Reducing {column}")
-
-        for frame_name, frame in self.sub_frames.items():
-            if frame_name == column:
-                continue
-            if column in self.dependencies_direct[frame_name]:
-                self.reduce_frame(frame_name, column)
-
-        self.reduce_evaluation_frames(column)
-
-        del self.sub_frames[column]
-        del self.dependencies[column]
-        del self.dependencies_direct[column]
-        del self.sub_frame_orders[column]
+    def debug_evaluate_legacy(self):
+        for factor_name in list(self.factors.keys()):
+            self.merge_factor(factor_name)
+        factor_names = list(self.factors.keys())
+        return self.frame[factor_names].prod(axis=1).sum()
