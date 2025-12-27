@@ -1,4 +1,5 @@
-from typing import List
+import logging
+from typing import List, Union
 
 import numpy as np
 from numpy import sqrt
@@ -9,8 +10,12 @@ from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.terms_levels_transitions.level_registry import Term
 
 
-def construct_coherence_id(term: Term, K: float, Q: float, J: float, Jʹ: float):
-    return construct_coherence_id_from_term_id(term_id=term.term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
+def construct_coherence_id(term: Term, K: float, Q: float, J: float, Jʹ: float, term_id:str=None):
+    if term is not None:
+        term_id = term.term_id
+        logging.warning("construct_coherence_id: term_id argument is deprecated and will be removed in future versions.")
+    assert term_id is not None
+    return construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
 
 
 def construct_coherence_id_from_term_id(term_id: str, K: float, Q: float, J: float, Jʹ: float):
@@ -25,8 +30,8 @@ class Rho:
     def set_from_term_id(self, term_id: str, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
         self.data[construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
-    def __call__(self, term: Term, K: float, Q: float, J: float, Jʹ: float):
-        coherence_id = construct_coherence_id(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)
+    def __call__(self, K: float, Q: float, J: float, Jʹ: float,  term: Union[Term, str]=None, term_id=None):
+        coherence_id = construct_coherence_id(term=term, term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
         return self.data[coherence_id]
 
 

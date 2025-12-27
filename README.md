@@ -1,4 +1,6 @@
 <H1>Welcome to SolRaT</H1>
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 SolRaT (stands for "Solar Radiative Transfer") is a Python package 
 for simulating the non-LTE transfer of solar radiation in the atmosphere.
 

@@ -44,7 +44,7 @@ def fact2(a):
     return math.factorial(int(a) // 2)
 
 
-@lru_cache(maxsize=None)
+# @lru_cache(maxsize=None)
 def n_proj(*args):
     """
     n -> 2 n + 1. If multiple arguments - multiply

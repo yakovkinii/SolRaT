@@ -60,7 +60,7 @@ def main():
         # rho=...,  # Rho is dependent on the varying magnetic field, so we cannot provide it here
     )
 
-    rte.frame_a_frame()
+
 
     # Fill the radiation tensor with anisotropic radiation field 10 arcsec from the Sun's apparent surface
     radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(h_arcsec=10)
@@ -85,30 +85,52 @@ def main():
 
         # Solve all equations for rho
         rho = see.get_solution_direct()
-
-        # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
-        # eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = rte.eta_rho_s(
-        #     atmosphere_parameters=atmosphere_parameters,
-        #     # angles=...,  # We could provide angles here if they were dynamic
-        #     rho=rho,
-        # )
-
-        rtc = rte.compute_all_coefficients(
+        logging.warning('START')
+        logging.warning('START')
+        logging.warning('START')
+        logging.warning('START')
+        frame_a_frame = rte.frame_a_frame(
+            stokes_component_index=0,
+            angles=Angles(
+                chi=0,
+                theta=0,
+                gamma=0,
+                chi_B=0,
+                theta_B=0,
+            ),
+            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             atmosphere_parameters=atmosphere_parameters,
             rho=rho,
         )
-        eta_rho_sI = rtc.eta_rho_sI
-        eta_rho_sV = rtc.eta_rho_sV
+        logging.warning('END')
+        logging.warning('END')
+        logging.warning('END')
+        logging.warning('END')
+        logging.info(f"frame_a_frame={frame_a_frame}")
+        # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
+        eta_rho_aI, eta_rho_aQ, eta_rho_aU, eta_rho_aV = rte.eta_rho_a(
+            atmosphere_parameters=atmosphere_parameters,
+            # angles=...,  # We could provide angles here if they were dynamic
+            rho=rho,
+        )
+
+        # rtc = rte.compute_all_coefficients(
+        #     atmosphere_parameters=atmosphere_parameters,
+        #     rho=rho,
+        # )
+        # eta_rho_sI = rtc.eta_rho_sI
+        # eta_rho_sV = rtc.eta_rho_sV
 
         plotter.add(
             lambda_A=lambda_A,
-            stokes_I=rtc.eta_sI(),
-            stokes_V=real(eta_rho_sV),
+            stokes_I=real(eta_rho_aI),
+            stokes_V=real(frame_a_frame),
             reference_lambda_A=reference_lambda_A,
             color="auto",
             label=rf"$B_z = {Bz/1000:.0f}$ kG",
         )
-
+        logging.info((np.abs(eta_rho_aI-frame_a_frame)).max())
+        logging.info((np.abs(eta_rho_aI-frame_a_frame)/np.abs(eta_rho_aI)).max())
     plotter.show()
 
 

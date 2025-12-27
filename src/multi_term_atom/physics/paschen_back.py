@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 from typing import Tuple
 
@@ -14,26 +15,42 @@ class PaschenBackEigenvalues:
     def __init__(self):
         self.data = dict()
 
-    def set(self, j, term: Term, M, value):
-        self.data[(half_int_to_str(j), term.term_id, half_int_to_str(M))] = value
+    def set(self, j, M, value, term=None):
+        if term is not None:
+            logging.warning(
+                "PaschenBackEigenvalues.set: term argument is deprecated and will be removed in future versions."
+            )
+        self.data[(half_int_to_str(j), half_int_to_str(M))] = value
 
-    def __call__(self, j, term: Term, M):
-        assert (half_int_to_str(j), term.term_id, half_int_to_str(M)) in self.data, (
-            f"PaschenBackEigenvalues: {half_int_to_str(j)}, {term.term_id}, {half_int_to_str(M)}"
+    def __call__(self, j, M, term=None):
+        if term is not None:
+            logging.warning(
+                "PaschenBackEigenvalues.set: term argument is deprecated and will be removed in future versions."
+            )
+        assert (half_int_to_str(j), half_int_to_str(M)) in self.data, (
+            f"PaschenBackEigenvalues: {half_int_to_str(j)}, {half_int_to_str(M)}"
             f" not found. Please explicitly enforce triangular rules."
         )
-        return self.data[(half_int_to_str(j), term.term_id, half_int_to_str(M))]
+        return self.data[(half_int_to_str(j), half_int_to_str(M))]
 
 
 class PaschenBackCoefficients:
     def __init__(self):
         self.data = dict()
 
-    def set(self, j, J, term: Term, M, value):
-        self.data[(half_int_to_str(j), half_int_to_str(J), term.term_id, half_int_to_str(M))] = value
+    def set(self, j, J, M, value, term=None):
+        if term is not None:
+            logging.warning(
+                "PaschenBackCoefficients.set: term argument is deprecated and will be removed in future versions."
+            )
+        self.data[(half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))] = value
 
-    def __call__(self, j, J, term: Term, M):
-        return self.data[(half_int_to_str(j), half_int_to_str(J), term.term_id, half_int_to_str(M))]
+    def __call__(self, j, J, M, term=None):
+        if term is not None:
+            logging.warning(
+                "PaschenBackCoefficients.set: term argument is deprecated and will be removed in future versions."
+            )
+        return self.data[(half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))]
 
 
 def _g_ls(L, S, J):
@@ -108,8 +125,8 @@ def calculate_paschen_back(
         # eigenvectors is a matrix where columns are eigenvectors => column number is j_small
         # row number is index of j; j = j_max - row_number
         for j in range(block_size):
-            eigenvalues.set(j=J_max - j, term=term, M=M, value=eig_values[j])
+            eigenvalues.set(j=J_max - j, M=M, value=eig_values[j])
             for j1 in range(block_size):
-                coefficients.set(j=J_max - j, term=term, M=M, J=J_max - j1, value=eig_vectors[j1, j])
+                coefficients.set(j=J_max - j, M=M, J=J_max - j1, value=eig_vectors[j1, j])
 
     return eigenvalues, coefficients

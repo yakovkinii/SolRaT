@@ -4,25 +4,46 @@ import numpy as np
 import pandas as pd
 from numpy import pi, sqrt
 
-from src.engine.functions.decorators import log_method
-from src.engine.functions.general import m1p, n_proj
-from src.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
-from src.engine.generators.merge_frame import Frame
-from src.engine.generators.merge_loopers import Value, Dummy, Triangular, Projection, Intersection, FromTo
-from src.engine.generators.multiply import multiply
-from src.engine.generators.nested_loops import nested_loops
 from src.common.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from src.common.functions import energy_cmm1_to_frequency_hz
 from src.common.rotations import T_K_Q_double_rotation, WignerD
 from src.common.voigt_profile import voigt
 from src.common.wigner_3j_6j_9j import wigner_3j, wigner_6j
+from src.engine.functions.decorators import log_method
+from src.engine.functions.general import m1p, n_proj
+from src.engine.functions.looping import (
+    FROMTO,
+    INTERSECTION,
+    PROJECTION,
+    TRIANGULAR,
+    VALUE,
+)
+from src.engine.generators.merge_frame import Frame, SummationIndexContainerBase
+from src.engine.generators.merge_loopers import (
+    DummyOrAlreadyMerged,
+    FromTo,
+    Intersection,
+    Projection,
+    Triangular,
+    Value,
+    vector,
+)
+from src.engine.generators.multiply import multiply
+from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
+from src.multi_term_atom.object.radiative_transfer_coefficients import (
+    RadiativeTransferCoefficients,
+)
 from src.multi_term_atom.object.rho_matrix_builder import Rho
 from src.multi_term_atom.physics.paschen_back import calculate_paschen_back
-from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry, Term
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.level_registry import (
+    LevelRegistry,
+    Term,
+)
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 class MultiTermAtomRTE:
@@ -195,7 +216,115 @@ class MultiTermAtomRTE:
         return pd.DataFrame(rows)
 
     @log_method
-    def frame_a_frame(self):
+    def frame_a_frame(
+        self,
+        stokes_component_index: int,
+        angles: Angles,
+        magnetic_field_gauss: float,
+        rho: Rho,
+        atmosphere_parameters: AtmosphereParameters,
+    ):
+        class SummationIndexContainer(SummationIndexContainerBase):
+            term_lower_id = DummyOrAlreadyMerged()  # Already in base_frame
+            term_upper_id = DummyOrAlreadyMerged()  # Already in base_frame
+            Ll = DummyOrAlreadyMerged(term_lower_id)  # Already in base_frame
+            Lu = DummyOrAlreadyMerged(term_upper_id)  # Already in base_frame
+            S = DummyOrAlreadyMerged(term_lower_id)  # Already in base_frame
+            einstein_b_lu = DummyOrAlreadyMerged(term_lower_id)  # Already in base_frame
+            jl = Triangular(Ll, S)
+            Jl = Triangular(Ll, S)
+            Jʹl = Triangular(Ll, S)
+            Jʹʹl = Triangular(Ll, S)
+            ju = Triangular(Lu, S)
+            Ju = Intersection(Triangular(Lu, S), Triangular(Jl, 1))
+            Jʹu = Intersection(Triangular(Lu, S), Triangular(Jʹl, 1))
+            Ml = Intersection(Projection(Jl), Projection(Jʹʹl), Projection(jl))
+            Mʹl = Projection(Jʹl)
+            Mu = Intersection(Projection(Ju), Projection(Jʹu), Projection(ju))
+            K = FromTo(0, 2)
+            Kl = Triangular(Jʹl, Jʹʹl)
+            Ql = Intersection(Projection(Kl), Ml - Mʹl)
+            q = Ml - Mu
+            qʹ = Mʹl - Mu
+            Q = Intersection(Projection(K), q - qʹ)
+
+        frame = Frame.from_index_container(
+            base_frame=self.get_base_frame(),
+            container=SummationIndexContainer,
+        )
+
+        frame.add_factors_to_multiply(
+            n_proj=    lambda Ll:                          n_proj(Ll),
+            b_lu=      lambda einstein_b_lu, K, Kl:        einstein_b_lu * sqrt(n_proj(1, K, Kl)),
+            m1p=       lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
+            sqrt=      lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+            wigner_3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+            wigner_3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+            wigner_3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
+            wigner_3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+            wigner_6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+            wigner_6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+        )  # fmt: skip
+
+        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+        frame.add_factors_to_multiply(
+            tkq=lambda K, Q: T_K_Q_double_rotation(
+                K=K,
+                Q=Q,
+                stokes_component_index=stokes_component_index,
+                D_inverse_omega=D_inverse_omega,
+                D_magnetic=D_magnetic,
+            ),
+            elementwise=True,
+        )
+        # frame = frame.reduce(SummationIndexContainer.K, SummationIndexContainer.Q)
+
+        precalculated_pb_eigenvalues = {}
+        precalculated_pb_eigenvectors = {}
+        for term in self.level_registry.terms.values():
+            pb_eigenvalues, pb_eigenvectors = calculate_paschen_back(
+                term=term, magnetic_field_gauss=magnetic_field_gauss
+            )
+            precalculated_pb_eigenvalues[term.term_id] = pb_eigenvalues
+            precalculated_pb_eigenvectors[term.term_id] = pb_eigenvectors
+
+        frame.add_factors_to_multiply(
+            pb1=lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
+            pb2=lambda term_lower_id, jl, Jʹʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹʹl, M=Ml),
+            pb3=lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
+            pb4=lambda term_upper_id, ju, Jʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹu, M=Mu),
+            elementwise=True,
+        )
+        # frame = frame.reduce(SummationIndexContainer.Ju, SummationIndexContainer.Jʹu, SummationIndexContainer.Jl)
+
+        frame.add_factors_to_multiply(
+            rho=lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho(term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
+            elementwise=True
+        )
+        # frame = frame.reduce(SummationIndexContainer.Kl, SummationIndexContainer.Ql, SummationIndexContainer.Jʹʹl, SummationIndexContainer.Jʹl)
+
+        frame.add_factors_to_multiply(
+            phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: (
+                self.phi(
+                    nui=energy_cmm1_to_frequency_hz(
+                        precalculated_pb_eigenvalues[term_upper_id](j=ju, M=Mu)
+                        - precalculated_pb_eigenvalues[term_lower_id](j=jl, M=Ml)
+                    ),
+                    nu=self.nu,
+                    macroscopic_velocity_cm_sm1=atmosphere_parameters.macroscopic_velocity_cm_sm1,
+                    delta_v_thermal_cm_sm1=atmosphere_parameters.delta_v_thermal_cm_sm1,
+                    voigt_a=atmosphere_parameters.voigt_a,
+                )
+            ),
+            elementwise=True,
+        )
+
+        result = frame.reduce(..., SummationIndexContainer.term_upper_id, SummationIndexContainer.term_lower_id)
+        result = h_erg_s * self.nu / 4 / pi * self.N * result
+        return result
+
+    def get_base_frame(self):
         rows = []
         for transition in self.transition_registry.transitions.values():
             term_upper = transition.term_upper
@@ -212,6 +341,9 @@ class MultiTermAtomRTE:
             rows.append(
                 {
                     "transition_id": transition.transition_id,
+                    "einstein_b_lu": transition.einstein_b_lu,
+                    "einstein_b_ul": transition.einstein_b_ul,
+                    "einstein_a_ul": transition.einstein_a_ul,
                     "term_upper_id": term_upper.term_id,
                     "term_lower_id": term_lower.term_id,
                     "Ll": term_lower.L,
@@ -220,120 +352,7 @@ class MultiTermAtomRTE:
                 }
             )
         base_frame = pd.DataFrame(rows)
-
-        Ll = Dummy()
-        Lu = Dummy()
-        S = Dummy()
-
-        jl = Triangular(Ll, S)
-        Jl = Triangular(Ll, S)
-        Jʹl = Triangular(Ll, S)
-        Jʹʹl = Triangular(Ll, S)
-        ju = Triangular(Lu, S)
-        Ju = Intersection(Triangular(Lu, S), Triangular(Jl, 1))
-        Jʹu = Intersection(Triangular(Lu, S), Triangular(Jʹl, 1))
-        Ml = Intersection(Projection(Jl), Projection(Jʹʹl), Projection(jl))
-        frame = Frame(
-            base_frame=base_frame,
-            Ll=Ll,
-            Lu=Lu,
-            S=S,
-            jl=jl,
-            Jl=Jl,
-            ju=ju,
-            Ju=Ju,
-        )
-
-
-
-
-        Mʹl = Projection(Jʹl)
-        Mu = Intersection(Projection(Ju), Projection(Jʹu), Projection(ju))
-        K = FromTo(0, 2)
-        Kl = Triangular(Jʹl, Jʹʹl)
-        Ql = Intersection(Projection(Kl), VALUE("Ml - Mʹl"))
-        q = Value("Ml - Mu")
-        qʹ = VALUE("Mʹl - Mu")
-        Q = Intersection(Projection(K), VALUE("q - qʹ"))
-
-
-
-        for jl, Jl, Jʹl, Jʹʹl, ju, Ju, Jʹu, Ml, Mʹl, Mu, K, Kl, Ql, q, qʹ, Q in nested_loops(
-                jl=TRIANGULAR(Ll, S),
-                Jl=TRIANGULAR(Ll, S),
-                Jʹl=TRIANGULAR(Ll, S),
-                Jʹʹl=TRIANGULAR(Ll, S),
-                ju=TRIANGULAR(Lu, S),
-                Ju=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jl", 1)),
-                Jʹu=INTERSECTION(TRIANGULAR(Lu, S), TRIANGULAR("Jʹl", 1)),
-                Ml=INTERSECTION(PROJECTION("Jl"), PROJECTION("Jʹʹl"), PROJECTION("jl")),
-                Mʹl=PROJECTION("Jʹl"),
-                Mu=INTERSECTION(PROJECTION("Ju"), PROJECTION("Jʹu"), PROJECTION("ju")),
-                K=FROMTO(0, 2),
-                Kl=TRIANGULAR("Jʹl", "Jʹʹl"),
-                Ql=INTERSECTION(PROJECTION("Kl"), VALUE("Ml - Mʹl")),
-                q=VALUE("Ml - Mu"),
-                qʹ=VALUE("Mʹl - Mu"),
-                Q=INTERSECTION(PROJECTION("K"), VALUE("q - qʹ")),
-            ):
-                coefficient = multiply(
-                    lambda: n_proj(Ll),
-                    lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
-                    lambda: m1p(1 + Jʹʹl - Ml + qʹ),
-                    lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-                    lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-                    lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
-                    lambda: wigner_3j(1, 1, K, q, -qʹ, -Q),
-                    lambda: wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
-                    lambda: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-                    lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-                )
-                rows.append(
-                    {
-                        "term_upper_id": term_upper.term_id,
-                        "term_lower_id": term_lower.term_id,
-                        "transition_id": transition.transition_id,
-                        "jl": jl,
-                        "Jl": Jl,
-                        "Jʹl": Jʹl,
-                        "Jʹʹl": Jʹʹl,
-                        "ju": ju,
-                        "Ju": Ju,
-                        "Jʹu": Jʹu,
-                        "Ml": Ml,
-                        "Mʹl": Mʹl,
-                        "Mu": Mu,
-                        "K": K,
-                        "Kl": Kl,
-                        "Ql": Ql,
-                        "q": q,
-                        "qʹ": qʹ,
-                        "Q": Q,
-                        "coefficient": coefficient,
-                    }
-                )
-        self.frame_a_id_columns = [
-            "term_upper_id",
-            "term_lower_id",
-            "transition_id",
-            "jl",
-            "Jl",
-            "Jʹl",
-            "Jʹʹl",
-            "ju",
-            "Ju",
-            "Jʹu",
-            "Ml",
-            "Mʹl",
-            "Mu",
-            "K",
-            "Kl",
-            "Ql",
-            "q",
-            "qʹ",
-            "Q",
-        ]
-
+        return base_frame
 
     @log_method
     def precompute_s_frame(self):

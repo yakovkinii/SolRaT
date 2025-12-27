@@ -47,7 +47,7 @@ def t_K_P(K, P, stokes_component_index):
     )
 
 
-@lru_cache(maxsize=None)
+# @lru_cache(maxsize=None)
 def T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega: WignerD, D_magnetic: WignerD):
     """
     (5.159), (2.74), (5.122)
