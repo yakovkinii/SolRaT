@@ -12,18 +12,10 @@ from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE, MultiTermAtomSEELTE
 
 
 def main():
-    """
-    This demo shows the calculation of stimulated emission eta_S profiles
-    for the He I D3 transition under super-strong magnetic fields.
-    This result is closely related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
-    https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
-    In the mentioned paper, the Stokes profiles are shown instead, but they should resemble eta_S for low optical depth.
-    """
-
     logging_config.init(logging.INFO)
 
     # Load the atomic data for He I D3
@@ -33,14 +25,18 @@ def main():
     lambda_A = np.arange(reference_lambda_A - 2, reference_lambda_A + 2, 1e-3)
     nu = lambda_cm_to_frequency_hz(lambda_A * 1e-8)
 
-    # Set up the statistical equilibrium equations.
-    # Do not pre-compute coefficients, load them from file instead for the purpose of this demo.
     see = MultiTermAtomSEE(
         level_registry=level_registry,
         transition_registry=transition_registry,
         precompute=False,
     )
     fill_precomputed_He_I_D3_data(see, root=Path(__file__).resolve().parent.parent.parent.as_posix())
+
+    seelte = MultiTermAtomSEELTE(
+        level_registry=level_registry,
+        atomic_mass_amu=4,  # He
+    )
+
 
     # Set up the radiative transfer equations
     # Angles input is optional. But since we know the angles in advance,
@@ -58,7 +54,7 @@ def main():
         ),
         # magnetic_field_gauss=...,  # We will vary the magnetic field in this demo, so we cannot provide it here
         # rho=...,  # Rho is dependent on the varying magnetic field, so we cannot provide it here
-        # precompute=False,
+        precompute=False,
     )
 
 
@@ -71,21 +67,24 @@ def main():
     plotter = StokesPlotter_IV(title="He I D3: Emission coefficient vs wavelength")
 
     # loop through the magnetic field values
-    for Bz in [20000, 40000, 60000, 80000, 100000]:
-    # for Bz in [20000]:
+    Bz = 20000
+    for lte in [False, True]:
         # Set up the atmosphere parameters
         atmosphere_parameters = AtmosphereParameters(
             magnetic_field_gauss=Bz,
-            delta_v_thermal_cm_sm1=1_000_00,
+            delta_v_thermal_cm_sm1=10_000_00,
         )
+        if lte:
+            rho = seelte.get_solution(atmosphere_parameters=atmosphere_parameters)
+        else:
+            # Construct all equations for rho
+            see.add_all_equations(
+                atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+            )
 
-        # Construct all equations for rho
-        see.add_all_equations(
-            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
-        )
+            # Solve all equations for rho
+            rho = see.get_solution_direct()
 
-        # Solve all equations for rho
-        rho = see.get_solution_direct()
         logging.warning('START')
         logging.warning('START')
         logging.warning('START')
@@ -122,11 +121,11 @@ def main():
             rho=rho,
         )
         # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
-        eta_rho_aI, eta_rho_aQ, eta_rho_aU, eta_rho_aV = rte.eta_rho_a(
-            atmosphere_parameters=atmosphere_parameters,
-            # angles=...,  # We could provide angles here if they were dynamic
-            rho=rho,
-        )
+        # eta_rho_aI, eta_rho_aQ, eta_rho_aU, eta_rho_aV = rte.eta_rho_a(
+        #     atmosphere_parameters=atmosphere_parameters,
+        #     # angles=...,  # We could provide angles here if they were dynamic
+        #     rho=rho,
+        # )
 
         # rtc = rte.compute_all_coefficients(
         #     atmosphere_parameters=atmosphere_parameters,
@@ -138,10 +137,10 @@ def main():
         plotter.add(
             lambda_A=lambda_A,
             stokes_I=real(frame_a_frame),
-            stokes_V=real(eta_rho_aI),
+            stokes_V=real(frame_a_frame_V),
             reference_lambda_A=reference_lambda_A,
             color="auto",
-            label=rf"$B_z = {Bz/1000:.0f}$ kG",
+            label=rf"$B_z = {Bz/1000:.0f}$ kG, {'LTE' if lte else 'NLTE'}",
         )
         # logging.info((np.abs(eta_rho_aI-frame_a_frame)).max())
         # logging.info((np.abs(eta_rho_aI-frame_a_frame)/np.abs(eta_rho_aI)).max())

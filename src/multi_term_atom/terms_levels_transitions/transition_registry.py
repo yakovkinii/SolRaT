@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from src.common.functions import energy_cmm1_to_frequency_hz
 from src.multi_term_atom.physics.einstein_coefficients import (
@@ -45,6 +45,8 @@ class TransitionRegistry:
         term_upper: Term,
         term_lower: Term,
         einstein_a_ul_sm1: float,
+            lower_J_for_RTE: List[float] = None,
+            upper_J_for_RTE: List[float] = None,
     ):
         assert term_lower.S == term_upper.S, "Spin of upper and lower terms must be the same"
 
@@ -61,6 +63,8 @@ class TransitionRegistry:
             einstein_a_ul=einstein_a_ul_sm1,
             einstein_b_ul=b_ul,
             einstein_b_lu=b_lu,
+        lower_J_for_RTE=lower_J_for_RTE,
+        upper_J_for_RTE=upper_J_for_RTE,
         )
         self.transitions[transition_id] = transition
 
@@ -90,6 +94,8 @@ class Transition:
         einstein_a_ul: float,
         einstein_b_ul: float,
         einstein_b_lu: float,
+        lower_J_for_RTE: List[float] = None,
+        upper_J_for_RTE:  List[float]  = None,
     ):
         """
         Transition coefficients are registered between terms, not levels.
@@ -101,6 +107,14 @@ class Transition:
         self.einstein_a_ul: float = einstein_a_ul
         self.einstein_b_ul: float = einstein_b_ul
         self.einstein_b_lu: float = einstein_b_lu
+        if lower_J_for_RTE is not None:
+            for J in lower_J_for_RTE:
+                assert J in [level.J for level in term_lower.levels]
+        if upper_J_for_RTE is not None:
+            for J in upper_J_for_RTE:
+                assert J in [level.J for level in term_upper.levels]
+        self.lower_J_for_RTE = lower_J_for_RTE
+        self.upper_J_for_RTE = upper_J_for_RTE
 
     def get_mean_transition_frequency_sm1(self):
         return energy_cmm1_to_frequency_hz(

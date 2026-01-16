@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from src.engine.functions.general import half_int_to_str
 from src.engine.functions.looping import triangular
@@ -80,12 +80,26 @@ class Term:
     Term is {beta L S}
     """
 
-    def __init__(self, term_id: str, beta: str, L: float, S: float):
+    def __init__(
+        self,
+        term_id: str,
+        beta: str,
+        L: float,
+        S: float,
+    ):
         self.term_id: str = term_id
         self.beta: str = beta
         self.L: float = L
         self.S: float = S
+        self.artificial_S_scale: Union[float, None] = None
         self.levels: List["Level"] = []
+
+    def set_artificial_S_scale(self, artificial_S_scale: float):
+        """
+        artificial_S_scale is to artificially scale eq. 3.3
+        H_B = mu0 * (Jz + scale*Sz) * B. For regular LS, scale=1.
+        """
+        self.artificial_S_scale = artificial_S_scale
 
     def register_level(self, level: "Level"):
         assert level.beta == self.beta
@@ -109,6 +123,12 @@ class Term:
         """
         total_energy = sum(level.energy_cmm1 for level in self.levels)
         return total_energy / len(self.levels)
+
+    def get_max_energy_cmm1(self):
+        return max(level.energy_cmm1 for level in self.levels)
+
+    def get_min_energy_cmm1(self):
+        return min(level.energy_cmm1 for level in self.levels)
 
 
 class Level:

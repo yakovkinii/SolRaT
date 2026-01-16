@@ -1,6 +1,6 @@
 import logging
 from functools import lru_cache
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 from numpy import sqrt
@@ -53,14 +53,23 @@ class PaschenBackCoefficients:
         return self.data[(half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))]
 
 
-def _g_ls(L, S, J):
+def _g_ls(L, S, J, artificial_S_scale: Union[float, None] = None):
     """
     Reference: (3.8)
     """
     if J == 0:
         return 1
-
+    if artificial_S_scale is not None:
+        return 1 + 0.5 * artificial_S_scale * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
     return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
+
+
+def get_artificial_S_scale_from_term_g(g, J, L, S):
+    """
+    This back-derives scale from _g_ls() given g value.
+    """
+    alpha = 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
+    return (g-1) / alpha
 
 
 @lru_cache(maxsize=None)  # Todo check if this works correctly
@@ -105,7 +114,13 @@ def calculate_paschen_back(
             J = J_max - i  # J of current row
 
             # Fill diagonal elements
-            matrix[i, i] = term.get_level(J).energy_cmm1 + mu0b_cm * _g_ls(L, S, J) * M
+            if term.artificial_S_scale is not None:
+                matrix[i, i] = (
+                    term.get_level(J).energy_cmm1
+                    + mu0b_cm * _g_ls(L, S, J, artificial_S_scale=term.artificial_S_scale) * M
+                )
+            else:
+                matrix[i, i] = term.get_level(J).energy_cmm1 + mu0b_cm * _g_ls(L, S, J) * M
 
             # Fill non-diagonal elements
             if i + 1 < block_size:  # if i+1 is still a valid index, fill <J-1| H_B |J>
@@ -118,6 +133,9 @@ def calculate_paschen_back(
                     / (2 * J + 1)
                     / (2 * J - 1)
                 )
+                if term.artificial_S_scale is not None:
+                    value = value * term.artificial_S_scale
+
                 matrix[i, i + 1] = value
                 matrix[i + 1, i] = value
         eig_values, eig_vectors = np.linalg.eig(matrix)

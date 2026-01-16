@@ -75,6 +75,7 @@ class RadiativeTransferCoefficients:
         # Use the *intensity* channel of absorptive minus emissive kernels.
         x = np.real(self.eta_rho_aI - self.eta_rho_sI)  # shape [Nν]
         maxabs = np.max(np.abs(x))
+        return maxabs # Todo check
         maxval = np.max(x)
         # Floor protects against near-cancellation or negative maxima.
         floor = max(1e-12 * maxabs, 1e-20)

@@ -245,8 +245,8 @@ def demo_resolution_convergence():
 
 if __name__ == "__main__":
     demo_linear_vs_constant()
-    demo_gradient_effects()
-    demo_resolution_convergence()
+    # demo_gradient_effects()
+    # demo_resolution_convergence()
 
     print("\n=== Demo Complete ===")
     print("The LinearPropertySlab demo shows:")

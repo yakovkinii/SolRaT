@@ -9,11 +9,16 @@ from src.engine.functions.looping import PROJECTION, TRIANGULAR
 from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.terms_levels_transitions.level_registry import Term
 
+construct_coherence_id_warned = False
+
 
 def construct_coherence_id(term: Term, K: float, Q: float, J: float, Jʹ: float, term_id:str=None):
+    global construct_coherence_id_warned
     if term is not None:
         term_id = term.term_id
-        logging.warning("construct_coherence_id: term_id argument is deprecated and will be removed in future versions.")
+        if not construct_coherence_id_warned:
+            logging.warning("construct_coherence_id: term_id argument is deprecated and will be removed in future versions.")
+            construct_coherence_id_warned = True
     assert term_id is not None
     return construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
 

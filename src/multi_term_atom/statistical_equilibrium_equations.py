@@ -6,6 +6,7 @@ import pandas as pd
 from numpy import pi, sqrt
 from tqdm import tqdm
 
+from src.common.constants import c_cm_sm1, h_erg_s, atomic_mass_unit_g, kB_erg_Km1
 from src.engine.functions.decorators import log_method
 from src.engine.functions.general import delta, m1p, n_proj
 from src.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
@@ -26,10 +27,6 @@ from src.multi_term_atom.terms_levels_transitions.transition_registry import Tra
 
 
 class MultiTermAtomSEE:
-    """
-    Todo list of dicts instead of dfs
-    """
-
     def __init__(
         self,
         level_registry: LevelRegistry,
@@ -762,3 +759,73 @@ class MultiTermAtomSEE:
             axis=1,
         )
         return df
+
+
+class MultiTermAtomSEELTE:
+    def __init__(
+        self,
+        level_registry: LevelRegistry,
+        atomic_mass_amu: float,
+    ):
+        self.level_registry = level_registry
+        self.atomic_mass_amu = atomic_mass_amu
+        self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
+            terms=list(self.level_registry.terms.values()), n_frequencies=1
+        )
+
+    @staticmethod
+    def energy_cmm1_to_erg(energy_cmm1: float) -> float:
+        return h_erg_s * c_cm_sm1 * energy_cmm1
+
+    def temperature_from_delta_v(self, delta_v_thermal_cm_sm1: float) -> float:
+        """
+        delta_v = sqrt(2 k_B T / m)
+        """
+        m_g = self.atomic_mass_amu * atomic_mass_unit_g
+        return m_g * delta_v_thermal_cm_sm1**2 / (2 * kB_erg_Km1)
+
+    def get_solution(self, atmosphere_parameters: AtmosphereParameters) -> Rho:
+        """
+        LTE density matrix (LL04 thermodynamic equilibrium).
+
+        - Boltzmann populations
+        - No coherences
+        - Trace-normalized
+        """
+
+        T = self.temperature_from_delta_v(
+            atmosphere_parameters.delta_v_thermal_cm_sm1
+        )
+
+        rho = Rho(terms=list(self.level_registry.terms.values()))
+        for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
+            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=0.0)
+
+        for term in self.level_registry.terms.values():
+            levels = term.levels
+
+            # Boltzmann weights
+            weights = {}
+            for level in levels:
+                J = level.J
+                E_erg = self.energy_cmm1_to_erg(level.energy_cmm1)
+                weights[level] = (2 * J + 1) * np.exp(-E_erg / (kB_erg_Km1 * T))
+
+            Z = sum(weights.values())
+            if Z == 0:
+                raise ValueError("LTE partition sum is zero (check energies / temperature)")
+
+            for level, w in weights.items():
+                J = level.J
+                rho_00 = np.sqrt(2 * J + 1) * w / Z
+
+                rho.set_from_term_id(
+                    term_id=term.term_id,
+                    K=0,
+                    Q=0,
+                    J=J,
+                    Jʹ=J,
+                    value=rho_00,
+                )
+
+        return rho

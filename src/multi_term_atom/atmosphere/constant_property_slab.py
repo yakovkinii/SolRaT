@@ -14,6 +14,7 @@ from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.object.stokes import Stokes
 from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
+from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE, MultiTermAtomSEELTE
 
 
 class ConstantPropertySlab:
@@ -21,6 +22,7 @@ class ConstantPropertySlab:
     A slab with constant atmospheric properties throughout its depth.
     Solves the radiative transfer equation using DELO method.
     """
+
     def __init__(
         self,
         multi_term_atom_context: MultiTermAtomContext,
@@ -36,7 +38,9 @@ class ConstantPropertySlab:
         macroscopic_velocity_cm_sm1: float = 0,
         voigt_a: float = 0,
         initial_stokes: Union[Stokes, float, None] = None,
+        j_constrained=False,
     ):
+        # Todo copy()
         self.see = multi_term_atom_context.statistical_equilibrium_equations
 
         self.lambda_A = multi_term_atom_context.lambda_A
@@ -65,18 +69,25 @@ class ConstantPropertySlab:
             nu=self.nu,
             angles=self.angles,
             magnetic_field_gauss=self.atmosphere_parameters.magnetic_field_gauss,
+            precompute=False,
+            j_constrained=j_constrained,
         )
 
-        self.see.add_all_equations(
-            atmosphere_parameters=self.atmosphere_parameters,
-            radiation_tensor_in_magnetic_frame=self.radiation_tensor.rotate_to_magnetic_frame(
-                chi_B=self.angles.chi_B, theta_B=self.angles.theta_B
-            ),
-        )
+        if isinstance(self.see, MultiTermAtomSEE):
+            self.see.add_all_equations(
+                atmosphere_parameters=self.atmosphere_parameters,
+                radiation_tensor_in_magnetic_frame=self.radiation_tensor.rotate_to_magnetic_frame(
+                    chi_B=self.angles.chi_B, theta_B=self.angles.theta_B
+                ),
+            )
+        else:
+            assert isinstance(self.see, MultiTermAtomSEELTE)
 
         # Handle initial conditions
         if isinstance(initial_stokes, Stokes):
-            assert len(initial_stokes.nu) == len(self.nu), "Initial Stokes vector must have the same frequency grid as the slab"
+            assert len(initial_stokes.nu) == len(
+                self.nu
+            ), "Initial Stokes vector must have the same frequency grid as the slab"
             self.initial_stokes = np.zeros((len(self.nu), 4, 1), dtype=np.float64)
             self.initial_stokes[:, 0, 0] = initial_stokes.I
             self.initial_stokes[:, 1, 0] = initial_stokes.Q
@@ -90,21 +101,35 @@ class ConstantPropertySlab:
             self.initial_stokes[:, 0, 0] = 1.0
 
     @log_method
-    def forward(self) -> Stokes:
+    def forward(self, initial_stokes: Stokes=None) -> Stokes:
         """
         Solve radiative transfer through the constant property slab using DELO method.
 
         Returns:
             Emergent Stokes vector
         """
+        if  initial_stokes is not None:
+            assert len(initial_stokes.nu) == len(
+                self.nu
+            ), "Initial Stokes vector must have the same frequency grid as the slab"
+            self.initial_stokes = np.zeros((len(self.nu), 4, 1), dtype=np.float64)
+            self.initial_stokes[:, 0, 0] = initial_stokes.I
+            self.initial_stokes[:, 1, 0] = initial_stokes.Q
+            self.initial_stokes[:, 2, 0] = initial_stokes.U
+            self.initial_stokes[:, 3, 0] = initial_stokes.V
         stokes = self.initial_stokes
 
+
         # Solve statistical equilibrium equations
-        rho = self.see.get_solution_direct()
+        if isinstance(self.see, MultiTermAtomSEE):
+            rho = self.see.get_solution_direct()
+        else:
+            rho = self.see.get_solution(atmosphere_parameters=self.atmosphere_parameters)
 
         # Compute radiative transfer coefficients
-        rtc = self.rte.compute_all_coefficients(
+        rtc = self.rte.compute_all_coefficients_frame(
             atmosphere_parameters=self.atmosphere_parameters,
+            angles=self.angles,
             rho=rho,
         )
 
@@ -113,18 +138,18 @@ class ConstantPropertySlab:
         epsilon_tau = rtc.epsilon_tau()[:, :, 0]  # [Nν, 4]
 
         # Stable solve for source function S at all frequencies
-        S = np.stack([
-            (np.linalg.solve(K, eps)
-             if np.linalg.cond(K) < 1e12
-             else (np.linalg.pinv(K) @ eps))
-            for K, eps in zip(K_tau, epsilon_tau)
-        ])
+        S = np.stack(
+            [
+                (np.linalg.solve(K, eps) if np.linalg.cond(K) < 1e12 else (np.linalg.pinv(K) @ eps))
+                for K, eps in zip(K_tau, epsilon_tau)
+            ]
+        )
 
         # Compute propagation matrix
         expM = np.stack([expm(-K * self.tau) for K in K_tau])  # [Nν,4,4]
 
         # Apply DELO solution
-        stokes = S[:, :, np.newaxis] + np.einsum('nij,njk->nik', expM, stokes - S[:, :, np.newaxis])
+        stokes = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, stokes - S[:, :, np.newaxis])
 
         return Stokes(
             nu=self.nu,

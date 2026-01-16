@@ -18,10 +18,15 @@ def merge(df1, df2, on=None):
         return df1.merge(df2, on=on, how="inner")
 
 
-class SummationIndexContainerBase:
+class SumLimits:
     @classmethod
     def get_indexes(cls):
         return {k: v for k, v in cls.__dict__.items() if not k.startswith("__") and not callable(v)}
+
+    def __init__(self):
+        indexes = self.get_indexes()
+        for k,v in indexes.items():
+            v.name = None
 
 
 class Frame:
@@ -49,8 +54,8 @@ class Frame:
             return f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. Elementwise: {self.elementwise}"
 
     @staticmethod
-    def from_index_container(base_frame: pd.DataFrame, container: type(SummationIndexContainerBase)):
-        looper_dict = container.get_indexes()
+    def from_sum_limits(base_frame: pd.DataFrame, sum_linits: type(SumLimits)):
+        looper_dict = sum_linits.get_indexes()
         return Frame(base_frame=base_frame, **looper_dict)
 
     def __init__(self, base_frame: pd.DataFrame = None, **kwargs: Looper):
@@ -72,6 +77,7 @@ class Frame:
             sub_frame_filled = looper.fill_frame(sub_frame)
             assert not sub_frame_filled[looper_name].isna().any()
             self.frame = merge(self.frame, sub_frame_filled)
+            logging.info(f'Merged {looper_name}, frame shape = {self.frame.shape}')
 
         self.factors: Dict[str, Frame.FrameFactor] = {}
         self._n_factors = 0  # for naming only
@@ -117,10 +123,12 @@ class Frame:
         """
         for factor_callable in args:
             name = f"factor_{self._n_factors}"
+            assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
             self.factors[name] = self.FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
         for name, factor_callable in kwargs.items():
+            assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
             self.factors[name] = self.FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
@@ -241,8 +249,8 @@ class Frame:
     def _reduce(self, columns):
         result = None
         for col in columns:
-            assert col not in self.factors, "Reduction is to be performed on loopers, not factors"
-            assert col in self.frame.columns, "Trying to reduce a column not in the frame"
+            assert col not in self.factors, f"Reduction is to be performed on loopers, not factors: {col}"
+            assert col in self.frame.columns, f"Trying to reduce a column not in the frame: {col}"
             result = self.reduce_single_index(col)
         return result
 
@@ -272,8 +280,8 @@ class Frame:
         columns_after = [col.get_name() if isinstance(col, Looper) else col for col in args[ellipsis_index + 1 :]]
 
         frame_columns = [col for col in self.frame.columns if col not in factor_columns]
-        frame_columns = [col for col in frame_columns if col not in columns_before + columns_after]
-        frame_columns = columns_before + frame_columns + columns_after
+        ellipsis_columns = [col for col in frame_columns if col not in columns_before + columns_after]
+        frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
 
     def debug_evaluate_legacy(self):

@@ -71,7 +71,7 @@ class Looper:
 
 
 class DummyOrAlreadyMerged(Looper):
-    def __init__(self, dependency:Union[Looper, None] = None):
+    def __init__(self, dependency: Union[Looper, None] = None):
         super().__init__()
         self.dependency: Union[Looper, None] = dependency
 
@@ -394,4 +394,52 @@ class Intersection(Looper):
         frame = frame.dropna(subset=[name])
         frame = frame.astype({name: float})
 
+        return frame
+
+
+class Constraint(DummyOrAlreadyMerged):
+    """
+    Constrains the values of some variable to a list of values.
+    This is meant to be an artificial constraint, not triangular/etc.
+    """
+
+    def __init__(self):
+        super().__init__()
+
+
+class ApplyConstraint(Looper):
+    def __init__(self, looper: Looper, constraint: Constraint):
+        super().__init__()
+        # self.loopers = [wrap_in_value_if_needed(arg) for arg in args]
+        self.looper = wrap_in_value_if_needed(looper)
+        self.constraint = constraint
+
+    def get_directly_dependent_columns(self) -> set:
+        cols = set()
+        self.looper.add_to_dependencies(cols)
+        self.constraint.add_to_dependencies(cols)
+        return cols
+
+    def get_dependent_columns(self) -> set:
+        cols = set()
+        self.looper.add_to_dependencies(cols)
+        cols.update(self.looper.get_dependent_columns())
+        return cols
+
+    def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
+        assert explode, "Intersection looper requires explode=True"
+        assert not self.looper.is_name_user_set, "Cannot constrain a named looper"
+        frame = self.looper.fill_frame(frame).reset_index(drop=True)
+
+        looper_name = self.looper.get_name()
+        constraint_name = self.constraint.get_name()
+
+        mask = [False] * len(frame)
+        # Slow but should work:
+        for i in range(len(frame)):
+            if frame.at[i, looper_name] in frame.at[i, constraint_name] or frame.at[i, constraint_name] is None:
+                mask[i] = True
+
+        frame = frame[mask].reset_index(drop=True)
+        frame = frame.rename(columns={looper_name: self.get_name()})
         return frame
