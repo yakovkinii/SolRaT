@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
 

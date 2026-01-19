@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 import numpy as np
 from typing import Union, Callable
 from scipy.linalg import expm

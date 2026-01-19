@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 import numpy as np
 from typing import List, Union
 from .constant_property_slab import ConstantPropertySlab
@@ -36,11 +42,13 @@ class MultiSlabAtmosphere:
 
         # Propagate through each slab sequentially
         current_stokes = self.slabs[0].forward()
+        stokes_list = [current_stokes]
 
         for i in range(1, len(self.slabs)):
             current_stokes = self.slabs[i].forward(initial_stokes=current_stokes)
+            stokes_list.append(current_stokes)
 
-        return current_stokes
+        return current_stokes, stokes_list
 
 
 #

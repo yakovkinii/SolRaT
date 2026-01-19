@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 from functools import lru_cache
 
 import numpy as np

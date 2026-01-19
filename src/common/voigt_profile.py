@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 import numpy as np
 from numpy import exp
 

@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 from src.common.functions import lambda_cm_to_frequency_hz
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry

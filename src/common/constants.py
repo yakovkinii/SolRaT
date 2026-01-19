@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 import numpy as np
 
 sqrt2 = np.sqrt(2)

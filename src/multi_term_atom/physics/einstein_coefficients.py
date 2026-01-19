@@ -1,3 +1,9 @@
+"""
+TODO
+TODO  This file needs improved documentation.
+TODO
+"""
+
 from src.common.constants import c_cm_sm1, h_erg_s
 
 

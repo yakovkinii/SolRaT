@@ -30,7 +30,7 @@ def demo_constant_property_slab_multiline():
     plotter = StokesPlotter_IV_IpmV()
 
     tau1 = 1.0  # Optical depth
-    tau2 = 0.05  # Optical depth
+    tau2 = 0.0  # Optical depth
     params1 = {
         "chi": 0,  # Line-of-sight angle
         "theta": 0,  # Inclination angle
@@ -40,6 +40,8 @@ def demo_constant_property_slab_multiline():
         "theta_B": 0,  # Magnetic field inclination
         "delta_v_thermal_cm_sm1": 500_000,  # Thermal velocity
         "initial_stokes": 1.0,  # Continuum intensity
+        "temperature_K": 6000,
+        "continuum_opacity": 0,
     }
     params2 = {
         "chi": 0,  # Line-of-sight angle
@@ -50,6 +52,9 @@ def demo_constant_property_slab_multiline():
         "theta_B": 0,  # Magnetic field inclination
         "delta_v_thermal_cm_sm1": 250_000,  # Thermal velocity
         "initial_stokes": 1.0,  # Continuum intensity
+        "temperature_K": 5000,
+        "continuum_opacity": 0.1,
+
     }
 
     # Create constant property slab
@@ -68,7 +73,6 @@ def demo_constant_property_slab_multiline():
     slab_Fe = MultiSlabAtmosphere(
         ConstantPropertySlab(
             tau=tau1,
-
             multi_term_atom_context=context_Fe, radiation_tensor=radiation_tensor_Fe, j_constrained=True, **params1
         ),
         ConstantPropertySlab(
