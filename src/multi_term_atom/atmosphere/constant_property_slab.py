@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 import logging
 from typing import Union
 
@@ -161,28 +155,18 @@ class ConstantPropertySlab:
 
         # DELO method: S=K^-1 * epsilon, expM=expm(K*dtau), new_stokes = S + expM * (stokes - S)
         # Get normalized line coefficients
-        K_line = rtc.K_tau()  # [Nν, 4, 4] - NORMALIZED
-        epsilon_line = rtc.epsilon_tau()[:, :, 0]  # [Nν, 4] - NORMALIZED
+        K_line_norm = rtc.K_tau()  # [Nν, 4, 4] - NORMALIZED
+        epsilon_line_norm = rtc.epsilon_tau()[:, :, 0]  # [Nν, 4] - NORMALIZED
 
-        K_total = K_line.copy()
-        K_total[:, 0, 0] += continuum_opacity_norm
-
-
-        # Use the *intensity* channel of absorptive minus emissive kernels.
-        x = np.real(self.eta_rho_aI - self.eta_rho_sI)  # shape [Nν]
-        maxabs = np.max(np.abs(x))
-        return maxabs  # Todo check
-        maxval = np.max(x)
-        # Floor protects against near-cancellation or negative maxima.
-        floor = max(1e-12 * maxabs, 1e-20)
-        return max(maxval, floor)
-
+        # Get the normalization scale factor
+        scale_factor = rtc._eta_tau_scale  # Physical units → normalized
 
         # Scale continuum opacity to normalized units
         continuum_opacity_norm = self.continuum_opacity / scale_factor
 
         # Add continuum to NORMALIZED K
-
+        K_total_norm = K_line_norm.copy()
+        K_total_norm[:, 0, 0] += continuum_opacity_norm
 
         # For epsilon: ε_total = ε_line + χ_cont × S_cont
         # But ε_line is already normalized! Need to normalize χ_cont × S_cont too
