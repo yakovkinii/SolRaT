@@ -56,13 +56,13 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
-        see.add_all_equations(
+        see.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
 
         rho_legacy = see_legacy.get_solution_direct()
-        rho = see.get_solution_direct()
+        rho = see.get_solution()
 
         rte_legacy = MultiTermAtomRTELegacy(transition_registry=transition_registry, nu=nu)
         rte = MultiTermAtomRTE(level_registry=level_registry, transition_registry=transition_registry, nu=nu)

@@ -47,12 +47,11 @@ class Rho:
 
 
 class RhoMatrixBuilder:
-    def __init__(self, terms: List[Term], n_frequencies: int):
+    def __init__(self, terms: List[Term]):
         """
         This class helps to build the matrix for rhos.
         All possible rhos are defined by levels.
         """
-        assert n_frequencies == 1, "RhoMatrixBuilder only supports n_frequencies == 1"
 
         # Create mapping [term_id, K, Q, J, Jʹ] <-> matrix index
         self.index_to_parameters = dict()
@@ -77,6 +76,7 @@ class RhoMatrixBuilder:
 
         # create the matrix
         matrix_size = index
+        n_frequencies = 1
         self.rho_matrix = np.zeros((n_frequencies, matrix_size, matrix_size), dtype=np.complex128)
         self.selected_coherence = None
 

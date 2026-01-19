@@ -44,13 +44,13 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
-        see.add_all_equations(
+        see.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
 
         rho_legacy = see_legacy.get_solution_direct()
-        rho = see.get_solution_direct()
+        rho = see.get_solution()
         for term in level_registry.terms.values():
             for J, Jʹ, K, Q in nested_loops(
                 J=TRIANGULAR(term.L, term.S),

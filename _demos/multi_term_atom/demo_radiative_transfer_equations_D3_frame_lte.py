@@ -78,12 +78,12 @@ def main():
             rho = seelte.get_solution(atmosphere_parameters=atmosphere_parameters)
         else:
             # Construct all equations for rho
-            see.add_all_equations(
+            see.fill_all_equations(
                 atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
             )
 
             # Solve all equations for rho
-            rho = see.get_solution_direct()
+            rho = see.get_solution()
 
         logging.warning('START')
         logging.warning('START')

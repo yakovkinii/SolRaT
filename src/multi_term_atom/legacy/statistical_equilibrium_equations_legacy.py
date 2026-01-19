@@ -40,11 +40,10 @@ class MultiTermAtomSEELegacy:
         disable_r_s: bool = False,
         disable_n: bool = False,
     ):
-        n_frequencies = 1
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
-            terms=list(self.level_registry.terms.values()), n_frequencies=n_frequencies
+            terms=list(self.level_registry.terms.values())
         )
         self.disable_r_s = disable_r_s
         self.disable_n = disable_n

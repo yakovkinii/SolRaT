@@ -70,12 +70,12 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
 
         # Construct all equations for rho
-        see.add_all_equations(
+        see.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
         )
 
         # Solve all equations for rho
-        rho = see.get_solution_direct()
+        rho = see.get_solution()
 
         # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
         eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = rte.eta_rho_s(

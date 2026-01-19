@@ -123,13 +123,13 @@ def main():
     )
 
     # LOS SEE
-    see.add_all_equations(
+    see.fill_all_equations(
         atmosphere_parameters=atmosphere_parameters,
         radiation_tensor_in_magnetic_frame=radiation_tensor_prev.rotate_to_magnetic_frame(
             chi_B=angles.chi_B, theta_B=angles.theta_B
         ),
     )
-    rho = see.get_solution_direct()
+    rho = see.get_solution()
 
     # LOS RT
     rtc = rte_los.compute_all_coefficients(
@@ -200,11 +200,11 @@ def main():
         )
 
         # LOS SEE
-        see.add_all_equations(
+        see.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor_prev,
         )
-        rho = see.get_solution_direct()
+        rho = see.get_solution()
         rtc = rte_los.compute_all_coefficients(
             atmosphere_parameters=atmosphere_parameters,
             rho=rho,

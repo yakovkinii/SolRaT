@@ -47,3 +47,6 @@ def lambda_cm_to_frequency_hz(lambda_cm: Union[float, np.ndarray]) -> Union[floa
 
 def frequency_hz_to_lambda_A(frequency_hz: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return c_cm_sm1 / frequency_hz * 1e8
+
+def energy_cmm1_to_erg(energy_cmm1: float) -> float:
+        return h_erg_s * c_cm_sm1 * energy_cmm1

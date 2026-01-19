@@ -77,7 +77,7 @@ class ConstantPropertySlab:
         )
 
         if isinstance(self.see, MultiTermAtomSEE):
-            self.see.add_all_equations(
+            self.see.fill_all_equations(
                 atmosphere_parameters=self.atmosphere_parameters,
                 radiation_tensor_in_magnetic_frame=self.radiation_tensor.rotate_to_magnetic_frame(
                     chi_B=self.angles.chi_B, theta_B=self.angles.theta_B
@@ -142,7 +142,7 @@ class ConstantPropertySlab:
 
         # Solve statistical equilibrium equations
         if isinstance(self.see, MultiTermAtomSEE):
-            rho = self.see.get_solution_direct()
+            rho = self.see.get_solution()
         else:
             rho = self.see.get_solution(atmosphere_parameters=self.atmosphere_parameters)
 

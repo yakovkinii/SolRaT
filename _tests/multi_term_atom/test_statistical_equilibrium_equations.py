@@ -71,12 +71,12 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
-        atom.add_all_equations(
+        atom.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
         solution_legacy = atom_legacy.get_solution_direct()
-        solution = atom.get_solution_direct()
+        solution = atom.get_solution()
 
         # Analytic:
         rt = radiation_tensor(

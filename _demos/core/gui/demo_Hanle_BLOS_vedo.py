@@ -100,8 +100,8 @@ for Bscale in [0, 0.01, 0.03, 0.1, 0.3, 1]:
     B_norm_scaled = B_norm * Bscale
     atm_params = AtmosphereParameters(magnetic_field_gauss=B_norm_scaled, delta_v_thermal_cm_sm1=5_000_00)
 
-    see.add_all_equations(atmosphere_parameters=atm_params, radiation_tensor_in_magnetic_frame=rad_tensor)
-    rho = see.get_solution_direct()
+    see.fill_all_equations(atmosphere_parameters=atm_params, radiation_tensor_in_magnetic_frame=rad_tensor)
+    rho = see.get_solution()
 
     # Compute stokes
     etas = rte.eta_rho_s(
