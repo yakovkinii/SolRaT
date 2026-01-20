@@ -48,7 +48,7 @@ def get_Fe_I_5434_data(scale_S=False):
     level_registry.register_level(beta="z5Do", L=2, S=2, J=0, energy_cmm1=26550.479)
 
     level_registry.validate()
-    level_registry.get_term(beta="a5F", L=3, S=2).set_artificial_S_scale(
+    level_registry.get_term(beta="a5F", L=3, S=2).set_artificial_spin_scale(
         get_artificial_S_scale_from_term_g(g=-0.014, L=3, S=2, J=1)
     )
 

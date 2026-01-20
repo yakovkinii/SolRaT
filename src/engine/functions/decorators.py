@@ -64,6 +64,60 @@ def log_method(method):
     return decorator
 
 
+
+def log_method_experimental(method):
+    """
+    A decorator to log the name of a class method when it is executed.
+    todo fix type hinting
+    """
+
+    def decorator(self, *args, **kwargs):
+        global level
+        class_name = self.__class__.__name__
+        ident = "⋅ " * level
+
+        logger = logging.getLogger()
+        source_file = inspect.getsourcefile(method)
+        line_number = inspect.getsourcelines(method)[1]
+        lr = logger.makeRecord(
+            logger.name,
+            logging.WARNING,
+            source_file,
+            line_number,
+            ident + f"{class_name}.{method.__name__} (experimental feature, use with caution!)",
+            {},
+            None,
+            "",
+        )
+        logger.handle(lr)
+
+        level += 1
+        if args or kwargs:
+            start_time = time.perf_counter()
+            result = method(self, *args, **kwargs)
+            end_time = time.perf_counter()
+        else:
+            start_time = time.perf_counter()
+            result = method(self)
+            end_time = time.perf_counter()
+        level -= 1
+        lr = logger.makeRecord(
+            logger.name,
+            LOGGING_LEVEL,
+            source_file,
+            line_number,
+            ident + f"{end_time - start_time:.4f}s",
+            {},
+            None,
+            "",
+        )
+        logger.handle(lr)
+        return result
+
+    return decorator
+
+
+
 def log_function(function):
     """
     A decorator to log the name of a function when it is executed.
