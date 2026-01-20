@@ -1,23 +1,18 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 from src.common.constants import c_cm_sm1, h_erg_s
 
 
-def b_ul_from_a_ul_multi_term_atom(a_ul_sm1, nu_ul):
+def b_ul_from_a_ul_multi_term_atom(a_ul_sm1: float, nu_ul: float) -> float:
     """
-    Aul [s^-1] to Bul [cm^2/erg/s]
+    Transform from Aul [s^-1] to Bul [cm^2/erg/s]
     Reference: (7.33)
     """
     factor = 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
     return a_ul_sm1 / factor
 
 
-def b_lu_from_b_ul_multi_term_atom(b_ul, Lu, Ll):
+def b_lu_from_b_ul_multi_term_atom(b_ul: float, Lu: float, Ll: float) -> float:
     """
+    Transform from Blu [cm^2/erg/s] to Bul [cm^2/erg/s]
     Reference: (7.33)
     """
     return b_ul * (2 * Lu + 1) / (2 * Ll + 1)
