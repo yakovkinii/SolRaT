@@ -58,9 +58,9 @@ class MultiTermAtomSEE:
 
         Note on precomputing:
         Some parameters are atom-specific, and some are atmosphere-specific.
-        E.g. number of levels, their J values etc are atom-specific, while magnetic field is atmosphere-specific.
+        E.g. levels, their J values etc are atom-specific, while magnetic field is atmosphere-specific.
         So the idea is to precompute everything atom-specific, so that we can quickly iterate over
-        atmosphere-specific parameters for this given atom later.
+        atmosphere-specific parameters later.
         Also this means that atom-specific precomputing can be saved to disk, and does not need to be performed
         on each launch.
         """

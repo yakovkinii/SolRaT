@@ -40,7 +40,7 @@ def get_mock_atom_data(fine_structure=True):
     # Transitions
 
     transition_registry = TransitionRegistry()
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="2p", L=1, S=0.5),
         term_lower=level_registry.get_term(beta="1s", L=0, S=0.5),
         einstein_a_ul_sm1=0.7e8,

@@ -104,22 +104,22 @@ def get_He_I_D3_data():
 
     # Transitions
     transition_registry = TransitionRegistry()
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="2p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
         einstein_a_ul_sm1=3 * 1.022e7,
     )
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
         einstein_a_ul_sm1=3 * 9.478e6,
     )
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3s3", L=0, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
         einstein_a_ul_sm1=3.080e6 + 9.259e6 + 1.540e7,
     )
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3d3", L=2, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
         einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,

@@ -36,11 +36,11 @@ def get_Mn_I_5432_data():
     # Transitions
     transition_registry = TransitionRegistry()
 
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_lower=level_registry.get_term(beta="a6S", L=0, S=2.5),
         term_upper=level_registry.get_term(beta="z6P+z8P", L=1, S=2.5),
-        lower_J_for_RTE=[2.5],  # used if j_constrained=True
-        upper_J_for_RTE=[2.5],  # used if j_constrained=True
+        lower_J_constraint=[2.5],  # used if j_constrained=True
+        upper_J_constraint=[2.5],  # used if j_constrained=True
         einstein_a_ul_sm1=6.04e+03
     )
 

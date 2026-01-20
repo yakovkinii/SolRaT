@@ -125,7 +125,7 @@ class Term:
 
     def get_mean_energy_cmm1(self):
         """
-        Get the mean energy of the term.
+        Get the non-weighted mean energy of the term.
         """
         total_energy = sum(level.energy_cmm1 for level in self.levels)
         return total_energy / len(self.levels)

@@ -58,11 +58,11 @@ def get_Fe_I_5434_data(scale_S=False):
     # Register the term-to-term transition with the provided Aki.
     # NOTE: Your current TransitionRegistry is term-based (not J-pair based).
     # The Aki=1.70e6 s^-1 is for the Ju=0 -> Jl=1 component.
-    transition_registry.register_transition_from_a_ul(
+    transition_registry.register_transition(
         term_lower=level_registry.get_term(beta="a5F", L=3, S=2),
         term_upper=level_registry.get_term(beta="z5Do", L=2, S=2),
-        lower_J_for_RTE=[1],
-        upper_J_for_RTE=[0],
+        lower_J_constraint=[1],
+        upper_J_constraint=[0],
         einstein_a_ul_sm1=1.70e6
         + 1.27e06
         + 1.15e06
