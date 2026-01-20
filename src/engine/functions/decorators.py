@@ -15,7 +15,6 @@ level = 0
 def log_method(method):
     """
     A decorator to log the name of a class method when it is executed.
-    todo fix type hinting
     """
 
     def decorator(self, *args, **kwargs):
@@ -68,7 +67,7 @@ def log_method(method):
 def log_method_experimental(method):
     """
     A decorator to log the name of a class method when it is executed.
-    todo fix type hinting
+    For marking the experimental features.
     """
 
     def decorator(self, *args, **kwargs):
@@ -136,6 +135,52 @@ def log_function(function):
             source_file,
             line_number,
             ident + f"{function.__name__}",
+            {},
+            None,
+            "",
+        )
+        logger.handle(lr)
+
+        level += 1
+        start_time = time.perf_counter()
+        result = function(*args, **kwargs)
+        end_time = time.perf_counter()
+        level -= 1
+        lr = logger.makeRecord(
+            logger.name,
+            LOGGING_LEVEL,
+            source_file,
+            line_number,
+            ident + f"{function.__name__} finished in {end_time - start_time:.6f}s",
+            {},
+            None,
+            "",
+        )
+        logger.handle(lr)
+
+        return result
+
+    return decorator
+
+def log_function_experimental(function):
+    """
+    A decorator to log the name of a function when it is executed.
+    For marking the experimental features.
+    """
+
+    def decorator(*args, **kwargs):
+        global level
+        ident = "⋅ " * level
+
+        logger = logging.getLogger()
+        source_file = inspect.getsourcefile(function)
+        line_number = inspect.getsourcelines(function)[1]
+        lr = logger.makeRecord(
+            logger.name,
+            logging.WARNING,
+            source_file,
+            line_number,
+            ident + f"{function.__name__} (experimental feature, use with caution!)",
             {},
             None,
             "",

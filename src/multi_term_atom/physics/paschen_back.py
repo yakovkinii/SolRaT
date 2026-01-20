@@ -1,67 +1,67 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
-import logging
-from functools import lru_cache
 from typing import Tuple, Union
 
 import numpy as np
 from numpy import sqrt
 
+from src.common.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
+from src.engine.functions.decorators import log_function_experimental
 from src.engine.functions.general import half_int_to_str
 from src.engine.functions.looping import fromto
-from src.common.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
 from src.multi_term_atom.terms_levels_transitions.level_registry import Term
 
 
 class PaschenBackEigenvalues:
     def __init__(self):
+        """
+        Container for Paschen-Back eigenvalues.
+        """
         self.data = dict()
 
-    def set(self, j, M, value, term=None):
-        if term is not None:
-            logging.warning(
-                "PaschenBackEigenvalues.set: term argument is deprecated and will be removed in future versions."
-            )
+    def set(self, j: float, M: float, value: float):
+        """
+        Set the PB eigenvalue
+        """
         self.data[(half_int_to_str(j), half_int_to_str(M))] = value
 
-    def __call__(self, j, M, term=None):
-        if term is not None:
-            logging.warning(
-                "PaschenBackEigenvalues.set: term argument is deprecated and will be removed in future versions."
-            )
-        assert (half_int_to_str(j), half_int_to_str(M)) in self.data, (
-            f"PaschenBackEigenvalues: {half_int_to_str(j)}, {half_int_to_str(M)}"
-            f" not found. Please explicitly enforce triangular rules."
-        )
-        return self.data[(half_int_to_str(j), half_int_to_str(M))]
+    def __call__(self, j: float, M: float) -> float:
+        """
+        Get the PB eigenvalue
+        """
+        key = (half_int_to_str(j), half_int_to_str(M))
+        assert key in self.data, f"PaschenBackEigenvalues: {key} not found. Please enforce triangular rules."
+        return self.data[key]
 
 
 class PaschenBackCoefficients:
     def __init__(self):
+        """
+        Container for Paschen-Back coefficients.
+        """
         self.data = dict()
 
-    def set(self, j, J, M, value, term=None):
-        if term is not None:
-            logging.warning(
-                "PaschenBackCoefficients.set: term argument is deprecated and will be removed in future versions."
-            )
+    def set(self, j: float, J: float, M: float, value: float):
+        """
+        Set the PB coefficient
+        """
         self.data[(half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))] = value
 
-    def __call__(self, j, J, M, term=None):
-        if term is not None:
-            logging.warning(
-                "PaschenBackCoefficients.set: term argument is deprecated and will be removed in future versions."
-            )
-        return self.data[(half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))]
+    def __call__(self, j: float, J: float, M: float) -> float:
+        """
+        Get the PB coefficient
+        """
+        key = (half_int_to_str(j), half_int_to_str(J), half_int_to_str(M))
+        assert key in self.data, f"PaschenBackCoefficients: {key} not found. Please enforce triangular rules."
+        return self.data[key]
 
 
 def _g_ls(L, S, J, artificial_S_scale: Union[float, None] = None):
     """
+    LS Lande factor
+
     Reference: (3.8)
+
+    Experimental feature:
+    S scale can be overwritten to model a different magnetic sensitivity of a term. Use with caution.
     """
     if J == 0:
         return 1
@@ -70,19 +70,22 @@ def _g_ls(L, S, J, artificial_S_scale: Union[float, None] = None):
     return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
 
 
+@log_function_experimental
 def get_artificial_S_scale_from_term_g(g, J, L, S):
     """
-    This back-derives scale from _g_ls() given g value.
+    Get the artificial S scale from the desired Lande factor of a term.
+    This is an experimental feature, use with caution.
     """
     alpha = 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
-    return (g-1) / alpha
+    return (g - 1) / alpha
 
 
-@lru_cache(maxsize=None)  # Todo check if this works correctly
 def calculate_paschen_back(
     term: Term, magnetic_field_gauss: float
 ) -> Tuple[PaschenBackEigenvalues, PaschenBackCoefficients]:
     """
+    Calculate the Paschen-Back eigenvalues and coefficients
+
     Reference: (3.61 a b)
     """
     eigenvalues = PaschenBackEigenvalues()
@@ -121,11 +124,13 @@ def calculate_paschen_back(
 
             # Fill diagonal elements
             if term.artificial_S_scale is not None:
+                # Decouple it here explicitly from the main calculation just in case
                 matrix[i, i] = (
                     term.get_level(J).energy_cmm1
                     + mu0b_cm * _g_ls(L, S, J, artificial_S_scale=term.artificial_S_scale) * M
                 )
             else:
+                # Main calculation
                 matrix[i, i] = term.get_level(J).energy_cmm1 + mu0b_cm * _g_ls(L, S, J) * M
 
             # Fill non-diagonal elements
