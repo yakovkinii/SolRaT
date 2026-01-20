@@ -151,5 +151,5 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         assert np.allclose(np.real(eta_sV) / scale, eta_sV_analytic / scale, atol=1e-10, rtol=1e-10)
 
         epsilonI_legacy = rte_legacy.epsilon(eta_s=eta_sI_legacy, nu=nu)
-        epsilonI = rte.epsilon(eta_s=eta_sI, nu=nu)
+        epsilonI = rte.compute_epsilon(eta_s=eta_sI, nu=nu)
         assert np.allclose(epsilonI_legacy, epsilonI, atol=1e-10, rtol=1e-10)

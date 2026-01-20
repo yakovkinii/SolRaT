@@ -60,8 +60,8 @@ class Frame:
             return f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. Elementwise: {self.elementwise}"
 
     @staticmethod
-    def from_sum_limits(base_frame: pd.DataFrame, sum_linits: type(SumLimits)):
-        looper_dict = sum_linits.get_indexes()
+    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits))->Frame:
+        looper_dict = sum_limits.get_indexes()
         return Frame(base_frame=base_frame, **looper_dict)
 
     def __init__(self, base_frame: pd.DataFrame = None, **kwargs: Looper):
@@ -123,7 +123,7 @@ class Frame:
             return pd.DataFrame(index=[0], columns=[])
         return self.frame[columns].drop_duplicates().reset_index(drop=True)
 
-    def add_factors_to_multiply(self, *args: Callable, elementwise: bool = False, **kwargs):
+    def register_multiplication(self, *args: Callable, elementwise: bool = False, **kwargs):
         """
         This just registers the factors. They will be evaluated/merged later on demand.
         """

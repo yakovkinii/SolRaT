@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 import logging
 
 import numpy as np
@@ -33,8 +27,9 @@ class MultiTermAtomRTELegacy:
     This one is kept for reference and testing purposes.
     It also contains analytical expressions under further assumptions, which are used for testing.
 
-    Note some minor differences from the new vectorized implementation:
-    1. Cutoff condition is defined slightly differently.
+    Note that there are some minor differences from the new vectorized implementation,
+    such as cut-off condition. And the vectorized implementation has many features not available in this
+    legacy implementation.
     """
 
     def __init__(

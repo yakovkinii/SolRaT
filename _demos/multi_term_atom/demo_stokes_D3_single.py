@@ -125,7 +125,7 @@ def main():
     def direct_stokes_step(current_stokes, K_at_z, epsilon_at_z, dz):
         return current_stokes + (-K_at_z @ current_stokes + epsilon_at_z) * dz
 
-    stokes_direct = direct_stokes_step(current_stokes=stokes_direct, K_at_z=rtc.K(), epsilon_at_z=rtc.epsilon(), dz=dz)
+    stokes_direct = direct_stokes_step(current_stokes=stokes_direct, K_at_z=rtc.K(), epsilon_at_z=rtc.compute_epsilon(), dz=dz)
 
     plotter.add(
         lambda_A=lambda_A,
@@ -141,7 +141,7 @@ def main():
 
     for _ in range(1000):
         K_at_z = rtc.K()  # This simulates different K at different z
-        epsilon_at_z = rtc.epsilon()  # This simulates different epsilon at different z
+        epsilon_at_z = rtc.compute_epsilon()  # This simulates different epsilon at different z
         stokes_direct_n = direct_stokes_step(
             current_stokes=stokes_direct_n, K_at_z=K_at_z, epsilon_at_z=epsilon_at_z, dz=dz / 1000
         )

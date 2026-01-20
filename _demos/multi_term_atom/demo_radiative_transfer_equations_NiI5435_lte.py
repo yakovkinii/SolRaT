@@ -80,7 +80,7 @@ def main():
 
         rho = seelte.get_solution(atmosphere_parameters=atmosphere_parameters)
 
-        frame_a_frame = rte.frame_a_frame(
+        frame_a_frame = rte.calculate_eta_rho_a(
             stokes_component_index=0,
             angles=Angles(
                 chi=0,
@@ -94,7 +94,7 @@ def main():
             rho=rho,
         )
 
-        frame_a_frame_V = rte.frame_a_frame(
+        frame_a_frame_V = rte.calculate_eta_rho_a(
             stokes_component_index=3,
             angles=Angles(
                 chi=0,

@@ -147,7 +147,7 @@ class ConstantPropertySlab:
             rho = self.see.get_solution(atmosphere_parameters=self.atmosphere_parameters)
 
         # Compute radiative transfer coefficients
-        rtc = self.rte.compute_all_coefficients_frame(
+        rtc = self.rte.compute_all_coefficients(
             atmosphere_parameters=self.atmosphere_parameters,
             angles=self.angles,
             rho=rho,

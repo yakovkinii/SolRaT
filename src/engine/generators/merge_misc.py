@@ -28,7 +28,7 @@ frame = Frame(k=k, s=s,q=q,j=j, Jʹ=Jʹ, Jʹʹ=Jʹʹ)
 nu = np.array([[1,2,3]*100])
 
 
-frame.add_factors_to_multiply(
+frame.register_multiplication(
     lambda k: (k+1),
     lambda k,q: (k+1)*(q+1),
     lambda q,j: (j+1)*(q+1),
