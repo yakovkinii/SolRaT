@@ -417,7 +417,8 @@ class MultiTermAtomRTE:
         nui: float, nu: np.ndarray, macroscopic_velocity_cm_sm1: float, delta_v_thermal_cm_sm1: float, voigt_a: float
     ) -> np.ndarray:
         """
-        Compute the complex Faraday-Voigt profile
+        Compute the complex Faraday-Voigt profile.
+        delta_v_thermal_cm_sm1 already includes turbulent velocity.
 
         Reference: (5.43 - 5.45)
         """

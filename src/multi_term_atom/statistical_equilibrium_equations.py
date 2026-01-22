@@ -883,23 +883,13 @@ class MultiTermAtomSEELTE:
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
 
     @log_method
-    def temperature_from_delta_v(self, delta_v_thermal_cm_sm1: float) -> float:
-        """
-        TODO: DEPRECATE IN FAVOR OF T IN ATMOSPHERE_PARAMETERS
-        delta_v = sqrt(2 k_B T / m)
-        """
-        m_g = self.atomic_mass_amu * atomic_mass_unit_g
-        return m_g * delta_v_thermal_cm_sm1**2 / (2 * kB_erg_Km1)
-
-    @log_method
     def get_solution(self, atmosphere_parameters: AtmosphereParameters) -> Rho:
         """
         Return LTE Rho solution.
 
         TODO: need reference.
         """
-        # TODO: DEPRECATE IN FAVOR OF T IN ATMOSPHERE_PARAMETERS
-        T = self.temperature_from_delta_v(atmosphere_parameters.delta_v_thermal_cm_sm1)
+        T = atmosphere_parameters.temperature_K
 
         rho = Rho(terms=list(self.level_registry.terms.values()))
         for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():

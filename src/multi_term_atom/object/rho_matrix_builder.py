@@ -31,7 +31,7 @@ class Rho:
         :param terms: list of all terms.
         """
         self.data = dict()
-        self.terms = terms
+        self.terms = {term.term_id: term for term in terms}
 
     def set_from_term_id(self, term_id: str, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
         """
@@ -39,11 +39,11 @@ class Rho:
         """
         self.data[construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
-    def __call__(self, K: float, Q: float, J: float, Jʹ: float, term: Union[Term, str]) -> float:
+    def __call__(self, K: float, Q: float, J: float, Jʹ: float, term_id: str) -> float:
         """
         Get the value
         """
-        coherence_id = construct_coherence_id(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)
+        coherence_id = construct_coherence_id(term=self.terms[term_id], K=K, Q=Q, J=J, Jʹ=Jʹ)
         return self.data[coherence_id]
 
 
