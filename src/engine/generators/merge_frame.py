@@ -60,7 +60,7 @@ class Frame:
             return f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. Elementwise: {self.elementwise}"
 
     @staticmethod
-    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits))->Frame:
+    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits))->"Frame":
         looper_dict = sum_limits.get_indexes()
         return Frame(base_frame=base_frame, **looper_dict)
 

@@ -7,7 +7,9 @@ from yatools import logging_config
 from src.engine.functions.looping import PROJECTION, TRIANGULAR
 from src.engine.generators.nested_loops import nested_loops
 from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import MultiTermAtomSEELegacy
+from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import (
+    MultiTermAtomSEELegacy,
+)
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
@@ -22,7 +24,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
 
         level_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
 
-        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=500_00)
+        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=7000, atomic_mass_au=1)
         radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(
             h_arcsec=30
         )
@@ -59,6 +61,9 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
                 Q=PROJECTION("K"),
             ):
                 assert (
-                    np.abs(rho(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ) - rho_legacy(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)).max()
+                    np.abs(
+                        rho(term_id=term.term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
+                        - rho_legacy(term_id=term.term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
+                    ).max()
                     < 1e-10
                 )

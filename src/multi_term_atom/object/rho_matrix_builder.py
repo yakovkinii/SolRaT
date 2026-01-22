@@ -43,7 +43,7 @@ class Rho:
         """
         Get the value
         """
-        coherence_id = construct_coherence_id(term=self.terms[term_id], K=K, Q=Q, J=J, Jʹ=Jʹ)
+        coherence_id = construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)
         return self.data[coherence_id]
 
 

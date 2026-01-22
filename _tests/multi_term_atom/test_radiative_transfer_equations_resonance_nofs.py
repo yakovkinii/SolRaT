@@ -5,8 +5,12 @@ import numpy as np
 from yatools import logging_config
 
 from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from src.multi_term_atom.legacy.radiative_transfer_equations_legacy import MultiTermAtomRTELegacy
-from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import MultiTermAtomSEELegacy
+from src.multi_term_atom.legacy.radiative_transfer_equations_legacy import (
+    MultiTermAtomRTELegacy,
+)
+from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import (
+    MultiTermAtomSEELegacy,
+)
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
@@ -30,7 +34,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             theta_B=np.pi / 5,
         )
 
-        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, delta_v_thermal_cm_sm1=5_000_00)
+        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=5000, atomic_mass_au=45)
         radiation_tensor = (
             RadiationTensor(transition_registry=transition_registry)
             .fill_planck(T_K=5000)
@@ -72,12 +76,18 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             nu=nu,
         )
 
-        eta_aI, eta_aQ, eta_aU, eta_aV = rte.eta_rho_a(
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-            angles=angles,
+        eta_aI = rte.calculate_eta_rho_a(
+            stokes_component_index=0, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
         )
-
+        eta_aQ = rte.calculate_eta_rho_a(
+            stokes_component_index=1, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_aU = rte.calculate_eta_rho_a(
+            stokes_component_index=2, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_aV = rte.calculate_eta_rho_a(
+            stokes_component_index=3, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
         eta_aI_legacy = rte_legacy.eta_rho_a(
             rho=rho_legacy,
             stokes_component_index=0,
@@ -167,10 +177,17 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         assert np.allclose(np.real(eta_aV) / scale, eta_aV_analytic / scale, atol=1e-10, rtol=1e-10)
         assert np.allclose(np.imag(eta_aV) / scale, rho_aV_analytic / scale, atol=1e-10, rtol=1e-10)
 
-        eta_sI, eta_sQ, eta_sU, eta_sV = rte.eta_rho_s(
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-            angles=angles,
+        eta_sI = rte.calculate_eta_rho_s(
+            stokes_component_index=0, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_sQ = rte.calculate_eta_rho_s(
+            stokes_component_index=1, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_sU = rte.calculate_eta_rho_s(
+            stokes_component_index=2, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
+        )
+        eta_sV = rte.calculate_eta_rho_s(
+            stokes_component_index=3, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
         )
 
         eta_sI_legacy = rte_legacy.eta_rho_s(

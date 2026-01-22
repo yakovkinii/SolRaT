@@ -114,10 +114,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
@@ -128,11 +128,10 @@ class MultiTermAtomRTELegacy:
                     lambda: real(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
+                            lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                    - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                    upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
                                 atmosphere_parameters=atmosphere_parameters,
@@ -210,10 +209,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
                     lambda: m1p(1 + Jʹu - Mu + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
@@ -230,11 +229,10 @@ class MultiTermAtomRTELegacy:
                                 D_inverse_omega=D_inverse_omega,
                                 D_magnetic=D_magnetic,
                             ),
-                            lambda: rho(term=term_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
+                            lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                    - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                    upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
                                 atmosphere_parameters=atmosphere_parameters,
@@ -308,10 +306,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
@@ -328,11 +326,10 @@ class MultiTermAtomRTELegacy:
                                 D_inverse_omega=D_inverse_omega,
                                 D_magnetic=D_magnetic,
                             ),
-                            lambda: rho(term=term_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
+                            lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                    - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                    upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
                                 atmosphere_parameters=atmosphere_parameters,
@@ -410,10 +407,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
                     lambda: m1p(1 + Jʹu - Mu + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
@@ -424,11 +421,10 @@ class MultiTermAtomRTELegacy:
                     lambda: imag(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
+                            lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
-                                    upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                    - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                    upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
                                 atmosphere_parameters=atmosphere_parameters,
@@ -515,10 +511,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N * n_proj(Ll),
                     lambda: transition.einstein_b_lu * sqrt(n_proj(1, K, Kl)),
                     lambda: m1p(1 + Jʹʹl - Ml + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
@@ -528,11 +524,10 @@ class MultiTermAtomRTELegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
                         lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                        lambda: rho(term=term_lower, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
+                        lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
-                                upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                             ),
                             nu=self.nu,
                             atmosphere_parameters=atmosphere_parameters,
@@ -609,10 +604,10 @@ class MultiTermAtomRTELegacy:
                     lambda: h_erg_s * self.nu / 4 / pi * self.N,
                     lambda: n_proj(Lu) * transition.einstein_b_ul * sqrt(n_proj(1, K, Ku)),
                     lambda: m1p(1 + Jʹu - Mu + qʹ),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, term=term_lower, M=Ml),
-                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, term=term_lower, M=Ml),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, term=term_upper, M=Mu),
-                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, term=term_upper, M=Mu),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jl, M=Ml),
+                    lambda: lower_pb_eigenvectors(j=jl, J=Jʹl, M=Ml),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Ju, M=Mu),
+                    lambda: upper_pb_eigenvectors(j=ju, J=Jʹʹu, M=Mu),
                     lambda: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
                     lambda: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
                     lambda: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
@@ -622,11 +617,10 @@ class MultiTermAtomRTELegacy:
                     lambda: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
                     lambda: multiply(
                         lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                        lambda: rho(term=term_upper, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
+                        lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                         lambda: self.phi(
                             nui=energy_cmm1_to_frequency_hz(
-                                upper_pb_eigenvalues(j=ju, term=term_upper, M=Mu)
-                                - lower_pb_eigenvalues(j=jl, term=term_lower, M=Ml),
+                                upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                             ),
                             nu=self.nu,
                             atmosphere_parameters=atmosphere_parameters,
@@ -704,7 +698,7 @@ class MultiTermAtomRTELegacy:
                     lambda: real(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
+                            lambda: rho(term_id=term_lower.term_id, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
@@ -718,7 +712,7 @@ class MultiTermAtomRTELegacy:
                 ),
                 Jl=TRIANGULAR(Ll, S),
                 Jʹl=TRIANGULAR(Ll, S),
-                K=FROMTO(0, 2),
+                K=INTERSECTION(FROMTO(0, 2), TRIANGULAR("Jʹl", "Jl")),
                 Q=PROJECTION("K"),
                 tqdm_level=1,
             )
@@ -775,7 +769,7 @@ class MultiTermAtomRTELegacy:
                     lambda: real(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
+                            lambda: rho(term_id=term_upper.term_id, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
@@ -788,7 +782,7 @@ class MultiTermAtomRTELegacy:
                 ),
                 Ju=TRIANGULAR(Lu, S),
                 Jʹu=TRIANGULAR(Lu, S),
-                K=FROMTO(0, 2),
+                K=INTERSECTION(FROMTO(0, 2), TRIANGULAR("Jʹu", "Ju")),
                 Q=INTERSECTION(PROJECTION("K")),
                 tqdm_level=1,
             )
@@ -841,7 +835,7 @@ class MultiTermAtomRTELegacy:
                     lambda: imag(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_lower, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
+                            lambda: rho(term_id=term_lower.term_id, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
@@ -855,7 +849,7 @@ class MultiTermAtomRTELegacy:
                 ),
                 Jl=TRIANGULAR(Ll, S),
                 Jʹl=TRIANGULAR(Ll, S),
-                K=FROMTO(0, 2),
+                K=INTERSECTION(FROMTO(0, 2), TRIANGULAR("Jʹl", "Jl")),
                 Q=PROJECTION("K"),
                 tqdm_level=1,
             )
@@ -912,7 +906,7 @@ class MultiTermAtomRTELegacy:
                     lambda: imag(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
+                            lambda: rho(term_id=term_upper.term_id, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
                                 nui=energy_cmm1_to_frequency_hz(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
@@ -925,7 +919,7 @@ class MultiTermAtomRTELegacy:
                 ),
                 Ju=TRIANGULAR(Lu, S),
                 Jʹu=TRIANGULAR(Lu, S),
-                K=FROMTO(0, 2),
+                K=INTERSECTION(FROMTO(0, 2), TRIANGULAR("Jʹu", "Ju")),
                 Q=INTERSECTION(PROJECTION("K")),
                 tqdm_level=1,
             )
@@ -977,7 +971,7 @@ class MultiTermAtomRTELegacy:
                     lambda: real(
                         multiply(
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
-                            lambda: rho(term=term_upper, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
+                            lambda: rho(term_id=term_upper.term_id, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: 0.5
                             * (
                                 self.phi(
@@ -1004,7 +998,7 @@ class MultiTermAtomRTELegacy:
                 Ju=TRIANGULAR(Lu, S),
                 Jʹu=TRIANGULAR(Lu, S),
                 Jl=TRIANGULAR(Ll, S),
-                K=FROMTO(0, 2),
+                K=INTERSECTION(FROMTO(0, 2), TRIANGULAR("Jʹu", "Ju")),
                 Q=PROJECTION("K"),
             )
         return result

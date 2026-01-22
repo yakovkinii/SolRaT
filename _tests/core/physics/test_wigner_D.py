@@ -4,10 +4,10 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.engine.functions.looping import FROMTO, PROJECTION
-from src.engine.generators.nested_loops import nested_loops
 from src.common.constants import sqrt2
 from src.common.rotations import WignerD
+from src.engine.functions.looping import FROMTO, PROJECTION
+from src.engine.generators.nested_loops import nested_loops
 
 
 def d_1_M_N(M, N, beta):

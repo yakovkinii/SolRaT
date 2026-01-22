@@ -301,7 +301,7 @@ class MultiTermAtomSEELegacy:
                     lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
                     lambda: m1p(1 + Lu - S + J + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -372,7 +372,7 @@ class MultiTermAtomSEELegacy:
                     lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
                     lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
                     lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5 * radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                    lambda: 0.5 * radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
                     lambda: (
                         multiply(
                             lambda: delta(J, Jʹʹ),
@@ -480,7 +480,7 @@ class MultiTermAtomSEELegacy:
                 lambda: wigner_6j(L, Ll, 1, Jl, J, S),
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
-                lambda: radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                lambda: radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -554,7 +554,7 @@ class MultiTermAtomSEELegacy:
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
-                lambda: radiation_tensor(transition=transition, K=Kr, Q=Qr),
+                lambda: radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
