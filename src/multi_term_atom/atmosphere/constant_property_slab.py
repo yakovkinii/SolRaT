@@ -128,6 +128,68 @@ class ConstantPropertySlab:
 
         Returns:
             Emergent Stokes vector
+
+
+
+                RT matrix K related to the tau-propagation equation
+
+        .. math::
+            dStokes/dz = - K * Stokes + epsilon - K_continuum Stokes + epsilon_continuum
+
+            dz = - dtau_line / eta_line
+
+        where _line means line-center frequency.
+
+        .. math::
+            dStokes/dtau_line = - K_tau_line * Stokes + epsilon_tau_line - K_continuum Stokes / eta_line
+            + epsilon_continuum / eta_line
+
+        where
+
+        .. math::
+            K_tau_line = K / eta_line = Kʹ / eta_lineʹ
+
+            epsilon_tau_line = epsilon / eta_line = epsilonʹ / eta_lineʹ
+
+        here, xʹ denotes x / N, where N is atomic concentration.
+
+
+
+        dStokes/dtau_line = - K_tau_line * Stokes + epsilon_tau_line - K_continuum Stokes / eta_line +
+        epsilon_continuum / eta_line
+
+        if we now put K_line=epsilon_lin=0 (away from the line), we should get only the continuum:
+        dStokes/dtau_line = - K_continuum Stokes / eta_line + epsilon_continuum / eta_line
+
+        if we introduce eta_LC = eta_line / eta_continuum:
+
+        dStokes/dtau_line = - K_continuum Stokes / eta_line + epsilon_continuum / eta_line =
+        = - K_continuum Stokes / eta_continuum / eta_LC + epsilon_continuum /eta_continuum / eta_LC =
+        = 1/eta_LC * (dStokes/dtau_continuum) by construction
+
+        now, in case of unpolarized continuum:
+        K_continuum = diag(eta_continuum) => K_continuum / eta_continuum = 1
+        epsilon_continuum = eta_continuum * BP(T) * eI => epsilon_continuum / eta_continuum = BP(T) * eI
+
+        where eI is the 0th Stokes component ort.
+
+        Therefore, we can conclude:
+
+        dStokes/dtau_line = - K_tau_line * Stokes + epsilon_tau_line
+                            - Stokes / eta_LC + BP(T) eI / eta_LC
+
+        In terms of dtau_continuum we then have:
+
+        dStokes/dtau_continuum = - K_tau_line * Stokes * eta_LC + epsilon_tau_line * eta_LC - Stokes + BP(T) eI
+        With a boundary condition of
+        Stokes[tau->+inf] -> BP(T0)
+
+        We can normalize the Stokes on BP(T0):
+        dStokes/dtau_continuum = - K_tau_line * Stokes * eta_LC + epsilon_tau_line * eta_LC / BP(T0)
+                                 - Stokes + BP(T)/BP(T0) eI
+
+        With a boundary condition of
+        Stokes[tau->+inf] -> 1
         """
         if initial_stokes is not None:
             assert len(initial_stokes.nu) == len(
