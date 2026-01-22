@@ -223,7 +223,7 @@ class MultiTermAtomSEE:
         Reference: (7.38)
         """
         df = df.merge(
-            radiation_tensor.df.rename(
+            radiation_tensor.get_df().rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -283,7 +283,7 @@ class MultiTermAtomSEE:
         self.matrix_builder.add_coefficient_from_df(df_e)
 
         df_s = df_s.merge(
-            radiation_tensor.df.rename(
+            radiation_tensor.get_df().rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -341,7 +341,7 @@ class MultiTermAtomSEE:
         Reference: (7.38)
         """
         df_a = df_a.merge(
-            radiation_tensor.df.rename(
+            radiation_tensor.get_df().rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
@@ -353,7 +353,7 @@ class MultiTermAtomSEE:
         self.matrix_builder.add_coefficient_from_df(df_e)
 
         df_s = df_s.merge(
-            radiation_tensor.df.rename(
+            radiation_tensor.get_df().rename(
                 columns={"K": "Kr", "Q": "Qr"},
             ),
             how="inner",
