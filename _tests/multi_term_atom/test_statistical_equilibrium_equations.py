@@ -51,7 +51,7 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             term_lower=level_registry.get_term(beta="1s", L=0, S=0),
         ).einstein_b_lu
 
-        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=7000, atomic_mass_au=4)
+        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=7000, atomic_mass_amu=4)
         radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(
             h_arcsec=30
         )

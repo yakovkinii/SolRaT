@@ -22,9 +22,17 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
         """
         logging_config.init(logging.INFO)
 
-        level_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data()
+        (
+            level_registry,
+            transition_registry,
+            reference_lambda_A,
+            reference_nu_sm1,
+            atomic_mass_amu,
+        ) = get_mock_atom_data()
 
-        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=7000, atomic_mass_au=1)
+        atmosphere_parameters = AtmosphereParameters(
+            magnetic_field_gauss=0, temperature_K=7000, atomic_mass_amu=atomic_mass_amu
+        )
         radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(
             h_arcsec=30
         )

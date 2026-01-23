@@ -6,13 +6,17 @@ for the He I D3 line through atmospheres with linearly varying properties.
 """
 
 import logging
+
 import numpy as np
 from yatools import logging_config
 
-from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context
 from src.multi_term_atom.atmosphere.constant_property_slab import ConstantPropertySlab
 from src.multi_term_atom.atmosphere.linear_property_slab import LinearPropertySlab
-from src.multi_term_atom.atmosphere.utils import radiation_tensor_NLTE_n_w_parametrized, plot_stokes_comparison
+from src.multi_term_atom.atmosphere.utils import (
+    plot_stokes_comparison,
+    radiation_tensor_NLTE_n_w_parametrized,
+)
+from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context
 
 
 def demo_linear_vs_constant():
@@ -29,8 +33,8 @@ def demo_linear_vs_constant():
     radiation_tensor = radiation_tensor_NLTE_n_w_parametrized(context, h_arcsec=10)
 
     # Define gradient parameters
-    B_top = 1000      # Gauss at top
-    B_bottom = 4000   # Gauss at bottom
+    B_top = 1000  # Gauss at top
+    B_bottom = 4000  # Gauss at bottom
     v_th_top = 30000  # cm/s at top
     v_th_bottom = 50000  # cm/s at bottom
     tau_total = 2.0
@@ -46,9 +50,13 @@ def demo_linear_vs_constant():
         magnetic_field_gauss_bottom=B_bottom,
         delta_v_thermal_cm_sm1_top=v_th_top,
         delta_v_thermal_cm_sm1_bottom=v_th_bottom,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         n_sub_slabs=20,  # High resolution for smooth gradient
-        initial_stokes=1.0
+        initial_stokes=1.0,
     )
 
     print("Computing linear gradient solution...")
@@ -62,10 +70,14 @@ def demo_linear_vs_constant():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau_total,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B_avg,
         delta_v_thermal_cm_sm1=v_th_avg,
-        initial_stokes=1.0
+        initial_stokes=1.0,
     )
 
     print("Computing constant property solution (average values)...")
@@ -76,10 +88,14 @@ def demo_linear_vs_constant():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau_total,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B_top,
         delta_v_thermal_cm_sm1=v_th_top,
-        initial_stokes=1.0
+        initial_stokes=1.0,
     )
 
     print("Computing constant property solution (top values)...")
@@ -90,10 +106,14 @@ def demo_linear_vs_constant():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau_total,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B_bottom,
         delta_v_thermal_cm_sm1=v_th_bottom,
-        initial_stokes=1.0
+        initial_stokes=1.0,
     )
 
     print("Computing constant property solution (bottom values)...")
@@ -102,11 +122,10 @@ def demo_linear_vs_constant():
     # Plot comparison
     stokes_list = [stokes_linear, stokes_constant, stokes_top, stokes_bottom]
     labels = ["Linear gradient", "Constant (avg)", "Constant (top)", "Constant (bottom)"]
-    colors = ['red', 'blue', 'green', 'orange']
+    colors = ["red", "blue", "green", "orange"]
 
     plot_stokes_comparison(
-        stokes_list, labels, context.reference_lambda_A,
-        title="Linear Gradient vs Constant Property Comparison"
+        stokes_list, labels, context.reference_lambda_A, title="Linear Gradient vs Constant Property Comparison"
     )
 
 
@@ -148,10 +167,14 @@ def demo_gradient_effects():
                 multi_term_atom_context=context,
                 radiation_tensor=radiation_tensor,
                 tau=tau_total,
-                chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+                chi=0,
+                theta=0,
+                gamma=0,
+                chi_B=0,
+                theta_B=0,
                 magnetic_field_gauss=B_base,
                 delta_v_thermal_cm_sm1=v_th_base,
-                initial_stokes=1.0
+                initial_stokes=1.0,
             )
             labels.append("No gradient")
         else:
@@ -163,9 +186,13 @@ def demo_gradient_effects():
                 magnetic_field_gauss_bottom=B_bottom,
                 delta_v_thermal_cm_sm1_top=v_th_top,
                 delta_v_thermal_cm_sm1_bottom=v_th_bottom,
-                chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+                chi=0,
+                theta=0,
+                gamma=0,
+                chi_B=0,
+                theta_B=0,
                 n_sub_slabs=15,
-                initial_stokes=1.0
+                initial_stokes=1.0,
             )
             labels.append(f"Gradient factor {factor}")
 
@@ -175,8 +202,7 @@ def demo_gradient_effects():
 
     # Plot results
     plot_stokes_comparison(
-        stokes_results, labels, context.reference_lambda_A,
-        title="Effect of Gradient Strength on He I D3 Profiles"
+        stokes_results, labels, context.reference_lambda_A, title="Effect of Gradient Strength on He I D3 Profiles"
     )
 
 
@@ -215,9 +241,13 @@ def demo_resolution_convergence():
             magnetic_field_gauss_bottom=B_bottom,
             delta_v_thermal_cm_sm1_top=v_th_top,
             delta_v_thermal_cm_sm1_bottom=v_th_bottom,
-            chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+            chi=0,
+            theta=0,
+            gamma=0,
+            chi_B=0,
+            theta_B=0,
             n_sub_slabs=n_subs,
-            initial_stokes=1.0
+            initial_stokes=1.0,
         )
 
         stokes = slab.forward()
@@ -226,8 +256,7 @@ def demo_resolution_convergence():
 
     # Plot convergence
     plot_stokes_comparison(
-        stokes_results, labels, context.reference_lambda_A,
-        title="Convergence Test: Number of Sub-slabs"
+        stokes_results, labels, context.reference_lambda_A, title="Convergence Test: Number of Sub-slabs"
     )
 
     # Print convergence metrics
@@ -238,7 +267,7 @@ def demo_resolution_convergence():
         # Compare line center intensity
         center_idx = len(stokes.I) // 2
         I_diff = abs(stokes.I[center_idx] - reference_stokes.I[center_idx])
-        V_rms = np.sqrt(np.mean((stokes.V - reference_stokes.V)**2))
+        V_rms = np.sqrt(np.mean((stokes.V - reference_stokes.V) ** 2))
 
         print(f"{n_subs:2d} sub-slabs: ΔI_center = {I_diff:.6f}, V_RMS_diff = {V_rms:.6f}")
 

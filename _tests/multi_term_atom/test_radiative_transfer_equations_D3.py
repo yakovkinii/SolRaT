@@ -24,7 +24,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         logging_config.init(logging.INFO)
 
         # Load the atomic data for He I D3
-        level_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_He_I_D3_data()
+        level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu = get_He_I_D3_data()
 
         # The calculation itself needs frequency, but we will display the results in wavelength
         lambda_A = np.arange(reference_lambda_A - 2, reference_lambda_A + 2, 5e-4)
@@ -70,7 +70,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         atmosphere_parameters = AtmosphereParameters(
             magnetic_field_gauss=1000,
             temperature_K=1_000_00**2 / kB_erg_Km1 / 2 * 4 * atomic_mass_unit_g,
-            atomic_mass_au=4,
+            atomic_mass_amu=atomic_mass_amu,
         )
 
         # Construct all equations for rho

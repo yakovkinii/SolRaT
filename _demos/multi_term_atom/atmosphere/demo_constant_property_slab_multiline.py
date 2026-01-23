@@ -3,15 +3,19 @@ Multiple spectral lines within constant property slab formalism
 """
 
 import logging
+
+import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
 from src.gui.plots.plot_stokes_profiles import StokesPlotter_IV, StokesPlotter_IV_IpmV
-from src.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
-from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context, create_5434_MnFeNi_context
 from src.multi_term_atom.atmosphere.constant_property_slab import ConstantPropertySlab
-from src.multi_term_atom.atmosphere.utils import radiation_tensor_NLTE_n_w_parametrized, plot_stokes_IQUV
-import matplotlib.pyplot as plt
+from src.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
+from src.multi_term_atom.atmosphere.utils import (
+    plot_stokes_IQUV,
+    radiation_tensor_NLTE_n_w_parametrized,
+)
+from src.multi_term_atom.atomic_data.NiI import create_5434_MnFeNi_context
 
 
 def demo_constant_property_slab_multiline():
@@ -54,44 +58,58 @@ def demo_constant_property_slab_multiline():
         "initial_stokes": 1.0,  # Continuum intensity
         "temperature_K": 5000,
         "continuum_opacity": 0.1,
-
     }
 
     # Create constant property slab
-    Mn_tau_coef=0.5 #3e-3
+    Mn_tau_coef = 0.5  # 3e-3
     slab_Mn = MultiSlabAtmosphere(
         ConstantPropertySlab(
-            tau=tau1*Mn_tau_coef,
-            multi_term_atom_context=context_Mn, radiation_tensor=radiation_tensor_Mn, j_constrained=True, **params1
+            tau=tau1 * Mn_tau_coef,
+            multi_term_atom_context=context_Mn,
+            radiation_tensor=radiation_tensor_Mn,
+            j_constrained=True,
+            **params1,
         ),
         ConstantPropertySlab(
-            tau=tau2*Mn_tau_coef,
-            multi_term_atom_context=context_Mn, radiation_tensor=radiation_tensor_Mn, j_constrained=True, **params2
+            tau=tau2 * Mn_tau_coef,
+            multi_term_atom_context=context_Mn,
+            radiation_tensor=radiation_tensor_Mn,
+            j_constrained=True,
+            **params2,
         ),
     )
 
     slab_Fe = MultiSlabAtmosphere(
         ConstantPropertySlab(
             tau=tau1,
-            multi_term_atom_context=context_Fe, radiation_tensor=radiation_tensor_Fe, j_constrained=True, **params1
+            multi_term_atom_context=context_Fe,
+            radiation_tensor=radiation_tensor_Fe,
+            j_constrained=True,
+            **params1,
         ),
         ConstantPropertySlab(
             tau=tau2,
-
-            multi_term_atom_context=context_Fe, radiation_tensor=radiation_tensor_Fe, j_constrained=True, **params2
+            multi_term_atom_context=context_Fe,
+            radiation_tensor=radiation_tensor_Fe,
+            j_constrained=True,
+            **params2,
         ),
     )
-    Ni_tau_coef = 0.5 #8e-4
+    Ni_tau_coef = 0.5  # 8e-4
     slab_Ni = MultiSlabAtmosphere(
         ConstantPropertySlab(
-            tau=tau1*Ni_tau_coef,
-
-            multi_term_atom_context=context_Ni, radiation_tensor=radiation_tensor_Ni, j_constrained=True, **params1
+            tau=tau1 * Ni_tau_coef,
+            multi_term_atom_context=context_Ni,
+            radiation_tensor=radiation_tensor_Ni,
+            j_constrained=True,
+            **params1,
         ),
         ConstantPropertySlab(
-            tau=tau2*Ni_tau_coef,
-
-            multi_term_atom_context=context_Ni, radiation_tensor=radiation_tensor_Ni, j_constrained=True, **params2
+            tau=tau2 * Ni_tau_coef,
+            multi_term_atom_context=context_Ni,
+            radiation_tensor=radiation_tensor_Ni,
+            j_constrained=True,
+            **params2,
         ),
     )
 

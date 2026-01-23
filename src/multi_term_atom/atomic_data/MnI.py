@@ -6,11 +6,13 @@ TODO
 
 import pandas as pd
 
-from src.engine.functions.decorators import log_function
 from src.common.functions import lambda_cm_to_frequency_hz
+from src.engine.functions.decorators import log_function
 from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 @log_function
@@ -41,9 +43,10 @@ def get_Mn_I_5432_data():
         term_upper=level_registry.get_term(beta="z6P+z8P", L=1, S=2.5),
         lower_J_constraint=[2.5],  # used if j_constrained=True
         upper_J_constraint=[2.5],  # used if j_constrained=True
-        einstein_a_ul_sm1=6.04e+03
+        einstein_a_ul_sm1=6.04e03,
     )
 
     reference_lambda_A = 5432.5
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 54.9
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu

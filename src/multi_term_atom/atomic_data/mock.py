@@ -5,7 +5,9 @@ TODO
 """
 
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 def get_mock_atom_data(fine_structure=True):
@@ -49,4 +51,5 @@ def get_mock_atom_data(fine_structure=True):
     # Reference lambda
     reference_lambda_A = None
     reference_nu_sm1 = 5.996e14
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 1
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu

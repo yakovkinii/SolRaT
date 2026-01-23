@@ -7,12 +7,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.engine.functions.decorators import log_function
 from src.common.functions import lambda_cm_to_frequency_hz
+from src.engine.functions.decorators import log_function
 from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 @log_function
@@ -130,7 +132,8 @@ def get_He_I_D3_data():
     # Reference lambda
     reference_lambda_A = 5877.25
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 4
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu
 
 
 def fill_precomputed_He_I_D3_data(
@@ -145,7 +148,6 @@ def fill_precomputed_He_I_D3_data(
     atom.relaxation_df_a = pd.read_parquet(directory + "relaxation_df_a.parquet")
     atom.relaxation_df_e = pd.read_parquet(directory + "relaxation_df_e.parquet")
     atom.relaxation_df_s = pd.read_parquet(directory + "relaxation_df_s.parquet")
-
 
 
 def create_he_i_d3_context(lambda_range_A: float = 1.0, lambda_resolution_A: float = 1e-4) -> MultiTermAtomContext:
@@ -182,4 +184,3 @@ def create_he_i_d3_context(lambda_range_A: float = 1.0, lambda_resolution_A: flo
         reference_lambda_A=reference_lambda_A,
     )
     return context
-

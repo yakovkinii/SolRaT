@@ -4,11 +4,14 @@ TODO  This file needs improved documentation.
 TODO
 """
 
-import numpy as np
 from typing import List, Union
+
+import numpy as np
+
+from src.multi_term_atom.object.stokes import Stokes
+
 from .constant_property_slab import ConstantPropertySlab
 from .linear_property_slab import LinearPropertySlab
-from src.multi_term_atom.object.stokes import Stokes
 
 
 class MultiSlabAtmosphere:
@@ -153,9 +156,9 @@ class MultiSlabAtmosphere:
 
 
 # Example usage functions
-def create_two_component_atmosphere(context, radiation_tensor,
-                                  tau1=1.0, B1=1000, tau2=2.0, B2=5000,
-                                  filling_factor1=0.7, filling_factor2=0.3):
+def create_two_component_atmosphere(
+    context, radiation_tensor, tau1=1.0, B1=1000, tau2=2.0, B2=5000, filling_factor1=0.7, filling_factor2=0.3
+):
     """Create a simple two-component atmosphere with different magnetic fields"""
     atmosphere = MultiSlabAtmosphere()
 
@@ -164,7 +167,11 @@ def create_two_component_atmosphere(context, radiation_tensor,
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau1,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B1,
         delta_v_thermal_cm_sm1=4000,
     )
@@ -175,7 +182,11 @@ def create_two_component_atmosphere(context, radiation_tensor,
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau2,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B2,
         delta_v_thermal_cm_sm1=6000,
     )
@@ -193,14 +204,18 @@ def create_stratified_atmosphere(context, radiation_tensor, n_layers=5):
 
     for i in range(n_layers):
         # Exponentially increasing magnetic field with height (deeper = stronger)
-        B_field = base_B * (1.5 ** i)
+        B_field = base_B * (1.5**i)
         tau_layer = base_tau
 
         slab = ConstantPropertySlab(
             multi_term_atom_context=context,
             radiation_tensor=radiation_tensor,
             tau=tau_layer,
-            chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+            chi=0,
+            theta=0,
+            gamma=0,
+            chi_B=0,
+            theta_B=0,
             magnetic_field_gauss=B_field,
             delta_v_thermal_cm_sm1=4000 + i * 500,  # Also vary thermal velocity
         )

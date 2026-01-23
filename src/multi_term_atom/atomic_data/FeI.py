@@ -6,12 +6,14 @@ TODO
 
 import pandas as pd
 
-from src.engine.functions.decorators import log_function
 from src.common.functions import lambda_cm_to_frequency_hz
+from src.engine.functions.decorators import log_function
 from src.multi_term_atom.physics.paschen_back import get_artificial_S_scale_from_term_g
 from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 @log_function
@@ -79,4 +81,6 @@ def get_Fe_I_5434_data(scale_S=False):
 
     reference_lambda_A = 5434.523
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 55.8
+
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu

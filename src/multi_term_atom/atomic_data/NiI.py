@@ -3,14 +3,18 @@ TODO
 TODO  This file needs improved documentation.
 TODO
 """
+from typing import Tuple
 
 import pandas as pd
 
-from src.engine.functions.decorators import log_function
 from src.common.functions import lambda_cm_to_frequency_hz
+from src.engine.functions.decorators import log_function
+from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 @log_function
@@ -25,9 +29,9 @@ def get_Ni_I_5435_data():
     level_registry.register_level(beta="3P", L=1, S=1, J=2, energy_cmm1=15609.844)
 
     # --- upper term: 3D° (L=2, S=1), J = 1..3
-    level_registry.register_level(beta="3D", L=2, S=1, J=1, energy_cmm1=34408.555   )
+    level_registry.register_level(beta="3D", L=2, S=1, J=1, energy_cmm1=34408.555)
     level_registry.register_level(beta="3D", L=2, S=1, J=2, energy_cmm1=33610.890)
-    level_registry.register_level(beta="3D", L=2, S=1, J=3, energy_cmm1= 33500.822 )
+    level_registry.register_level(beta="3D", L=2, S=1, J=3, energy_cmm1=33500.822)
 
     level_registry.validate()
 
@@ -35,8 +39,6 @@ def get_Ni_I_5435_data():
     transition_registry = TransitionRegistry()
 
     # 0->1
-
-
 
     # Register the term-to-term transition with the provided Aki.
     # NOTE: Your current TransitionRegistry is term-based (not J-pair based).
@@ -46,29 +48,28 @@ def get_Ni_I_5435_data():
         term_upper=level_registry.get_term(beta="3D", L=2, S=1),
         lower_J_constraint=[0],
         upper_J_constraint=[1],
-        einstein_a_ul_sm1=1.9e+05 +1.2e5 + 1.1e5 + 2.5e4 + 2.2e5
+        einstein_a_ul_sm1=1.9e05 + 1.2e5 + 1.1e5 + 2.5e4 + 2.2e5,
     )
 
     reference_lambda_A = 5435.9
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 58.7
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu
 
 
-
-def create_5434_MnFeNi_context(lambda_range_A: float = 1.0, lambda_resolution_A: float = 1e-4) -> Tuple[MultiTermAtomContext, MultiTermAtomContext,MultiTermAtomContext]:
+def create_5434_MnFeNi_context(
+    lambda_range_A: float = 1.0, lambda_resolution_A: float = 1e-4
+) -> Tuple[MultiTermAtomContext, MultiTermAtomContext, MultiTermAtomContext]:
     # Get atomic data
     level_registry_Mn, transition_registry_Mn, reference_lambda_A_Mn, _ = get_Mn_I_5432_data()
     level_registry_Fe, transition_registry_Fe, reference_lambda_A_Fe, _ = get_Fe_I_5434_data()
     level_registry_Ni, transition_registry_Ni, reference_lambda_A_Ni, _ = get_Ni_I_5435_data()
 
-
-    lambda_A = np.arange(min(
-        reference_lambda_A_Fe
-        ,reference_lambda_A_Mn,reference_lambda_A_Ni
-    ) - lambda_range_A, max(
-        reference_lambda_A_Fe
-        ,reference_lambda_A_Mn,reference_lambda_A_Ni
-    ) + lambda_range_A, lambda_resolution_A)
+    lambda_A = np.arange(
+        min(reference_lambda_A_Fe, reference_lambda_A_Mn, reference_lambda_A_Ni) - lambda_range_A,
+        max(reference_lambda_A_Fe, reference_lambda_A_Mn, reference_lambda_A_Ni) + lambda_range_A,
+        lambda_resolution_A,
+    )
 
     lambda_A = lambda_A + 1.5  # vac -> air
 

@@ -5,7 +5,7 @@ import pandas as pd
 from numpy import pi, sqrt
 from tqdm import tqdm
 
-from src.common.constants import atomic_mass_unit_g, kB_erg_Km1
+from src.common.constants import kB_erg_Km1
 from src.common.functions import energy_cmm1_to_erg, energy_cmm1_to_frequency_hz
 from src.common.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from src.engine.functions.decorators import log_method

@@ -7,7 +7,10 @@ from yatools import logging_config
 
 from src.common.functions import lambda_cm_to_frequency_hz
 from src.gui.plots.plot_stokes_profiles import StokesPlotter
-from src.multi_term_atom.atomic_data.HeI import fill_precomputed_He_I_D3_data, get_He_I_D3_data
+from src.multi_term_atom.atomic_data.HeI import (
+    fill_precomputed_He_I_D3_data,
+    get_He_I_D3_data,
+)
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
@@ -97,7 +100,7 @@ def main():
     rho = see.get_solution()
 
     # LOS RT
-    rtc = rte_los.compute_all_coefficients(
+    rtc = rte_los.calculate_all_coefficients(
         atmosphere_parameters=atmosphere_parameters,
         rho=rho,
     )
@@ -125,7 +128,9 @@ def main():
     def direct_stokes_step(current_stokes, K_at_z, epsilon_at_z, dz):
         return current_stokes + (-K_at_z @ current_stokes + epsilon_at_z) * dz
 
-    stokes_direct = direct_stokes_step(current_stokes=stokes_direct, K_at_z=rtc.K(), epsilon_at_z=rtc.compute_epsilon(), dz=dz)
+    stokes_direct = direct_stokes_step(
+        current_stokes=stokes_direct, K_at_z=rtc.K(), epsilon_at_z=rtc.compute_epsilon(), dz=dz
+    )
 
     plotter.add(
         lambda_A=lambda_A,
@@ -182,16 +187,15 @@ def main():
     epsilon_tau = rtc.epsilon_tau()[:, :, 0]  # Remove last dim
 
     # Batched solve for S
-    S = np.stack([np.linalg.solve(K, eps) if np.linalg.det(K) > 1e-10
-                  else np.zeros(4)
-                  for K, eps in zip(K_tau, epsilon_tau)])
+    S = np.stack(
+        [np.linalg.solve(K, eps) if np.linalg.det(K) > 1e-10 else np.zeros(4) for K, eps in zip(K_tau, epsilon_tau)]
+    )
 
     # Compute all matrix exponentials
     expM = np.stack([expm(K * dtau) for K in K_tau])
 
     # Final computation
-    stokes_delo = S[:, :, np.newaxis] + np.einsum('ijk,ik->ij', expM,
-                                                  stokes_los_prev[:, :, 0] - S)[:, :, np.newaxis]
+    stokes_delo = S[:, :, np.newaxis] + np.einsum("ijk,ik->ij", expM, stokes_los_prev[:, :, 0] - S)[:, :, np.newaxis]
     stokes_delo = stokes_delo[:, :, np.newaxis]  # Restore last dimension
 
     plotter.add(

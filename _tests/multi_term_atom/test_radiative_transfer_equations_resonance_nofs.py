@@ -21,7 +21,7 @@ from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomS
 class TestRadiativeTransferEquations(unittest.TestCase):
     def test_radiative_transfer_equations(self):
         logging_config.init(logging.INFO)
-        level_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_mock_atom_data(
+        level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu = get_mock_atom_data(
             fine_structure=False
         )
         nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e9)  # Hz
@@ -34,7 +34,9 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             theta_B=np.pi / 5,
         )
 
-        atmosphere_parameters = AtmosphereParameters(magnetic_field_gauss=0, temperature_K=5000, atomic_mass_au=45)
+        atmosphere_parameters = AtmosphereParameters(
+            magnetic_field_gauss=0, temperature_K=5000, atomic_mass_amu=atomic_mass_amu
+        )
         radiation_tensor = (
             RadiationTensor(transition_registry=transition_registry)
             .fill_planck(T_K=5000)

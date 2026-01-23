@@ -321,7 +321,7 @@ class MultiTermAtomRTE:
         return base_frame
 
     @log_method
-    def compute_all_coefficients(
+    def calculate_all_coefficients(
         self, atmosphere_parameters: AtmosphereParameters, angles: Angles, rho: Rho
     ) -> RadiativeTransferCoefficients:
         """
@@ -336,28 +336,24 @@ class MultiTermAtomRTE:
         """
         eta_rho_aI = self.calculate_eta_rho_a(
             stokes_component_index=0,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_aQ = self.calculate_eta_rho_a(
             stokes_component_index=1,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_aU = self.calculate_eta_rho_a(
             stokes_component_index=2,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_aV = self.calculate_eta_rho_a(
             stokes_component_index=3,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
@@ -365,28 +361,24 @@ class MultiTermAtomRTE:
 
         eta_rho_sI = self.calculate_eta_rho_s(
             stokes_component_index=0,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_sQ = self.calculate_eta_rho_s(
             stokes_component_index=1,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_sU = self.calculate_eta_rho_s(
             stokes_component_index=2,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
         )
         eta_rho_sV = self.calculate_eta_rho_s(
             stokes_component_index=3,
-            magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,

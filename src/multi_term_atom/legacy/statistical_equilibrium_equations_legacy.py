@@ -4,18 +4,26 @@ import numpy as np
 from numpy import pi, sqrt
 from tqdm import tqdm
 
+from src.common.functions import energy_cmm1_to_frequency_hz
+from src.common.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from src.engine.functions.general import delta, m1p, n_proj
-from src.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
+from src.engine.functions.looping import (
+    FROMTO,
+    INTERSECTION,
+    PROJECTION,
+    TRIANGULAR,
+    VALUE,
+)
 from src.engine.generators.multiply import multiply
 from src.engine.generators.nested_loops import nested_loops
 from src.engine.generators.summate import summate
-from src.common.functions import energy_cmm1_to_frequency_hz
-from src.common.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.object.rho_matrix_builder import Rho, RhoMatrixBuilder, Term
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import TransitionRegistry
+from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+    TransitionRegistry,
+)
 
 
 class MultiTermAtomSEELegacy:
@@ -36,9 +44,7 @@ class MultiTermAtomSEELegacy:
     ):
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
-        self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(
-            terms=list(self.level_registry.terms.values())
-        )
+        self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
         self.disable_r_s = disable_r_s
         self.disable_n = disable_n
 

@@ -9,7 +9,7 @@ class AtmosphereParameters:
         self,
         magnetic_field_gauss,
         temperature_K,
-        atomic_mass_au,
+        atomic_mass_amu,
         delta_v_turbulent_cm_sm1=0,
         macroscopic_velocity_cm_sm1=0,
         voigt_a=0,
@@ -19,7 +19,7 @@ class AtmosphereParameters:
 
         :param magnetic_field_gauss: B [G]
         :param temperature_K: T [K]
-        :param atomic_mass_au: M [atomic mass units]
+        :param atomic_mass_amu: M [atomic mass units]
         :param delta_v_turbulent_cm_sm1: turbulent microscopic velocity [cm/s]
         :param macroscopic_velocity_cm_sm1: macroscopic velocity [cm/s]
         :param voigt_a: Voigt a parameter.
@@ -27,7 +27,7 @@ class AtmosphereParameters:
         self.magnetic_field_gauss = magnetic_field_gauss
         self.temperature_K = temperature_K
         self.delta_v_thermal_cm_sm1 = np.sqrt(
-            delta_v_turbulent_cm_sm1**2 + 2 * kB_erg_Km1 * temperature_K / atomic_mass_au / atomic_mass_unit_g
+            delta_v_turbulent_cm_sm1**2 + 2 * kB_erg_Km1 * temperature_K / atomic_mass_amu / atomic_mass_unit_g
         )
         self.nu_larmor = nu_larmor(magnetic_field_gauss=magnetic_field_gauss)
         self.macroscopic_velocity_cm_sm1 = macroscopic_velocity_cm_sm1

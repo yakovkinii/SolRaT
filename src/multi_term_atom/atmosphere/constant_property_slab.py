@@ -6,15 +6,18 @@ from numpy import real
 from scipy.linalg import expm
 from yatools import logging_config
 
+from src.common.functions import get_planck_BP_vector, lambda_cm_to_frequency_hz
 from src.engine.functions.decorators import log_method
-from src.common.functions import lambda_cm_to_frequency_hz, get_planck_BP_vector
 from src.multi_term_atom.object.angles import Angles
 from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.object.stokes import Stokes
-from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE, MultiTermAtomSEELTE
+from src.multi_term_atom.statistical_equilibrium_equations import (
+    MultiTermAtomSEE,
+    MultiTermAtomSEELTE,
+)
 
 
 class ConstantPropertySlab:
@@ -209,7 +212,7 @@ class ConstantPropertySlab:
             rho = self.see.get_solution(atmosphere_parameters=self.atmosphere_parameters)
 
         # Compute radiative transfer coefficients
-        rtc = self.rte.compute_all_coefficients(
+        rtc = self.rte.calculate_all_coefficients(
             atmosphere_parameters=self.atmosphere_parameters,
             angles=self.angles,
             rho=rho,
@@ -239,10 +242,12 @@ class ConstantPropertySlab:
         epsilon_total_norm[:, 0] += continuum_emissivity_norm
 
         # Now everything is normalized, use self.tau
-        S = np.stack([
-            (np.linalg.solve(K, eps) if np.linalg.cond(K) < 1e12 else (np.linalg.pinv(K) @ eps))
-            for K, eps in zip(K_total_norm, epsilon_total_norm)
-        ])
+        S = np.stack(
+            [
+                (np.linalg.solve(K, eps) if np.linalg.cond(K) < 1e12 else (np.linalg.pinv(K) @ eps))
+                for K, eps in zip(K_total_norm, epsilon_total_norm)
+            ]
+        )
 
         expM = np.stack([expm(-K * self.tau) for K in K_total_norm])
         stokes = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, stokes - S[:, :, np.newaxis])

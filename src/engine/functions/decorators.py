@@ -63,7 +63,6 @@ def log_method(method):
     return decorator
 
 
-
 def log_method_experimental(method):
     """
     A decorator to log the name of a class method when it is executed.
@@ -116,7 +115,6 @@ def log_method_experimental(method):
     return decorator
 
 
-
 def log_function(function):
     """
     A decorator to log the name of a function when it is executed.
@@ -161,6 +159,7 @@ def log_function(function):
         return result
 
     return decorator
+
 
 def log_function_experimental(function):
     """

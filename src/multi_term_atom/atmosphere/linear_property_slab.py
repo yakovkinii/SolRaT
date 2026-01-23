@@ -4,15 +4,17 @@ TODO  This file needs improved documentation.
 TODO
 """
 
+from typing import Callable, Union
+
 import numpy as np
-from typing import Union, Callable
 from scipy.linalg import expm
 
-from .constant_property_slab import ConstantPropertySlab
-from src.multi_term_atom.object.stokes import Stokes
+from src.common.functions import lambda_cm_to_frequency_hz
 from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.common.functions import lambda_cm_to_frequency_hz
+from src.multi_term_atom.object.stokes import Stokes
+
+from .constant_property_slab import ConstantPropertySlab
 
 
 class LinearPropertySlab(ConstantPropertySlab):
@@ -85,7 +87,7 @@ class LinearPropertySlab(ConstantPropertySlab):
     def forward(self) -> Stokes:
         """Solve radiative transfer through linearly varying medium using sub-slab method"""
         # Initialize with boundary condition
-        if hasattr(self, 'initial_stokes_obj'):
+        if hasattr(self, "initial_stokes_obj"):
             current_stokes = self.initial_stokes_obj
         else:
             nu = lambda_cm_to_frequency_hz(self.lambda_A * 1e-8)

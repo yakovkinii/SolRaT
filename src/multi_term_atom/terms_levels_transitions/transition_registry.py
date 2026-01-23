@@ -24,8 +24,8 @@ class TransitionRegistry:
         term_upper: Term,
         term_lower: Term,
         einstein_a_ul_sm1: float,
-            lower_J_constraint: List[float] = None,
-            upper_J_constraint: List[float] = None,
+        lower_J_constraint: List[float] = None,
+        upper_J_constraint: List[float] = None,
     ):
         """
         Einstein coefficients are on betaLS->betaLS level, so need to sum over J in advance.
@@ -51,8 +51,8 @@ class TransitionRegistry:
             einstein_a_ul=einstein_a_ul_sm1,
             einstein_b_ul=b_ul,
             einstein_b_lu=b_lu,
-        lower_J_constraint=lower_J_constraint,
-        upper_J_constraint=upper_J_constraint,
+            lower_J_constraint=lower_J_constraint,
+            upper_J_constraint=upper_J_constraint,
         )
         self.transitions[transition_id] = transition
 
@@ -89,7 +89,7 @@ class Transition:
         einstein_b_ul: float,
         einstein_b_lu: float,
         lower_J_constraint: List[float] = None,
-        upper_J_constraint:  List[float]  = None,
+        upper_J_constraint: List[float] = None,
     ):
         """
         Transition coefficients are registered between terms, not levels.

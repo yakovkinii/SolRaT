@@ -20,13 +20,13 @@ def get_planck_BP(nu_sm1: float, T_K: float) -> float:
     assert isinstance(nu_sm1, float), "Planck function should be evaluated at the transition frequency"
     return 2 * h_erg_s * nu_sm1**3 / c_cm_sm1**2 / (exp(h_erg_s * nu_sm1 / (kB_erg_Km1 * T_K) - 1))
 
+
 def get_planck_BP_vector(nu_sm1: float, T_K: float) -> float:
     """
     Planck function
     Reference: (below 5.40)
     """
     return 2 * h_erg_s * nu_sm1**3 / c_cm_sm1**2 / (exp(h_erg_s * nu_sm1 / (kB_erg_Km1 * T_K) - 1))
-
 
 
 def nu_larmor(magnetic_field_gauss: np.ndarray) -> np.ndarray:
@@ -48,5 +48,6 @@ def lambda_cm_to_frequency_hz(lambda_cm: Union[float, np.ndarray]) -> Union[floa
 def frequency_hz_to_lambda_A(frequency_hz: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return c_cm_sm1 / frequency_hz * 1e8
 
+
 def energy_cmm1_to_erg(energy_cmm1: float) -> float:
-        return h_erg_s * c_cm_sm1 * energy_cmm1
+    return h_erg_s * c_cm_sm1 * energy_cmm1

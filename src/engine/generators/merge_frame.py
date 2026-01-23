@@ -6,12 +6,12 @@ TODO
 
 import inspect
 import logging
-from typing import List, Callable, Dict, Union
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
 
-from src.engine.generators.merge_loopers import Looper, DummyOrAlreadyMerged
+from src.engine.generators.merge_loopers import DummyOrAlreadyMerged, Looper
 
 
 def merge(df1, df2, on=None):
@@ -31,7 +31,7 @@ class SumLimits:
 
     def __init__(self):
         indexes = self.get_indexes()
-        for k,v in indexes.items():
+        for k, v in indexes.items():
             v.name = None
 
 
@@ -60,7 +60,7 @@ class Frame:
             return f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. Elementwise: {self.elementwise}"
 
     @staticmethod
-    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits))->"Frame":
+    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits)) -> "Frame":
         looper_dict = sum_limits.get_indexes()
         return Frame(base_frame=base_frame, **looper_dict)
 
@@ -83,7 +83,7 @@ class Frame:
             sub_frame_filled = looper.fill_frame(sub_frame)
             assert not sub_frame_filled[looper_name].isna().any()
             self.frame = merge(self.frame, sub_frame_filled)
-            logging.info(f'Merged {looper_name}, frame shape = {self.frame.shape}')
+            logging.info(f"Merged {looper_name}, frame shape = {self.frame.shape}")
 
         self.factors: Dict[str, Frame.FrameFactor] = {}
         self._n_factors = 0  # for naming only

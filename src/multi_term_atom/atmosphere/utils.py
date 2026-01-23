@@ -8,12 +8,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from src.common.functions import frequency_hz_to_lambda_A
+from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 from src.multi_term_atom.object.radiation_tensor import RadiationTensor
 from src.multi_term_atom.object.stokes import Stokes
-from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
 
 
-def radiation_tensor_NLTE_n_w_parametrized(multi_term_atom_context: MultiTermAtomContext, h_arcsec: float) -> RadiationTensor:
+def radiation_tensor_NLTE_n_w_parametrized(
+    multi_term_atom_context: MultiTermAtomContext, h_arcsec: float
+) -> RadiationTensor:
     """
     Create a parametrized NLTE radiation tensor for given height above limb.
 
@@ -24,11 +26,14 @@ def radiation_tensor_NLTE_n_w_parametrized(multi_term_atom_context: MultiTermAto
     Returns:
         Configured RadiationTensor
     """
-    return RadiationTensor(transition_registry=multi_term_atom_context.transition_registry).fill_NLTE_n_w_parametrized(h_arcsec=h_arcsec)
+    return RadiationTensor(transition_registry=multi_term_atom_context.transition_registry).fill_NLTE_n_w_parametrized(
+        h_arcsec=h_arcsec
+    )
 
 
-def plot_stokes_IQUV(stokes: Stokes, label: str, reference_lambda_A: float,
-                     show: bool = True, axs=None, normalize=True, color=None):
+def plot_stokes_IQUV(
+    stokes: Stokes, label: str, reference_lambda_A: float, show: bool = True, axs=None, normalize=True, color=None
+):
     """
     Plot all four Stokes parameters (I, Q, U, V) vs wavelength.
 
@@ -56,26 +61,26 @@ def plot_stokes_IQUV(stokes: Stokes, label: str, reference_lambda_A: float,
     lambda_A = frequency_hz_to_lambda_A(stokes.nu)
     delta_lambda = lambda_A - reference_lambda_A
 
-    plot_kwargs = {'label': f"I ({label})"}
+    plot_kwargs = {"label": f"I ({label})"}
     if color is not None:
-        plot_kwargs['color'] = color
+        plot_kwargs["color"] = color
 
-    axs[0].plot(delta_lambda, stokes.I/norm, **plot_kwargs)
+    axs[0].plot(delta_lambda, stokes.I / norm, **plot_kwargs)
     axs[0].set_ylabel("I")
     axs[0].grid(True)
 
-    plot_kwargs['label'] = f"Q ({label})"
-    axs[1].plot(delta_lambda, stokes.Q/norm, **plot_kwargs)
+    plot_kwargs["label"] = f"Q ({label})"
+    axs[1].plot(delta_lambda, stokes.Q / norm, **plot_kwargs)
     axs[1].set_ylabel("Q")
     axs[1].grid(True)
 
-    plot_kwargs['label'] = f"U ({label})"
-    axs[2].plot(delta_lambda, stokes.U/norm, **plot_kwargs)
+    plot_kwargs["label"] = f"U ({label})"
+    axs[2].plot(delta_lambda, stokes.U / norm, **plot_kwargs)
     axs[2].set_ylabel("U")
     axs[2].grid(True)
 
-    plot_kwargs['label'] = f"V ({label})"
-    axs[3].plot(delta_lambda, stokes.V/norm, **plot_kwargs)
+    plot_kwargs["label"] = f"V ({label})"
+    axs[3].plot(delta_lambda, stokes.V / norm, **plot_kwargs)
     axs[3].set_ylabel("V")
     axs[3].set_xlabel(r"$\Delta\lambda$ ($\AA$)")
     axs[3].grid(True)
@@ -89,8 +94,9 @@ def plot_stokes_IQUV(stokes: Stokes, label: str, reference_lambda_A: float,
     return fig, axs
 
 
-def plot_stokes_comparison(stokes_list, labels, reference_lambda_A: float,
-                          title="Stokes Parameter Comparison", colors=None):
+def plot_stokes_comparison(
+    stokes_list, labels, reference_lambda_A: float, title="Stokes Parameter Comparison", colors=None
+):
     """
     Plot multiple Stokes vectors for comparison.
 
@@ -111,8 +117,7 @@ def plot_stokes_comparison(stokes_list, labels, reference_lambda_A: float,
         colors = [None] * len(stokes_list)
 
     for stokes, label, color in zip(stokes_list, labels, colors):
-        plot_stokes_IQUV(stokes, label, reference_lambda_A, show=False,
-                        axs=axs, normalize=True, color=color)
+        plot_stokes_IQUV(stokes, label, reference_lambda_A, show=False, axs=axs, normalize=True, color=color)
 
     plt.show()
     return fig, axs

@@ -11,10 +11,10 @@ import sympy
 from numpy import cos, exp, sin
 from sympy.physics.wigner import wigner_d
 
+from src.common.constants import sqrt2, sqrt3
 from src.engine.functions.general import delta, m1p
 from src.engine.functions.looping import PROJECTION, fromto
 from src.engine.generators.nested_loops import nested_loops
-from src.common.constants import sqrt2, sqrt3
 
 
 class WignerD:

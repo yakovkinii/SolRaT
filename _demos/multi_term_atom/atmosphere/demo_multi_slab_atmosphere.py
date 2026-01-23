@@ -8,18 +8,22 @@ This demo shows how to use the MultiSlabAtmosphere class to model:
 """
 
 import logging
+
 import numpy as np
 from yatools import logging_config
 
-from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context
 from src.multi_term_atom.atmosphere.constant_property_slab import ConstantPropertySlab
 from src.multi_term_atom.atmosphere.linear_property_slab import LinearPropertySlab
 from src.multi_term_atom.atmosphere.multi_slab_atmosphere import (
     MultiSlabAtmosphere,
+    create_stratified_atmosphere,
     create_two_component_atmosphere,
-    create_stratified_atmosphere
 )
-from src.multi_term_atom.atmosphere.utils import radiation_tensor_NLTE_n_w_parametrized, plot_stokes_comparison
+from src.multi_term_atom.atmosphere.utils import (
+    plot_stokes_comparison,
+    radiation_tensor_NLTE_n_w_parametrized,
+)
+from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context
 
 
 def demo_two_component_atmosphere():
@@ -52,13 +56,14 @@ def demo_two_component_atmosphere():
 
         # Create two-component atmosphere
         atmosphere = create_two_component_atmosphere(
-            context, radiation_tensor,
-            tau1=1.2,      # Quiet region optical depth
-            B1=800,        # Quiet region field (Gauss)
-            tau2=1.8,      # Active region optical depth
-            B2=3500,       # Active region field (Gauss)
+            context,
+            radiation_tensor,
+            tau1=1.2,  # Quiet region optical depth
+            B1=800,  # Quiet region field (Gauss)
+            tau2=1.8,  # Active region optical depth
+            B2=3500,  # Active region field (Gauss)
             filling_factor1=scenario["ff1"],
-            filling_factor2=scenario["ff2"]
+            filling_factor2=scenario["ff2"],
         )
 
         # Solve using filling factors
@@ -68,8 +73,7 @@ def demo_two_component_atmosphere():
 
     # Plot comparison
     plot_stokes_comparison(
-        stokes_results, labels, context.reference_lambda_A,
-        title="Two-Component Atmosphere: Quiet + Active Regions"
+        stokes_results, labels, context.reference_lambda_A, title="Two-Component Atmosphere: Quiet + Active Regions"
     )
 
     return stokes_results
@@ -95,9 +99,7 @@ def demo_stratified_atmosphere():
         print(f"Computing {n_layers} layer atmosphere...")
 
         # Create stratified atmosphere
-        atmosphere = create_stratified_atmosphere(
-            context, radiation_tensor, n_layers=n_layers
-        )
+        atmosphere = create_stratified_atmosphere(context, radiation_tensor, n_layers=n_layers)
 
         print(f"  Total optical depth: {atmosphere.get_total_optical_depth():.2f}")
 
@@ -108,8 +110,7 @@ def demo_stratified_atmosphere():
 
     # Plot comparison
     plot_stokes_comparison(
-        stokes_results, labels, context.reference_lambda_A,
-        title="Stratified Atmosphere: Effect of Layer Number"
+        stokes_results, labels, context.reference_lambda_A, title="Stratified Atmosphere: Effect of Layer Number"
     )
 
     return stokes_results
@@ -134,7 +135,11 @@ def demo_custom_multi_slab():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=0.8,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=200,
         delta_v_thermal_cm_sm1=35000,
     )
@@ -149,7 +154,11 @@ def demo_custom_multi_slab():
         magnetic_field_gauss_bottom=2000,
         delta_v_thermal_cm_sm1_top=35000,
         delta_v_thermal_cm_sm1_bottom=45000,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         n_sub_slabs=8,
     )
     atmosphere.add_slab_sequential(transition)
@@ -159,7 +168,11 @@ def demo_custom_multi_slab():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=1.2,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=2000,
         delta_v_thermal_cm_sm1=45000,
     )
@@ -181,10 +194,14 @@ def demo_custom_multi_slab():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=tau_total,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=B_avg,
         delta_v_thermal_cm_sm1=v_avg,
-        initial_stokes=1.0
+        initial_stokes=1.0,
     )
 
     print("Computing equivalent constant slab...")
@@ -195,7 +212,7 @@ def demo_custom_multi_slab():
         [stokes_custom, stokes_simple],
         ["Custom multi-layer", "Equivalent constant"],
         context.reference_lambda_A,
-        title="Custom Multi-Slab vs Simple Constant Slab"
+        title="Custom Multi-Slab vs Simple Constant Slab",
     )
 
     return stokes_custom, stokes_simple
@@ -223,7 +240,11 @@ def demo_mixed_filling_factors():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=0.5,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=100,
         delta_v_thermal_cm_sm1=30000,
     )
@@ -233,7 +254,11 @@ def demo_mixed_filling_factors():
         multi_term_atom_context=context,
         radiation_tensor=radiation_tensor,
         tau=1.0,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         magnetic_field_gauss=500,
         delta_v_thermal_cm_sm1=40000,
     )
@@ -251,7 +276,11 @@ def demo_mixed_filling_factors():
         magnetic_field_gauss_bottom=4000,
         delta_v_thermal_cm_sm1_top=40000,
         delta_v_thermal_cm_sm1_bottom=55000,
-        chi=0, theta=0, gamma=0, chi_B=0, theta_B=0,
+        chi=0,
+        theta=0,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
         n_sub_slabs=10,
     )
     network_atmosphere.add_slab_sequential(network_grad)
@@ -271,6 +300,7 @@ def demo_mixed_filling_factors():
 
     # Manual mixing (equivalent to MultiSlabAtmosphere with filling factors)
     from src.multi_term_atom.object.stokes import Stokes
+
     stokes_mixed = Stokes(
         nu=stokes_quiet.nu,
         I=ff_quiet * stokes_quiet.I + ff_network * stokes_network.I,
@@ -284,7 +314,7 @@ def demo_mixed_filling_factors():
         [stokes_quiet, stokes_network, stokes_mixed],
         ["Quiet background", "Network bright points", "Mixed (80%/20%)"],
         context.reference_lambda_A,
-        title="Mixed Atmosphere: Quiet + Network Bright Points"
+        title="Mixed Atmosphere: Quiet + Network Bright Points",
     )
 
     return stokes_quiet, stokes_network, stokes_mixed

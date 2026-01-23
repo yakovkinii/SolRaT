@@ -3,15 +3,22 @@ Multiple spectral lines within constant property slab formalism
 """
 
 import logging
+
+import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
 from src.gui.plots.plot_stokes_profiles import StokesPlotter_IV, StokesPlotter_IV_IpmV
-from src.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
-from src.multi_term_atom.object.multi_term_atom_context import create_he_i_d3_context, create_5434_MnFeNi_context
 from src.multi_term_atom.atmosphere.constant_property_slab import ConstantPropertySlab
-from src.multi_term_atom.atmosphere.utils import radiation_tensor_NLTE_n_w_parametrized, plot_stokes_IQUV
-import matplotlib.pyplot as plt
+from src.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
+from src.multi_term_atom.atmosphere.utils import (
+    plot_stokes_IQUV,
+    radiation_tensor_NLTE_n_w_parametrized,
+)
+from src.multi_term_atom.object.multi_term_atom_context import (
+    create_5434_MnFeNi_context,
+    create_he_i_d3_context,
+)
 
 
 def demo_constant_property_slab_multiline():

@@ -117,7 +117,7 @@ class RadiationTensor:
 
         :param h_arcsec: height above the Sun's surface in arcsec; 1'' = 725 km
         :param theta: theta angle (see the RTE geometry explanation).
-        :param nu: frequency in [1/cm]
+        :param nu: frequency in [1/s]
 
         Reference: (5.164)
         """

@@ -4,14 +4,14 @@ TODO  This file needs improved documentation.
 TODO
 """
 
+import inspect
 import logging
-from typing import Union, List, Set
+from abc import ABC, abstractmethod
 from functools import reduce
+from typing import List, Set, Union
+
 import numpy as np
 import pandas as pd
-import inspect
-
-from abc import ABC, abstractmethod
 
 MAX_ID = 0
 
