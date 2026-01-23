@@ -318,3 +318,38 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+def create_he_i_d3_context(lambda_range_A: float = 1.0, lambda_resolution_A: float = 1e-4) -> MultiTermAtomContext:
+    """
+    Create a MultiTermAtomContext for the He I D3 line (5877.25 Å).
+
+    Args:
+        lambda_range_A: Wavelength range around line center [Angstroms]
+        lambda_resolution_A: Wavelength resolution [Angstroms]
+
+    Returns:
+        Configured MultiTermAtomContext for He I D3
+    """
+    # Get atomic data
+    level_registry, transition_registry, reference_lambda_A, reference_nu_sm1 = get_He_I_D3_data()
+    lambda_A = np.arange(reference_lambda_A - lambda_range_A, reference_lambda_A + lambda_range_A, lambda_resolution_A)
+
+    # Set up statistical equilibrium equations
+    see = MultiTermAtomSEE(
+        level_registry=level_registry,
+        transition_registry=transition_registry,
+        precompute=False,
+    )
+
+    # Load precomputed coefficients
+    root_path = Path(__file__).resolve().parent.parent.parent.parent.as_posix()
+    fill_precomputed_He_I_D3_data(see, root=root_path)
+
+    context = MultiTermAtomContext(
+        level_registry=level_registry,
+        transition_registry=transition_registry,
+        statistical_equilibrium_equations=see,
+        lambda_A=lambda_A,
+        reference_lambda_A=reference_lambda_A,
+    )
+    return context

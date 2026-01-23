@@ -84,5 +84,58 @@ def demo_constant_property_slab():
         print(f"B = {B:4d} G: I_center = {I_center:.4f}, V_peak = {V_peak:.4f}")
 
 
+def create_5434_MnFeNi_context(
+    lambda_range_A: float = 1.0, lambda_resolution_A: float = 1e-4
+) -> Tuple[MultiTermAtomContext, MultiTermAtomContext, MultiTermAtomContext]:
+    # Get atomic data
+    level_registry_Mn, transition_registry_Mn, reference_lambda_A_Mn, _ = get_Mn_I_5432_data()
+    level_registry_Fe, transition_registry_Fe, reference_lambda_A_Fe, _ = get_Fe_I_5434_data()
+    level_registry_Ni, transition_registry_Ni, reference_lambda_A_Ni, _ = get_Ni_I_5435_data()
+
+    lambda_A = np.arange(
+        min(reference_lambda_A_Fe, reference_lambda_A_Mn, reference_lambda_A_Ni) - lambda_range_A,
+        max(reference_lambda_A_Fe, reference_lambda_A_Mn, reference_lambda_A_Ni) + lambda_range_A,
+        lambda_resolution_A,
+    )
+
+    lambda_A = lambda_A + 1.5  # vac -> air
+
+    # Set up statistical equilibrium equations
+    see_Mn = MultiTermAtomSEELTE(
+        level_registry=level_registry_Mn,
+        atomic_mass_amu=54.9,
+    )
+    see_Fe = MultiTermAtomSEELTE(
+        level_registry=level_registry_Fe,
+        atomic_mass_amu=55.8,
+    )
+    see_Ni = MultiTermAtomSEELTE(
+        level_registry=level_registry_Ni,
+        atomic_mass_amu=58.7,
+    )
+
+    context_Mn = MultiTermAtomContext(
+        level_registry=level_registry_Mn,
+        transition_registry=transition_registry_Mn,
+        statistical_equilibrium_equations=see_Mn,
+        lambda_A=lambda_A,
+        reference_lambda_A=reference_lambda_A_Fe,
+    )
+    context_Fe = MultiTermAtomContext(
+        level_registry=level_registry_Fe,
+        transition_registry=transition_registry_Fe,
+        statistical_equilibrium_equations=see_Fe,
+        lambda_A=lambda_A,
+        reference_lambda_A=reference_lambda_A_Fe,
+    )
+    context_Ni = MultiTermAtomContext(
+        level_registry=level_registry_Ni,
+        transition_registry=transition_registry_Ni,
+        statistical_equilibrium_equations=see_Ni,
+        lambda_A=lambda_A,
+        reference_lambda_A=reference_lambda_A_Fe,
+    )
+    return context_Mn, context_Fe, context_Ni
+
 if __name__ == "__main__":
     demo_constant_property_slab()

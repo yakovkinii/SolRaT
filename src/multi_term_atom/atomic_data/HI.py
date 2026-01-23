@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 from src.common.functions import lambda_cm_to_frequency_hz
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from src.multi_term_atom.terms_levels_transitions.transition_registry import (
@@ -100,4 +94,5 @@ def get_H_I_alpha_data():
     # Reference lambda
     reference_lambda_A = 6563.3
     reference_nu_sm1 = lambda_cm_to_frequency_hz(reference_lambda_A * 1e-8)
-    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1
+    atomic_mass_amu = 1
+    return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu

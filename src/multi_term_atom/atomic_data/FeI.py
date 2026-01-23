@@ -1,15 +1,6 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
-import pandas as pd
-
 from src.common.functions import lambda_cm_to_frequency_hz
 from src.engine.functions.decorators import log_function
 from src.multi_term_atom.physics.paschen_back import get_artificial_S_scale_from_term_g
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from src.multi_term_atom.terms_levels_transitions.transition_registry import (
     TransitionRegistry,
@@ -19,30 +10,23 @@ from src.multi_term_atom.terms_levels_transitions.transition_registry import (
 @log_function
 def get_Fe_I_5434_data(scale_S=False):
     """
-    Atomic model for Fe I 5434.523 Å component:
-        lower: 3d7(4F)4s            a 5F   (L=3, S=2)  J=1..5
-        upper: 3d6(5D)4s4p(3P°)     z 5D°  (L=2, S=2)  J=0..4
-    with the specific observed component:
-        Ju=0  ->  Jl=1
+    Atomic model for Fe I 5434.523 A line, constrained to J=0->J=1 transition.
 
-    Level energies are in cm^-1 (from the user-provided table).
-    Aki corresponds to the Ju=0 -> Jl=1 component.
+    Additionally, the Lande factor is artificially deviated from pure LS coupling to model
+    the experimental value of g=0.014.
 
-    # Scale_S means enforce experimental Lande factor for lower term.
+    Due to rather crude approximations applied, this atomic model is recommended to be used with LTE SEE only.
     """
-
-    # Levels
     level_registry = LevelRegistry()
 
     # --- lower term: a 5F (L=3, S=2), J = 1..5
-    # energies in cm^-1
     level_registry.register_level(beta="a5F", L=3, S=2, J=5, energy_cmm1=6928.268)
     level_registry.register_level(beta="a5F", L=3, S=2, J=4, energy_cmm1=7376.764)
     level_registry.register_level(beta="a5F", L=3, S=2, J=3, energy_cmm1=7728.060)
     level_registry.register_level(beta="a5F", L=3, S=2, J=2, energy_cmm1=7985.785)
     level_registry.register_level(beta="a5F", L=3, S=2, J=1, energy_cmm1=8154.714)
 
-    # --- upper term: z 5D° (L=2, S=2), J = 0..4
+    # --- upper term: z 5D (L=2, S=2), J = 0..4
     level_registry.register_level(beta="z5Do", L=2, S=2, J=4, energy_cmm1=25899.989)
     level_registry.register_level(beta="z5Do", L=2, S=2, J=3, energy_cmm1=26140.179)
     level_registry.register_level(beta="z5Do", L=2, S=2, J=2, energy_cmm1=26339.696)
@@ -54,16 +38,12 @@ def get_Fe_I_5434_data(scale_S=False):
         get_artificial_S_scale_from_term_g(g=-0.014, L=3, S=2, J=1)
     )
 
-    # Transitions
     transition_registry = TransitionRegistry()
 
-    # Register the term-to-term transition with the provided Aki.
-    # NOTE: Your current TransitionRegistry is term-based (not J-pair based).
-    # The Aki=1.70e6 s^-1 is for the Ju=0 -> Jl=1 component.
     transition_registry.register_transition(
         term_lower=level_registry.get_term(beta="a5F", L=3, S=2),
         term_upper=level_registry.get_term(beta="z5Do", L=2, S=2),
-        lower_J_constraint=[1],
+        lower_J_constraint=[1],  # Only compute J=0->J=1 in RTE (if j_constrained=True)
         upper_J_constraint=[0],
         einstein_a_ul_sm1=1.70e6
         + 1.27e06
