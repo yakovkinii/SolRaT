@@ -17,6 +17,12 @@ The implementation of Stokes profile inversion is pending.
 
 The code is written in Python for Windows, Linux and MacOS, currently tested on Windows only.
 
+SolRaT is currently in beta testing. Journal article and detailed documentation are pending.
+Until then, if SolRaT has found use in your research, please cite it as 
+```
+Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://github.com/yakovkinii/SolRaT
+```
+
 ---
 
 SolRaT is designed to facilitate the work with complicated equations by creating high-level abstractions.
@@ -58,3 +64,5 @@ Keywords:
 Non-LTE, Stokes Profiles, Inversion, Synthesis, Paschen-Back, Hanle, Zeeman, 
 Magnetic Fields, Sun, Solar Atmosphere, Radiative Transfer, Polarization, 
 Spectral Lines, Two-Term Atom Model
+
+Copyright (2023) Ivan I. Yakovkin
