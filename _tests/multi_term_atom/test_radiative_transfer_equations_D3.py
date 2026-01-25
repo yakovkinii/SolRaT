@@ -45,6 +45,7 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             transition_registry=transition_registry,
             precompute=False,
         )
+        # save_precomputed_He_I_D3_data(see, root=Path(__file__).resolve().parent.parent.parent.as_posix())
         fill_precomputed_He_I_D3_data(see, root=Path(__file__).resolve().parent.parent.parent.as_posix())
 
         # Set up the radiative transfer equations
@@ -96,4 +97,6 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         )
 
         # Check that the result did not change from previous runs
-        assert pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV) == 2.313240321824078e-16
+        last_run_hash = 2.3137071959665785e-16
+        new_hash = pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV)
+        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-15

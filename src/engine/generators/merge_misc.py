@@ -8,13 +8,11 @@ import logging
 import time
 
 import numpy as np
-import pandas as pd
 from yatools import logging_config
 
 from src.engine.generators.merge_frame import Frame
 from src.engine.generators.merge_loopers import (
     FromTo,
-    Intersection,
     Projection,
     Triangular,
     Value,
@@ -45,7 +43,7 @@ frame.register_multiplication(
 
 frc = frame.copy()
 t0 = time.perf_counter()
-logging.warning(frc.debug_evaluate_legacy())
+logging.warning(frc.debug_reduce_legacy())
 t1 = time.perf_counter()
 
 logging.warning(frame.reduce(k, Jʹ, Jʹʹ, ..., q, s))

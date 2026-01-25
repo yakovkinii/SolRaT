@@ -50,13 +50,11 @@ class TestRadiativeTransferEquations(unittest.TestCase):
             level_registry=level_registry,
             transition_registry=transition_registry,
             disable_r_s=True,
-            disable_n=True,
         )
         see = MultiTermAtomSEE(
             level_registry=level_registry,
             transition_registry=transition_registry,
             disable_r_s=True,
-            disable_n=True,
         )
 
         see_legacy.add_all_equations(

@@ -38,7 +38,6 @@ def main():
         level_registry=level_registry,
         transition_registry=transition_registry,
         disable_r_s=True,
-        disable_n=True,
     )
 
     see.fill_all_equations(
@@ -99,7 +98,7 @@ def main():
         style="--",
         linewidth=2,
     )
-
+    # Todo investigate sV
     plotter.show()
 
 

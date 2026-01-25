@@ -40,14 +40,12 @@ class TestStatisticalEquilibriumEquations(unittest.TestCase):
             level_registry=level_registry,
             transition_registry=transition_registry,
             disable_r_s=False,
-            disable_n=False,
         )
 
         see = MultiTermAtomSEE(
             level_registry=level_registry,
             transition_registry=transition_registry,
             disable_r_s=False,
-            disable_n=False,
         )
 
         see_legacy.add_all_equations(

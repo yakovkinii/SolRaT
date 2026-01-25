@@ -12,21 +12,12 @@ from numpy import exp
 from src.common.constants import c_cm_sm1, h_erg_s, kB_erg_Km1, mu0_erg_gaussm1
 
 
-def get_planck_BP(nu_sm1: float, T_K: float) -> float:
+def get_planck_BP(nu_sm1: Union[float, np.ndarray], T_K: float) -> Union[float, np.ndarray]:
     """
     Planck function
     Reference: (below 5.40)
     """
-    assert isinstance(nu_sm1, float), "Planck function should be evaluated at the transition frequency"
-    return 2 * h_erg_s * nu_sm1**3 / c_cm_sm1**2 / (exp(h_erg_s * nu_sm1 / (kB_erg_Km1 * T_K) - 1))
-
-
-def get_planck_BP_vector(nu_sm1: float, T_K: float) -> float:
-    """
-    Planck function
-    Reference: (below 5.40)
-    """
-    return 2 * h_erg_s * nu_sm1**3 / c_cm_sm1**2 / (exp(h_erg_s * nu_sm1 / (kB_erg_Km1 * T_K) - 1))
+    return 2 * h_erg_s * nu_sm1**3 / c_cm_sm1**2 / (exp(h_erg_s * nu_sm1 / kB_erg_Km1 / T_K) - 1)
 
 
 def nu_larmor(magnetic_field_gauss: np.ndarray) -> np.ndarray:

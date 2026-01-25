@@ -554,7 +554,7 @@ class MultiTermAtomSEELegacy:
         return summate(
             lambda Kr, Qr: multiply(
                 lambda: n_proj(Lu) * transition.einstein_b_ul,
-                lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
+                lambda: sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
                 lambda: m1p(Kr + Ku + Qu + Jʹu - Ju),
                 lambda: wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr),
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),

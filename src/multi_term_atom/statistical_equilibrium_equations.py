@@ -39,7 +39,6 @@ class MultiTermAtomSEE:
         level_registry: LevelRegistry,
         transition_registry: TransitionRegistry,
         disable_r_s: bool = False,
-        disable_n: bool = False,
         precompute: bool = True,
     ):
         """
@@ -50,8 +49,6 @@ class MultiTermAtomSEE:
         :param level_registry:  LevelRegistry instance for the multi-term atom under study.
         :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
         :param disable_r_s:  Whether to disable stimulated emission R_S (7.46c).
-        Has to be False if precomputed frames are loaded.
-        :param disable_n:  Whether to disable the N kernel (7.41).
         Has to be False if precomputed frames are loaded.
         :param precompute:  Whether to precompute some SEE frames.
         Set to False when loading precomputed frames from file.
@@ -69,7 +66,6 @@ class MultiTermAtomSEE:
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
 
         self.disable_r_s = disable_r_s
-        self.disable_n = disable_n
 
         # Precomputed frames:
         self.coherence_decay_df = None
@@ -82,7 +78,6 @@ class MultiTermAtomSEE:
         if precompute:
             self.precompute_all_equations()
         else:
-            assert not disable_n
             assert not disable_r_s
 
     @log_method
@@ -582,9 +577,6 @@ class MultiTermAtomSEE:
                 + delta(J, Jʹʹ) * m1p(K - Kʹ) * self.gamma(term=term, J=Jʹʹʹ, Jʹ=Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
             )
         )
-        if self.disable_n:
-            n_0 = n_0 * 0
-            n_1 = n_1 * 0
 
         df = pd.DataFrame(
             {
@@ -749,7 +741,7 @@ class MultiTermAtomSEE:
         ):
             t_s_1 = multiply(
                 lambda: n_proj(Lu) * transition.einstein_b_ul,
-                lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
+                lambda: sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
                 lambda: m1p(Kr + Ku + Qu + Jʹu - Ju),
                 lambda: wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr),
                 lambda: wigner_6j(Lu, L, 1, J, Ju, S),
@@ -798,11 +790,12 @@ class MultiTermAtomSEE:
         A[1:, 1:] x[1:] = -A[1:, 0]
         This system generally behaves well enough for linalg.solve to succeed.
         """
-        sol = np.linalg.solve(
-            self.matrix_builder.rho_matrix[:, 1:, 1:],
-            -self.matrix_builder.rho_matrix[:, 1:, 0:1],
-        )
-        sol = np.insert(sol, 0, 1.0, 1)
+        # sol = np.linalg.solve(
+        #     self.matrix_builder.rho_matrix[:, 1:, 1:],
+        #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],
+        # )
+        sol = np.linalg.pinv(self.matrix_builder.rho_matrix[:, 1:, 1:]) @ (-self.matrix_builder.rho_matrix[:, 1:, 0:1],)
+        sol = np.insert(sol[0], 0, 1.0, 1)
         sol = sol[:, :, 0]
 
         # Normalize the solution:
@@ -867,7 +860,6 @@ class MultiTermAtomSEELTE:
     def __init__(
         self,
         level_registry: LevelRegistry,
-        atomic_mass_amu: float,
     ):
         """
         Statistical Equilibrium Equations within Multi-Term atom model - an LTE implementation.
@@ -879,7 +871,6 @@ class MultiTermAtomSEELTE:
         This is needed to be able to use SEELTE directly in nonLTE Radiative Transfer Equations.
         """
         self.level_registry = level_registry
-        self.atomic_mass_amu = atomic_mass_amu
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
 
     @log_method
@@ -887,32 +878,29 @@ class MultiTermAtomSEELTE:
         """
         Return LTE Rho solution.
 
-        TODO: need reference.
+        Assume Zeeman splitting does not cause energy shifts so large that they affect populations.
+        then
+        rhoKQJJʹ ~ delta(J, Jʹ) sqrt(2J+1) exp(-E_J/kT)
+        trace = sum( sqrt(2J+1) rhoKQJJʹ ) = 1
+
+        Reference: (3.108) (10.118)
         """
+
         T = atmosphere_parameters.temperature_K
 
+        # Fill with zeros
         rho = Rho(terms=list(self.level_registry.terms.values()))
         for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
             rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=0.0)
 
+        min_energy = min([level.energy_cmm1 for level in self.level_registry.levels.values()])
+        trace = 0.0
         for term in self.level_registry.terms.values():
-            levels = term.levels
-
-            # Boltzmann weights
-            weights = {}
-            for level in levels:
+            for level in term.levels:
                 J = level.J
-                E_erg = energy_cmm1_to_erg(level.energy_cmm1)
-                weights[level] = (2 * J + 1) * np.exp(-E_erg / (kB_erg_Km1 * T))
-
-            Z = sum(weights.values())
-            if Z == 0:
-                raise ValueError("LTE partition sum is zero (Too high energies or temperature too low?)")
-
-            for level, w in weights.items():
-                J = level.J
-                rho_00 = np.sqrt(2 * J + 1) * w / Z
-
+                E_erg = energy_cmm1_to_erg(level.energy_cmm1 - min_energy)
+                rho_00 = np.sqrt(2 * J + 1) * np.exp(-E_erg / (kB_erg_Km1 * T))
+                trace += rho_00 * sqrt(2 * J + 1)
                 rho.set_from_term_id(
                     term_id=term.term_id,
                     K=0,
@@ -921,5 +909,9 @@ class MultiTermAtomSEELTE:
                     Jʹ=J,
                     value=rho_00,
                 )
+
+        # Trace-normalize
+        for k, v in rho.data.items():
+            rho.data[k] = v / trace
 
         return rho

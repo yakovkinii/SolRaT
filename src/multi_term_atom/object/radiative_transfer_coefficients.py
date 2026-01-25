@@ -55,18 +55,23 @@ class RadiativeTransferCoefficients:
     def K_z(self) -> np.ndarray:
         """
         RT matrix K related to the z-propagation equation:
+
         .. math::
             dStokes/dz = - K * Stokes + epsilon - K_continuum Stokes + epsilon_continuum
-        .. math::
+
             K = K_A - K_S
+
         If N = 1 was used (no atom concentration provided), then the RTE code computes primed Kʹ and epsilonʹ:
+
         .. math::
             Kʹ = K /  N
-        .. math::
+
             epsilonʹ = epsilon / N
-        The transfer equation then becomes:
-        .. math::
+
             dStokes/dz = - Kʹ * N * Stokes + epsilonʹ * N [ - K_continuum Stokes + epsilon_continuum ]
+
+        But N value does not impact the K_tau kernel (see below)
+
         Reference: (6.83-6.85)
         """
         etaI, etaQ, etaU, etaV, rhoQ, rhoU, rhoV = self.split_eta_rho()
@@ -94,30 +99,16 @@ class RadiativeTransferCoefficients:
     def K_tau(self) -> np.ndarray:
         """
         RT matrix K related to the tau-propagation equation:
-
         .. math::
-            dStokes/dtau_line = - K_tau_line * Stokes + epsilon_tau_line - Stokes / eta_LC + BP(T) eI / eta_LC
-        where
+            dtau_line = - eta_line * dz
 
-        .. math::
-            eta_LC = eta_line / eta_continuum
-        In terms of dtau_continuum we then have:
+            dStokes/dtau_line = K_tau_line * Stokes - epsilon_tau_line + Stokes / eta_LC - BP(T) eI / eta_LC
 
-        .. math::
-            dStokes/dtau_continuum = - K_tau_line * Stokes * eta_LC + epsilon_tau_line * eta_LC - Stokes + BP(T) eI
-        With a boundary condition of
+            eta_LC = eta_line / eta_continuum = dtau_line / dtau_continuum
 
-        .. math::
             Stokes[tau->+inf] -> BP(T0)
-        We can normalize the Stokes on BP(T0):
 
-        .. math::
-            dStokes/dtau_continuum = - K_tau_line * Stokes * eta_LC + epsilon_tau_line * eta_LC / BP(T0)
-                                     - Stokes + BP(T)/BP(T0) eI
-        With a boundary condition of
-
-        .. math::
-            Stokes[tau->+inf] -> 1
+        Reference: modified (9.36), (9.42)
         """
         K = self.K_z()
         return K / self._eta_tau_scale
@@ -144,6 +135,6 @@ class RadiativeTransferCoefficients:
     def epsilon_tau(self) -> np.ndarray:
         """
         RT matrix emission coefficient epsilon related to the tau-propagation equation: see the comments for K_tau()
-        Reference: (6.83-6.85)
+        Reference: modified (9.36)
         """
         return self.epsilon_z() / self._eta_tau_scale

@@ -25,7 +25,6 @@ def main():
 
     seelte = MultiTermAtomSEELTE(
         level_registry=level_registry,
-        atomic_mass_amu=28,  # He
     )
 
     # Set up the radiative transfer equations

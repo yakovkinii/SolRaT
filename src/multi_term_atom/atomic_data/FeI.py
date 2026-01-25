@@ -8,7 +8,7 @@ from src.multi_term_atom.terms_levels_transitions.transition_registry import (
 
 
 @log_function
-def get_Fe_I_5434_data(scale_S=False):
+def get_Fe_I_5434_data():
     """
     Atomic model for Fe I 5434.523 A line, constrained to J=0->J=1 transition.
 

@@ -128,32 +128,32 @@ class MultiTermAtomRTE:
             precalculated_pb_eigenvectors[term.term_id] = pb_eigenvectors
 
         frame.register_multiplication(
-            lambda Ll:                          n_proj(Ll),
-            lambda einstein_b_lu, K, Kl:        einstein_b_lu * sqrt(n_proj(1, K, Kl)),
-            lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
-            lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-            lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-            lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
-            lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
-            lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
-            lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-            lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+            a001=lambda Ll:                          n_proj(Ll),
+            a002=lambda einstein_b_lu, K, Kl:        einstein_b_lu * sqrt(n_proj(1, K, Kl)),
+            a003=lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
+            a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+            w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+            w3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+            w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
+            w3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+            w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+            w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
         )  # fmt: skip
 
         frame.register_multiplication(
-            lambda K, Q: T_K_Q_double_rotation(
+            tkq=lambda K, Q: T_K_Q_double_rotation(
                 K=K,
                 Q=Q,
                 stokes_component_index=stokes_component_index,
                 D_inverse_omega=D_inverse_omega,
                 D_magnetic=D_magnetic,
             ),
-            lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
-            lambda term_lower_id, jl, Jʹʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹʹl, M=Ml),
-            lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
-            lambda term_upper_id, ju, Jʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹu, M=Mu),
-            lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho(term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
-            lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
+            pb1=lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
+            pb2=lambda term_lower_id, jl, Jʹʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹʹl, M=Ml),
+            pb3=lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
+            pb4=lambda term_upper_id, ju, Jʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹu, M=Mu),
+            rho=lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho(term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
+            phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
                 nui=energy_cmm1_to_frequency_hz(
                     precalculated_pb_eigenvalues[term_upper_id](j=ju, M=Mu)
                     - precalculated_pb_eigenvalues[term_lower_id](j=jl, M=Ml)
@@ -220,32 +220,32 @@ class MultiTermAtomRTE:
             precalculated_pb_eigenvectors[term.term_id] = pb_eigenvectors
 
         frame.register_multiplication(
-            lambda Lu:                          n_proj(Lu),
-            lambda einstein_b_ul, K, Ku:        einstein_b_ul * sqrt(n_proj(1, K, Ku)),
-            lambda Jʹu, Mu, qʹ:                 m1p(1 + Jʹu - Mu + qʹ),
-            lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-            lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-            lambda Jʹu, Jʹl, Mʹu, Ml, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
-            lambda K, q, qʹ, Q: wigner_3j(1, 1, K, q, -qʹ, -Q),
-            lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu:  wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
-            lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-            lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+            a001=lambda Lu:                          n_proj(Lu),
+            a002=lambda einstein_b_ul, K, Ku:        einstein_b_ul * sqrt(n_proj(1, K, Ku)),
+            a003=lambda Jʹu, Mu, qʹ:                 m1p(1 + Jʹu - Mu + qʹ),
+            a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+            w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+            w3j2=lambda Jʹu, Jʹl, Mʹu, Ml, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
+            w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
+            w3j4=lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu:  wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
+            w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+            w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
         )  # fmt: skip
 
         frame.register_multiplication(
-            lambda K, Q: T_K_Q_double_rotation(
+            tkq=lambda K, Q: T_K_Q_double_rotation(
                 K=K,
                 Q=Q,
                 stokes_component_index=stokes_component_index,
                 D_inverse_omega=D_inverse_omega,
                 D_magnetic=D_magnetic,
             ),
-            lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
-            lambda term_lower_id, jl, Jʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹl, M=Ml),
-            lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
-            lambda term_upper_id, ju, Jʹʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹʹu, M=Mu),
-            lambda term_upper_id, Ku, Qu, Jʹʹu, Jʹu: rho(term_id=term_upper_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
-            lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
+            pb1=lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
+            pb2=lambda term_lower_id, jl, Jʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹl, M=Ml),
+            pb3=lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
+            pb4=lambda term_upper_id, ju, Jʹʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹʹu, M=Mu),
+            rho=lambda term_upper_id, Ku, Qu, Jʹʹu, Jʹu: rho(term_id=term_upper_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
+            phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
                 nui=energy_cmm1_to_frequency_hz(
                     precalculated_pb_eigenvalues[term_upper_id](j=ju, M=Mu)
                     - precalculated_pb_eigenvalues[term_lower_id](j=jl, M=Ml)

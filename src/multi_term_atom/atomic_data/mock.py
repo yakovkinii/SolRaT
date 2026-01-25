@@ -1,3 +1,4 @@
+from src.common.functions import frequency_hz_to_lambda_A
 from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from src.multi_term_atom.terms_levels_transitions.transition_registry import (
     TransitionRegistry,
@@ -39,11 +40,11 @@ def get_mock_atom_data(fine_structure=True):
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="2p", L=1, S=0.5),
         term_lower=level_registry.get_term(beta="1s", L=0, S=0.5),
-        einstein_a_ul_sm1=0.7e8,
+        einstein_a_ul_sm1=1e8,
     )
 
     # Reference lambda
-    reference_lambda_A = None
     reference_nu_sm1 = 5.996e14
+    reference_lambda_A = frequency_hz_to_lambda_A(reference_nu_sm1)
     atomic_mass_amu = 1
     return level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu

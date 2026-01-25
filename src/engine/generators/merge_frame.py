@@ -57,7 +57,10 @@ class Frame:
             logging.info(f"Created: {self}")
 
         def __repr__(self):
-            return f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. Elementwise: {self.elementwise}"
+            return (
+                f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. "
+                f"Elementwise: {self.elementwise}"
+            )
 
     @staticmethod
     def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits)) -> "Frame":
@@ -207,13 +210,13 @@ class Frame:
         if isinstance(column, Looper):
             column = column.get_name()
 
-        logging.info(f"====")
+        logging.info("====")
         logging.info(f"Reducing column {column}:")
         dependent_factors = self.get_dependent_factors(column)
         logging.info(f"Dependent factors: {dependent_factors}")
 
         if len(dependent_factors) == 0:
-            logging.error(f"No dependent factors for column {column}, dropping it directly.")
+            logging.info(f"No dependent factors for column {column}, dropping it directly.")
             self.remove_dependency(column)
             self.frame = self.frame.drop(columns=column)
             return self.frame
@@ -283,14 +286,16 @@ class Frame:
 
         ellipsis_index = args.index(Ellipsis)
         columns_before = [col.get_name() if isinstance(col, Looper) else col for col in args[:ellipsis_index]]
-        columns_after = [col.get_name() if isinstance(col, Looper) else col for col in args[ellipsis_index + 1 :]]
+        columns_after = [
+            col.get_name() if isinstance(col, Looper) else col for col in args[ellipsis_index + 1 :]  # noqa: E203
+        ]
 
         frame_columns = [col for col in self.frame.columns if col not in factor_columns]
         ellipsis_columns = [col for col in frame_columns if col not in columns_before + columns_after]
         frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
 
-    def debug_evaluate_legacy(self):
+    def debug_reduce_legacy(self):
         for factor_name in list(self.factors.keys()):
             self.merge_factor(factor_name)
         factor_names = list(self.factors.keys())
