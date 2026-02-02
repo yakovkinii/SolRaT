@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 import math
 from functools import lru_cache
 

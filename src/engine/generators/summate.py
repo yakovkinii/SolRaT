@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 from tqdm import tqdm
 
 from src.engine.functions.looping import fromto, intersection, projection, triangular

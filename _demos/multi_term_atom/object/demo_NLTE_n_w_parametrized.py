@@ -22,6 +22,7 @@ def main():
     )
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(12, 4))
+    fig.suptitle("Anisotropic parametrization of $J_0^0$ and $J_0^2$ depending on the height above the photosphere")
 
     lambda_A = np.arange(4000, 12000, 1)
     for h_arcsec in [0, 3, 10, 40][::-1]:

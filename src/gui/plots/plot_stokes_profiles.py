@@ -3,7 +3,7 @@ TODO
 TODO  This file needs improved documentation.
 TODO
 """
-
+import numpy as np
 from matplotlib import pyplot as plt
 
 from src.multi_term_atom.object.stokes import Stokes
@@ -55,6 +55,7 @@ class StokesPlotter_IV_IpmV:
         self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         self.next_color_index = 0
         self.fig, self.axs = plt.subplots(3, 1, sharex=True, constrained_layout=True, figsize=(8, 8), num=title)
+        self.fig.suptitle(title)
         self.axs[0].set_ylabel(r"Stokes $I$")
         self.axs[1].set_ylabel(r"Stokes $V$")
         self.axs[2].set_ylabel(r"Stokes $(I\pm V)$")
@@ -140,6 +141,7 @@ class StokesPlotter:
         self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         self.next_color_index = 0
         self.fig, self.axs = plt.subplots(4, 1, sharex=True, constrained_layout=True, figsize=(8, 8), num=title)
+        self.fig.suptitle(title)
         self.axs[0].set_ylabel(y_label_I)
         self.axs[1].set_ylabel(y_label_Q)
         self.axs[2].set_ylabel(y_label_U)
@@ -193,8 +195,11 @@ class StokesPlotter:
         label="",
         style="-",
         linewidth=1.5,
+        normalize=False,
     ):
         scale = 1 if stokes_reference is None else stokes_reference.I
+        if normalize:
+            scale = np.max(stokes.I)
         self.add(
             lambda_A=lambda_A,
             reference_lambda_A=reference_lambda_A,

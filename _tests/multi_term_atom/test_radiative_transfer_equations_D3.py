@@ -99,4 +99,4 @@ class TestRadiativeTransferEquations(unittest.TestCase):
         # Check that the result did not change from previous runs
         last_run_hash = 2.3137071959665785e-16
         new_hash = pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV)
-        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-15
+        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-12

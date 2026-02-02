@@ -32,7 +32,7 @@ def main():
         theta_B=20,
     )
 
-    plotter = StokesPlotter()
+    plotter = StokesPlotter("Comparison of DELO and Finite Difference (Euler) integration")
 
     atmosphere_parameters = AtmosphereParameters(
         magnetic_field_gauss=10000, temperature_K=6000, atomic_mass_amu=context.atomic_mass_amu

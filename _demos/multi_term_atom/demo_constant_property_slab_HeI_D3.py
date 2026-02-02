@@ -23,7 +23,7 @@ def main():
 
     logging_config.init(logging.INFO)
 
-    context = create_He_I_D3_context(lambda_range_A=1, lambda_resolution_A=1e-3)
+    context = create_He_I_D3_context(lambda_range_A=0.75, lambda_resolution_A=1e-3)
 
     angles = Angles(
         chi=0,
@@ -33,9 +33,9 @@ def main():
         theta_B=0,
     )
 
-    plotter = StokesPlotter()
+    plotter = StokesPlotter("He I D3 transition for different magnetic field values")
 
-    for Bz in [0, 5000, 10000]:
+    for Bz in [0, 3000, 5000]:
         atmosphere_parameters = AtmosphereParameters(
             magnetic_field_gauss=Bz, temperature_K=5000, atomic_mass_amu=context.atomic_mass_amu
         )
@@ -62,6 +62,7 @@ def main():
             stokes=atmosphere.forward(initial_stokes=initial_stokes),
             # stokes_reference=initial_stokes,
             label=f"B = {Bz} G",
+            normalize=True,
         )
 
     plotter.show()

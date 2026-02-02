@@ -77,7 +77,7 @@ def main():
         rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles
     )
 
-    plotter = StokesPlotter(r"$\eta_s$ vs Frequency", x_label="$\nu$ (1/s)")
+    plotter = StokesPlotter(r"$\eta_s$ vs Frequency", x_label=r"$\nu$ (1/s)")
     plotter.add(
         nu,
         0,
@@ -98,7 +98,8 @@ def main():
         style="--",
         linewidth=2,
     )
-    # Todo investigate sV
+    plotter.axs[3].set_ylim(-1, 1)
+    # Todo investigate: confirm that sV should be exactly zero here
     plotter.show()
 
 
