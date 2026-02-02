@@ -16,6 +16,15 @@ Until then, if SolRaT has found use in your research, please cite it as
 Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yakovkinii.com/solrat/
 ```
 
+How to run:
+```bash
+git clone https://github.com/yakovkinii/SolRaT.git
+pip install -r requirements.txt
+python ./run_all_tests.py
+```
+
+Some examples of how to use SolRaT are available in the `_demos` directory.
+
 Keywords:
 Non-LTE, Stokes Profiles, Inversion, Synthesis, Paschen-Back, Hanle, Zeeman, 
 Magnetic Fields, Sun, Solar Atmosphere, Radiative Transfer, Polarization, 
