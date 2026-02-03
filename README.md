@@ -5,8 +5,8 @@ radiation in stellar atmospheres.
 
 The code implements the multi-term atom model, described in 
 `Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)`. 
-SolRaT treats atomic level polarization, arbitrary magnetic fields (intermediate Paschen-Back effect), 
-Hanle effect and may others.
+SolRaT supports atomic level polarization, arbitrary magnetic fields (intermediate Paschen-Back effect), 
+Hanle effect and many other features.
 
 The code is written in python, currently tested on Windows and Ubuntu Linux. 
 The code is expected to work on all systems that fully support python 3.11. 
