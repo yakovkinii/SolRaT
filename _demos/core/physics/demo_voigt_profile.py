@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
-from src.common.constants import c_cm_sm1, sqrt_pi
-from src.common.voigt_profile import voigt
+from solrat.common.constants import c_cm_sm1, sqrt_pi
+from solrat.common.voigt_profile import voigt
 
 
 def main():

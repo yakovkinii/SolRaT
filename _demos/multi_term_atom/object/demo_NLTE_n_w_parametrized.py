@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
-from src.multi_term_atom.atomic_data.HeI import get_He_I_D3_data
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.atomic_data.HeI import get_He_I_D3_data
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
 
 
 def main():

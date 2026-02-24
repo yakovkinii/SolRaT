@@ -4,16 +4,16 @@ import numpy as np
 from numpy import real
 from yatools import logging_config
 
-from src.common.functions import get_planck_BP
-from src.gui.plots.plot_stokes_profiles import StokesPlotter
-from src.multi_term_atom.atmosphere.constant_property_slab import (
+from solrat.common.functions import get_planck_BP
+from solrat.gui.plots.plot_stokes_profiles import StokesPlotter
+from solrat.multi_term_atom.atmosphere.constant_property_slab import (
     ConstantPropertySlabAtmosphere,
 )
-from src.multi_term_atom.atomic_data.HeI import create_He_I_D3_context
-from src.multi_term_atom.object.angles import Angles
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.object.stokes import Stokes
+from solrat.multi_term_atom.atomic_data.HeI import create_He_I_D3_context
+from solrat.multi_term_atom.object.angles import Angles
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.object.stokes import Stokes
 
 
 def main():

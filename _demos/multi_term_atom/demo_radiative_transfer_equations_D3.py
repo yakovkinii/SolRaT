@@ -5,18 +5,18 @@ import numpy as np
 from numpy import real
 from yatools import logging_config
 
-from src.common.constants import atomic_mass_unit_g, kB_erg_Km1
-from src.common.functions import lambda_cm_to_frequency_hz
-from src.gui.plots.plot_stokes_profiles import StokesPlotter_IV
-from src.multi_term_atom.atomic_data.HeI import (
+from solrat.common.constants import atomic_mass_unit_g, kB_erg_Km1
+from solrat.common.functions import lambda_cm_to_frequency_hz
+from solrat.gui.plots.plot_stokes_profiles import StokesPlotter_IV
+from solrat.multi_term_atom.atomic_data.HeI import (
     fill_precomputed_He_I_D3_data,
     get_He_I_D3_data,
 )
-from src.multi_term_atom.object.angles import Angles
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.multi_term_atom.object.angles import Angles
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
+from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 
 
 def main():

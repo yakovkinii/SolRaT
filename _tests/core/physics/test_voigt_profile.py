@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.common.voigt_profile import voigt
+from solrat.common.voigt_profile import voigt
 
 
 class TestMathUtils(unittest.TestCase):

@@ -3,8 +3,8 @@ import unittest
 
 from yatools import logging_config
 
-from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+from solrat.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
+from solrat.multi_term_atom.terms_levels_transitions.transition_registry import (
     TransitionRegistry,
 )
 

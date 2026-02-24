@@ -7,18 +7,18 @@ import logging
 import numpy as np
 from yatools import logging_config
 
-from src.gui.plots.plot_stokes_profiles import StokesPlotter_IV_IpmV
-from src.multi_term_atom.atmosphere.constant_property_slab import (
+from solrat.gui.plots.plot_stokes_profiles import StokesPlotter_IV_IpmV
+from solrat.multi_term_atom.atmosphere.constant_property_slab import (
     ConstantPropertySlabAtmosphere,
 )
-from src.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
-from src.multi_term_atom.atomic_data.MnI import get_Mn_I_5432_data
-from src.multi_term_atom.object.angles import Angles
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.object.stokes import Stokes
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEELTE
+from solrat.multi_term_atom.atmosphere.multi_slab_atmosphere import MultiSlabAtmosphere
+from solrat.multi_term_atom.atomic_data.MnI import get_Mn_I_5432_data
+from solrat.multi_term_atom.object.angles import Angles
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.multi_term_atom_context import MultiTermAtomContext
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.object.stokes import Stokes
+from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEELTE
 
 
 def demo_constant_property_slab_multiline():

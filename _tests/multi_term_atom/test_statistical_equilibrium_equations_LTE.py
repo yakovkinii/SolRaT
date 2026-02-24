@@ -4,12 +4,12 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.common.constants import h_erg_s, kB_erg_Km1, sqrt2
-from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from src.multi_term_atom.object.angles import Angles
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.statistical_equilibrium_equations import (
+from solrat.common.constants import h_erg_s, kB_erg_Km1, sqrt2
+from solrat.multi_term_atom.atomic_data.mock import get_mock_atom_data
+from solrat.multi_term_atom.object.angles import Angles
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.statistical_equilibrium_equations import (
     MultiTermAtomSEE,
     MultiTermAtomSEELTE,
 )

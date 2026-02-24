@@ -3,16 +3,16 @@ import logging
 import numpy as np
 from yatools import logging_config
 
-from src.gui.plots.plot_stokes_profiles import StokesPlotter
-from src.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from src.multi_term_atom.legacy.radiative_transfer_equations_legacy import (
+from solrat.gui.plots.plot_stokes_profiles import StokesPlotter
+from solrat.multi_term_atom.atomic_data.mock import get_mock_atom_data
+from solrat.multi_term_atom.legacy.radiative_transfer_equations_legacy import (
     MultiTermAtomRTELegacy,
 )
-from src.multi_term_atom.object.angles import Angles
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.multi_term_atom.object.angles import Angles
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
+from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
 
 
 def main():

@@ -1,7 +1,7 @@
 import unittest
 
-from src.engine.functions.looping import FROMTO, fromto
-from src.engine.generators.nested_loops import nested_loops
+from solrat.engine.functions.looping import FROMTO, fromto
+from solrat.engine.generators.nested_loops import nested_loops
 
 
 class TestNestedLoops(unittest.TestCase):

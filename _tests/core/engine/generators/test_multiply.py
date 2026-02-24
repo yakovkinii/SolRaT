@@ -1,7 +1,7 @@
 import unittest
 
-from src.engine.functions.general import delta, fact2
-from src.engine.generators.multiply import multiply
+from solrat.engine.functions.general import delta, fact2
+from solrat.engine.generators.multiply import multiply
 
 
 class TestMultiply(unittest.TestCase):

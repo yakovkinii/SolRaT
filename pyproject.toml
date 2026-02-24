@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solrat"
+dynamic = ["version"]
+description = "Solar Radiative Transfer non-LTE forward-modeling code."
+authors = [{name = "Ivan I. Yakovkin"}]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "tqdm",
+    "yatools",
+    "sympy",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/yakovkinii/solrat"
+
+[tool.setuptools.dynamic]
+version = {attr = "solrat.about.version"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["solrat*"]

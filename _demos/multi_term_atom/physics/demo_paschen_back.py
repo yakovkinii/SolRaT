@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
-from src.multi_term_atom.physics.paschen_back import calculate_paschen_back
-from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
+from solrat.multi_term_atom.physics.paschen_back import calculate_paschen_back
+from solrat.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 
 
 def main():

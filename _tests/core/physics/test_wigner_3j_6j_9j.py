@@ -4,7 +4,7 @@ import unittest
 import numpy as np
 from yatools import logging_config
 
-from src.common.wigner_3j_6j_9j import (
+from solrat.common.wigner_3j_6j_9j import (
     _w3j_doubled_argument,
     _w6j_doubled_argument,
     _w9j_doubled_argument,

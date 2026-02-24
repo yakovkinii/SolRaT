@@ -1,7 +1,7 @@
 import unittest
 
-from src.engine.functions.looping import FROMTO, PROJECTION, fromto
-from src.engine.generators.summate import summate
+from solrat.engine.functions.looping import FROMTO, PROJECTION, fromto
+from solrat.engine.generators.summate import summate
 
 
 class TestSummate(unittest.TestCase):

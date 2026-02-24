@@ -4,14 +4,14 @@ import unittest
 from numpy import sqrt
 from yatools import logging_config
 
-from src.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import (
+from solrat.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import (
     MultiTermAtomSEELegacy,
 )
-from src.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from src.multi_term_atom.object.radiation_tensor import RadiationTensor
-from src.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
-from src.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
-from src.multi_term_atom.terms_levels_transitions.transition_registry import (
+from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
+from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
+from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
+from solrat.multi_term_atom.terms_levels_transitions.transition_registry import (
     TransitionRegistry,
 )
 

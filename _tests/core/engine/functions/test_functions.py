@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from src.engine.functions.general import m1p
+from solrat.engine.functions.general import m1p
 
 
 class TestMathUtils(unittest.TestCase):
