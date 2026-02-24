@@ -8,6 +8,9 @@
     coverage run -m unittest discover
     ```
     ```bash
+    coverage report
+    ```
+    ```bash
     coverage html
     ```
     ```bash
@@ -21,7 +24,13 @@
     pip install -e .
     ```
     ```bash
-    rm docs/source/_autosummary/*
+    rm -r docs/build/*
+    ```
+    ```bash
+    rm docs/source/solrat*
+    ```
+    ```bash
+    sphinx-apidoc -o .\docs\source\ ./solrat -M -e -T
     ```
     ```bash
     sphinx-build -M html docs/source/ docs/build/

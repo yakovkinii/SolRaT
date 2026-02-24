@@ -13,11 +13,10 @@ extensions = [
     "sphinx.ext.mathjax",
 ]
 
-autosummary_generate = True
 templates_path = ["_templates"]
 exclude_patterns = []
 
-html_theme = "alabaster"
+html_theme = "furo"
 html_static_path = ["_static"]
 
 autodoc_default_options = {

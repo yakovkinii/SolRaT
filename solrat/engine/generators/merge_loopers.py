@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 import logging
 from abc import abstractmethod
 from functools import reduce
@@ -12,17 +6,13 @@ from typing import Set, Union
 import numpy as np
 import pandas as pd
 
-MAX_ID = 0
-
-
-def vector(arr):
-    return pd.Series([row for row in arr])
+MAX_LOOPER_ID = 0
 
 
 def get_unique_name() -> str:
-    global MAX_ID
-    name = f"__looper_unique_{MAX_ID}__"
-    MAX_ID += 1
+    global MAX_LOOPER_ID
+    name = f"__looper_unique_{MAX_LOOPER_ID}__"
+    MAX_LOOPER_ID += 1
     return name
 
 
