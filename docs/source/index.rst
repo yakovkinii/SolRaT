@@ -14,7 +14,7 @@ Key Features
 *   **Magnetic Fields**: Handles arbitrary magnetic field strengths (Zeeman, Hanle, Paschen-Back effects).
 *   **Atmosphere**: Supports multi-slab atmospheres for height stratification.
 *   **Flexibility**: Provides a high-level meta-language allowing you to write code that directly resembles the underlying mathematical equations.
-*   **Accessibility** SolRaT is free, open-source, and platform-independent.
+*   **Accessibility**: SolRaT is free, open-source, and platform-independent.
 *   **Performance**: SolRaT uses high-performance libraries that leverage SIMD instruction sets.
 *   **Extensibility**: A clear Modeling API allows for quick prototyping and model adjustments for specific contexts.
 

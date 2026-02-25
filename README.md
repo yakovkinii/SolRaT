@@ -6,7 +6,6 @@
 ![](https://img.shields.io/github/license/henriquesebastiao/badges?style=flat&color=22c55e)
 [![](https://img.shields.io/pypi/v/solrat)](https://pypi.org/project/solrat)
 ![](https://img.shields.io/badge/platform-Linux-ffffff?logoColor=black)
-![](https://img.shields.io/badge/platform-macOS-000000?logoColor=white)
 ![](https://img.shields.io/badge/platform-Windows-0078D6?logoColor=white)
 ![](https://img.shields.io/badge/coverage-90%25-0000ff)
 
@@ -25,7 +24,7 @@ as it is handled under the hood.
 - **Magnetic Fields**: Handles arbitrary magnetic field strengths (Zeeman, Hanle, Paschen-Back effects).
 - **Atmosphere**: Supports multi-slab atmospheres for height stratification.
 - **Flexibility**: Provides a high-level meta-language allowing for writing code that directly resembles the underlying mathematical equations.
-- **Accessibility** SolRaT is free, open-source, and platform-independent.
+- **Accessibility**: SolRaT is free, open-source, and platform-independent.
 - **Performance**: SolRaT uses high-performance libraries that leverage SIMD instruction sets.
 - **Extensibility**: A clear Modeling API allows for quick prototyping and model adjustments for specific contexts.
 
