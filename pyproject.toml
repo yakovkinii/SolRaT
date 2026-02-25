@@ -33,3 +33,6 @@ version = {attr = "solrat.about.version"}
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["solrat*"]
+
+[tool.setuptools.package-data]
+solrat = ["multi_term_atom/atomic_data/**/*.csv"]
