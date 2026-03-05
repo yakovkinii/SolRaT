@@ -2,7 +2,7 @@
 
 [![](https://img.shields.io/badge/read-TheDocs-eee?logoColor=black)](https://solrat.readthedocs.io/latest/)
 [![](https://img.shields.io/badge/homepage-solrat-000000?logoColor=white)](https://www.yakovkinii.com/solrat/)
-![](https://img.shields.io/github/license/yakovkinii/solrat)
+![](https://img.shields.io/badge/license-MIT-00ff00)
 [![](https://img.shields.io/pypi/v/solrat)](https://pypi.org/project/solrat)
 [![](https://img.shields.io/pypi/dw/solrat)](https://pypi.org/project/solrat)
 ![](https://img.shields.io/badge/language-Python-3776AB?logoColor=white)
