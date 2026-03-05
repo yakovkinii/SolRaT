@@ -1,6 +1,8 @@
 from solrat.common.functions import lambda_cm_to_frequency_hz
 from solrat.engine.functions.decorators import log_function
-from solrat.multi_term_atom.physics.paschen_back import get_artificial_S_scale_from_term_g
+from solrat.multi_term_atom.physics.paschen_back import (
+    get_artificial_S_scale_from_term_g,
+)
 from solrat.multi_term_atom.terms_levels_transitions.level_registry import LevelRegistry
 from solrat.multi_term_atom.terms_levels_transitions.transition_registry import (
     TransitionRegistry,

@@ -2,12 +2,12 @@
 
 [![](https://img.shields.io/badge/read-TheDocs-eee?logoColor=black)](https://solrat.readthedocs.io/latest/)
 [![](https://img.shields.io/badge/homepage-solrat-000000?logoColor=white)](https://www.yakovkinii.com/solrat/)
-![](https://img.shields.io/badge/language-Python-3776AB?logoColor=white)
-![](https://img.shields.io/github/license/henriquesebastiao/badges?style=flat&color=22c55e)
+![](https://img.shields.io/github/license/yakovkinii/solrat)
 [![](https://img.shields.io/pypi/v/solrat)](https://pypi.org/project/solrat)
-![](https://img.shields.io/badge/platform-Linux-ffffff?logoColor=black)
-![](https://img.shields.io/badge/platform-Windows-0078D6?logoColor=white)
-![](https://img.shields.io/badge/coverage-90%25-0000ff)
+[![](https://img.shields.io/pypi/dw/solrat)](https://pypi.org/project/solrat)
+![](https://img.shields.io/badge/language-Python-3776AB?logoColor=white)
+![](https://img.shields.io/badge/platform-any-ffffff?logoColor=black)
+![](https://img.shields.io/badge/coverage-98%25-0000ff)
 
 SolRaT (Solar Radiative Transfer) is a flexible forward modeling code for non-LTE transfer of 
 radiation in stellar atmospheres.

@@ -5,8 +5,12 @@ import numpy as np
 from yatools import logging_config
 
 from solrat.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from solrat.multi_term_atom.legacy.radiative_transfer_equations_legacy import MultiTermAtomRTELegacy
-from solrat.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import MultiTermAtomSEELegacy
+from solrat.multi_term_atom.legacy.radiative_transfer_equations_legacy import (
+    MultiTermAtomRTELegacy,
+)
+from solrat.multi_term_atom.legacy.statistical_equilibrium_equations_legacy import (
+    MultiTermAtomSEELegacy,
+)
 from solrat.multi_term_atom.object.angles import Angles
 from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
 from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor

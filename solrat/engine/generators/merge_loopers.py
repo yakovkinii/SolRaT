@@ -45,18 +45,9 @@ class Looper:
     def get_directly_dependent_columns(self) -> Set[str]:
         return set()
 
-    def get_dependent_columns(self) -> Set[str]:
-        return set()
-
     @abstractmethod
     def fill_frame(self, frame: pd.DataFrame, explode: bool = True) -> pd.DataFrame:
         pass
-
-    def __add__(self, other):
-        if isinstance(other, (int, float)):
-            other = Value(other)
-        assert isinstance(other, Looper)
-        return Sum(self, other)
 
     def __sub__(self, other):
         if isinstance(other, (int, float)):
@@ -81,13 +72,6 @@ class DummyOrAlreadyMerged(Looper):
         cols = set()
         if self.dependency is not None:
             self.dependency.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        if self.dependency is not None:
-            self.dependency.add_to_dependencies(cols)
-            cols.update(self.dependency.get_dependent_columns())
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
@@ -117,9 +101,6 @@ def wrap_in_value_if_needed(x: Union[Looper, int, float, str]) -> Looper:
         return x
     if isinstance(x, (int, float)):
         return Value(x)
-    if isinstance(x, str):
-        logging.warning(f"Wrapping a str value {x} in Value looper.")
-        return Value(x)
     raise ValueError(f"Cannot wrap type {type(x)} in Value looper.")
 
 
@@ -140,14 +121,6 @@ class FromTo(Looper):
         cols = set()
         self.start.add_to_dependencies(cols)
         self.end.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.start.add_to_dependencies(cols)
-        cols.update(self.start.get_dependent_columns())
-        self.end.add_to_dependencies(cols)
-        cols.update(self.end.get_dependent_columns())
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
@@ -185,12 +158,6 @@ class Projection(Looper):
         self.vector.add_to_dependencies(cols)
         return cols
 
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.vector.add_to_dependencies(cols)
-        cols.update(self.vector.get_dependent_columns())
-        return cols
-
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
         name = self.get_name()
         if not self.vector.is_name_user_set:
@@ -224,14 +191,6 @@ class Triangular(Looper):
         self.vector2.add_to_dependencies(cols)
         return cols
 
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.vector1.add_to_dependencies(cols)
-        cols.update(self.vector1.get_dependent_columns())
-        self.vector2.add_to_dependencies(cols)
-        cols.update(self.vector2.get_dependent_columns())
-        return cols
-
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
         name = self.get_name()
         if not self.vector1.is_name_user_set:
@@ -256,50 +215,6 @@ class Triangular(Looper):
         return frame
 
 
-class Sum(Looper):
-    def __init__(self, left: Looper, right: Looper):
-        super().__init__()
-        self.left = wrap_in_value_if_needed(left)
-        self.right = wrap_in_value_if_needed(right)
-        self.names_set = False
-
-    def add_to_dependencies(self, dependencies: Set[str]):
-        if self.is_name_user_set:
-            dependencies.add(self.get_name())
-            return
-        self.left.add_to_dependencies(dependencies)
-        self.right.add_to_dependencies(dependencies)
-
-    def get_directly_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.left.add_to_dependencies(cols)
-        self.right.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.left.add_to_dependencies(cols)
-        cols.update(self.left.get_dependent_columns())
-        self.right.add_to_dependencies(cols)
-        cols.update(self.right.get_dependent_columns())
-        return cols
-
-    def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
-        name = self.get_name()
-        if not self.left.is_name_user_set:
-            frame = self.left.fill_frame(frame)
-        if not self.right.is_name_user_set:
-            frame = self.right.fill_frame(frame)
-        frame[name] = frame[self.left.get_name()] + frame[self.right.get_name()]
-
-        if not self.left.is_name_user_set:
-            frame = frame.drop(columns=[self.left.get_name()])
-        if not self.right.is_name_user_set:
-            frame = frame.drop(columns=[self.right.get_name()])
-
-        return frame
-
-
 class Difference(Looper):
     def __init__(self, left: Looper, right: Looper):
         super().__init__()
@@ -317,14 +232,6 @@ class Difference(Looper):
         cols = set()
         self.left.add_to_dependencies(cols)
         self.right.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> Set[str]:
-        cols = set()
-        self.left.add_to_dependencies(cols)
-        cols.update(self.left.get_dependent_columns())
-        self.right.add_to_dependencies(cols)
-        cols.update(self.right.get_dependent_columns())
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
@@ -353,13 +260,6 @@ class Intersection(Looper):
         cols = set()
         for looper in self.loopers:
             looper.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> set:
-        cols = set()
-        for looper in self.loopers:
-            looper.add_to_dependencies(cols)
-            cols.update(looper.get_dependent_columns())
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
@@ -413,12 +313,6 @@ class ApplyConstraint(Looper):
         cols = set()
         self.looper.add_to_dependencies(cols)
         self.constraint.add_to_dependencies(cols)
-        return cols
-
-    def get_dependent_columns(self) -> set:
-        cols = set()
-        self.looper.add_to_dependencies(cols)
-        cols.update(self.looper.get_dependent_columns())
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:

@@ -38,6 +38,26 @@ from solrat.multi_term_atom.terms_levels_transitions.transition_registry import 
 
 
 class MultiTermAtomRTE:
+    r"""
+    Radiative Transfer Coefficients within Multi-Term atom model.
+
+    :param level_registry:  LevelRegistry instance for the multi-term atom under study.
+    :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
+    :param nu:  frequencies [Hz]
+    :param delta_nu_cutoff:  distance in frequency for cutting off irrelevant transitions.
+        Leave None for a conservative default value.
+    :param angles:  Not supported for now.
+    :param magnetic_field_gauss:  Not suported for now.
+    :param rho:  Not supported for now.
+    :param N:  atom numeric concentration for real space (as opposed to density) modeling.
+    :param precompute: This option is not supported currently, should be false.
+    :param j_constrained:  constrain J values to the ones specified in transition_registry.
+        This parameter is useful for modeling lines like Fe5434 where fine structure components are scattered
+        over a very broad spectral interval, while the user is interested only in a specific transition.
+
+    Reference: (LL04 7.47)
+    """
+
     def __init__(
         self,
         level_registry: LevelRegistry,
@@ -51,25 +71,6 @@ class MultiTermAtomRTE:
         precompute=False,
         j_constrained=False,
     ):
-        """
-        Radiative Transfer Coefficients within Multi-Term atom model.
-
-        Reference: (7.47)
-
-        :param level_registry:  LevelRegistry instance for the multi-term atom under study.
-        :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
-        :param nu:  frequencies [Hz]
-        :param delta_nu_cutoff:  distance in frequency for cutting off irrelevant transitions.
-        Leave None for a conservative default value.
-        :param angles:  Not supported for now.
-        :param magnetic_field_gauss:  Not suported for now.
-        :param rho:  Not supported for now.
-        :param N:  atom numeric concentration for real space (as opposed to density) modeling.
-        :param precompute:  Not supported for now.
-        :param j_constrained:  constrain J values to the ones specified in transition_registry.
-        This parameter is useful for modeling lines like Fe5434 where fine structure components are scattered
-        over a very broad spectral interval, while the user is interested only in a specific transition.
-        """
         not_supported_message = (
             "Precomputing in RTE has been disabled. The precomputing-related inputs are left here to keep the signature"
             " intact for future development. Please provide these parameters at RTE evaluation step instead."
@@ -96,16 +97,16 @@ class MultiTermAtomRTE:
         rho: Rho,
         atmosphere_parameters: AtmosphereParameters,
     ) -> np.ndarray:
-        """
+        r"""
         Calculate etaA and rhoA for selected Stokes component
-
-        Reference: (7.47 ac)
 
         :param stokes_component_index:  denotes Stokes component (0=I 1=Q 2=U 3=V)
         :param angles:  Angles instance with LOS and magnetic field angles
         :param rho:  density tensor Rho
         :param atmosphere_parameters:  AtmosphereParameters instance
-        :return: complex array of etaA + i * rhoA vs frequency
+        :return: complex array of :math:`\eta_A + i \rho_A` vs frequency
+
+        Reference: (LL04 7.47 ac)
         """
         sum_limits = self.AFrameSumLimitsConstrained() if self.j_constrained else self.AFrameSumLimits()
 
@@ -189,16 +190,16 @@ class MultiTermAtomRTE:
         rho: Rho,
         atmosphere_parameters: AtmosphereParameters,
     ):
-        """
+        r"""
         Calculate etaS and rhoS for selected Stokes component
-
-        Reference: (7.47 bd)
 
         :param stokes_component_index:  denotes Stokes component (0=I 1=Q 2=U 3=V)
         :param angles:  Angles instance with LOS and magnetic field angles
         :param rho:  density tensor Rho
         :param atmosphere_parameters:  AtmosphereParameters instance
-        :return: complex array of etaS + i * rhoS vs frequency
+        :return: complex array of :math:`\eta_S + i \rho_S` vs frequency
+
+        Reference: (LL04 7.47 bd)
         """
         sum_limits = self.SFrameSumLimitsConstrained() if self.j_constrained else self.SFrameSumLimits()
 
@@ -275,17 +276,18 @@ class MultiTermAtomRTE:
 
     @staticmethod
     def compute_epsilon(eta_s: np.ndarray, nu: np.ndarray) -> np.ndarray:
-        """
-        Compute epsilon given etaS
+        r"""
+        Compute :math:`\epsilon` given :math:`\eta_S`
 
-        Reference: (7.47e)
+        Reference: (LL04 7.47e)
         """
         return 2 * h_erg_s * nu**3 / c_cm_sm1**2 * np.real(eta_s)
 
     def create_base_frame(self) -> pd.DataFrame:
-        """
+        r"""
         Generate a base frame, listing all transitions. This frame will be used as a starting point to determine
         the ranges for all other summation indexes.
+
         :return: base frame
         """
         rows = []
@@ -324,15 +326,15 @@ class MultiTermAtomRTE:
     def calculate_all_coefficients(
         self, atmosphere_parameters: AtmosphereParameters, angles: Angles, rho: Rho
     ) -> RadiativeTransferCoefficients:
-        """
+        r"""
         Compute all radiative transfer coefficients.
-
-        Reference: (7.47)
 
         :param angles:  Angles instance with LOS and magnetic field angles
         :param rho:  density tensor Rho
         :param atmosphere_parameters:  AtmosphereParameters instance
         :return: RadiativeTransferCoefficients instance
+
+        Reference: (LL04 7.47)
         """
         eta_rho_aI = self.calculate_eta_rho_a(
             stokes_component_index=0,
@@ -410,9 +412,10 @@ class MultiTermAtomRTE:
     ) -> np.ndarray:
         """
         Compute the complex Faraday-Voigt profile.
+
         delta_v_thermal_cm_sm1 already includes turbulent velocity.
 
-        Reference: (5.43 - 5.45)
+        Reference: (LL04 5.43 - 5.45)
         """
         delta_nu_D = nui * delta_v_thermal_cm_sm1 / c_cm_sm1  # Doppler width
 
@@ -423,7 +426,7 @@ class MultiTermAtomRTE:
         return complex_voigt
 
     def cutoff_condition(self, term_upper: Term, term_lower: Term, nu: np.ndarray):
-        """
+        r"""
         Check the cut-off condition. If a transition is way outside the spectral region of interest,
         it does not contribute to RTE (due to the phi profile).
         """
@@ -435,21 +438,10 @@ class MultiTermAtomRTE:
             return True
         return False
 
-    """
-    Summation limits classes:
-    These classes control the limits for the summation indexes. We start from the 'base_frame' which has some
-    indexes and quantities already pre-merged, like Ll, Lu, S, Einstein coefficients.
-    Then we can determine the boundaries of the summation indexes that follow.
-
-    Triangular means from |a-b| to a + b (both ends included)
-    FromTo means from a to b (both ends included)
-    Intersection means including only shared values of 2 or more sets of values.
-    For further information inspect each Looper individually.
-    """
-
     class AFrameSumLimits(SumLimits):
-        """
-        Summation limits for the eta_A and rho_A calculation.
+        r"""
+        Summation limits for the :math:`\eta_A` and :math:`\rho_A` calculation.
+        See SumLimits for reference.
         """
 
         term_lower_id = DummyOrAlreadyMerged()  # Pre-merged to base_frame
@@ -476,8 +468,9 @@ class MultiTermAtomRTE:
         Q = Intersection(Projection(K), q - qʹ)
 
     class AFrameSumLimitsConstrained(SumLimits):
-        """
-        Summation limits for the eta_A and rho_A calculation, with constraint on J.
+        r"""
+        Summation limits for the :math:`\eta_A` and :math:`\rho_A` calculation, with constraint on :math:`J`.
+        See SumLimits for reference.
         """
 
         term_lower_id = DummyOrAlreadyMerged()  # Pre-merged to base_frame
@@ -506,8 +499,9 @@ class MultiTermAtomRTE:
         Q = Intersection(Projection(K), q - qʹ)
 
     class SFrameSumLimits(SumLimits):
-        """
-        Summation limits for the eta_S and rho_S calculation.
+        r"""
+        Summation limits for the :math:`\eta_S` and :math:`\rho_S` calculation.
+        See SumLimits for reference.
         """
 
         term_lower_id = DummyOrAlreadyMerged()  # Pre-merged to base_frame
@@ -534,8 +528,9 @@ class MultiTermAtomRTE:
         Q = Intersection(Projection(K), q - qʹ)
 
     class SFrameSumLimitsConstrained(SumLimits):
-        """
-        Summation limits for the eta_S and rho_S calculation, with constraint on J.
+        r"""
+        Summation limits for the :math:`\eta_S` and :math:`\rho_S` calculation, with constraint on :math:`J`.
+        See SumLimits for reference.
         """
 
         term_lower_id = DummyOrAlreadyMerged()  # Pre-merged to base_frame

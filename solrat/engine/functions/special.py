@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 
 
@@ -5,6 +7,13 @@ def pseudo_hash(stokesI, stokesQ, stokesU, stokesV):
     """
     Construct a pseudo-unique, likely non-trivial real float hash from 4 complex arrays
     """
+    logging.info(stokesQ.shape)
+    if stokesI.shape[0] % 2 == 1:
+        stokesI = stokesI[:-1] + stokesI[-1]
+        stokesQ = stokesQ[:-1] + stokesQ[-1]
+        stokesU = stokesU[:-1] + stokesU[-1]
+        stokesV = stokesV[:-1] + stokesV[-1]
+
     result = stokesI[::2] + stokesI[1::2] * 0.7
     result += stokesQ[::2] * 0.97 + stokesQ[1::2] * 0.77
     result += stokesU[::2] * 0.87 + stokesU[1::2] * 0.57

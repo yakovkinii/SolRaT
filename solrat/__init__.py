@@ -1,0 +1,3 @@
+r"""
+SolRaT main package.
+"""

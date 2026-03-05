@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from solrat.multi_term_atom.object.stokes import Stokes
 
 
-class StokesPlotter_IV:
+class StokesPlotter_IV:  # pragma: no cover
     def __init__(self, title=""):
         self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         self.next_color_index = 0
@@ -50,7 +50,7 @@ class StokesPlotter_IV:
         plt.show()
 
 
-class StokesPlotter_IV_IpmV:
+class StokesPlotter_IV_IpmV:  # pragma: no cover
     def __init__(self, title=""):
         self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         self.next_color_index = 0
@@ -128,7 +128,7 @@ class StokesPlotter_IV_IpmV:
         plt.show()
 
 
-class StokesPlotter:
+class StokesPlotter:  # pragma: no cover
     def __init__(
         self,
         title="",

@@ -34,6 +34,26 @@ from solrat.multi_term_atom.terms_levels_transitions.transition_registry import 
 
 
 class MultiTermAtomSEE:
+    r"""
+    Statistical Equilibrium Equations within Multi-Term atom model
+
+    :param level_registry:  LevelRegistry instance for the multi-term atom under study.
+    :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
+    :param disable_r_s:  Whether to disable stimulated emission :math:`R_S` (7.46c). Has to be False if
+      precomputed frames are loaded.
+    :param precompute:  Whether to precompute some SEE frames. Set to False when loading precomputed frames from file.
+
+    Reference: (LL04 7.38)
+
+    Note on precomputing:
+    Some parameters are atom-specific, and some are atmosphere-specific.
+    E.g. levels, their :math:`J` values, etc., are atom-specific, while magnetic field is atmosphere-specific.
+    So the idea is to precompute everything atom-specific, so that we can quickly iterate over
+    atmosphere-specific parameters later.
+    Also, this means that atom-specific precomputing can be saved to disk, and does not need to be performed
+    on each launch.
+    """
+
     def __init__(
         self,
         level_registry: LevelRegistry,
@@ -41,26 +61,6 @@ class MultiTermAtomSEE:
         disable_r_s: bool = False,
         precompute: bool = True,
     ):
-        """
-        Statistical Equilibrium Equations within Multi-Term atom model
-
-        Reference: (7.38)
-
-        :param level_registry:  LevelRegistry instance for the multi-term atom under study.
-        :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
-        :param disable_r_s:  Whether to disable stimulated emission R_S (7.46c).
-        Has to be False if precomputed frames are loaded.
-        :param precompute:  Whether to precompute some SEE frames.
-        Set to False when loading precomputed frames from file.
-
-        Note on precomputing:
-        Some parameters are atom-specific, and some are atmosphere-specific.
-        E.g. levels, their J values etc are atom-specific, while magnetic field is atmosphere-specific.
-        So the idea is to precompute everything atom-specific, so that we can quickly iterate over
-        atmosphere-specific parameters later.
-        Also this means that atom-specific precomputing can be saved to disk, and does not need to be performed
-        on each launch.
-        """
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
@@ -82,7 +82,7 @@ class MultiTermAtomSEE:
 
     @log_method
     def precompute_all_equations(self):
-        """
+        r"""
         Precompute all frames (instead of loading from a file).
         """
         coherence_decay_dfs = []
@@ -111,15 +111,13 @@ class MultiTermAtomSEE:
                 relaxation_dfs_e.extend(relaxation_dfs_e_)
                 relaxation_dfs_s.extend(relaxation_dfs_s_)
 
-        self.coherence_decay_df = self.concat_and_finalize_precomputed_dfs(
-            coherence_decay_dfs, value_columns=["n_0", "n_1"]
-        )
-        self.absorption_df = self.concat_and_finalize_precomputed_dfs(absorption_dfs, value_columns=["t_a_1"])
-        self.emission_df_e = self.concat_and_finalize_precomputed_dfs(emission_dfs_e, value_columns=["coefficient"])
-        self.emission_df_s = self.concat_and_finalize_precomputed_dfs(emission_dfs_s, value_columns=["t_s_1"])
-        self.relaxation_df_a = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_a, value_columns=["r_a_1"])
-        self.relaxation_df_e = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_e, value_columns=["r_e_0"])
-        self.relaxation_df_s = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_s, value_columns=["r_s_1"])
+        self.coherence_decay_df = self.concat_and_finalize_precomputed_dfs(coherence_decay_dfs)
+        self.absorption_df = self.concat_and_finalize_precomputed_dfs(absorption_dfs)
+        self.emission_df_e = self.concat_and_finalize_precomputed_dfs(emission_dfs_e)
+        self.emission_df_s = self.concat_and_finalize_precomputed_dfs(emission_dfs_s)
+        self.relaxation_df_a = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_a)
+        self.relaxation_df_e = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_e)
+        self.relaxation_df_s = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_s)
 
     @log_method
     def fill_all_equations(
@@ -127,15 +125,16 @@ class MultiTermAtomSEE:
         atmosphere_parameters: AtmosphereParameters,
         radiation_tensor_in_magnetic_frame: RadiationTensor,
     ):
-        """
+        r"""
         Loop through all equations to construct the complete system of equations for rho.
-        Reference: (7.38)
 
         :param atmosphere_parameters:  AtmosphereParameters instance carrying the magnetic field and other variables.
         :param radiation_tensor_in_magnetic_frame:  RadiationTensor instance
 
+        Reference: (LL04 7.38)
+
         Note:
-        Calling this function multiple times with different atmosphere_parameters of J tensors is safe,
+        Calling this function multiple times with different atmosphere_parameters of :math:`J` tensors is safe,
         it will build the system of equations from scratch each time.
         """
 
@@ -153,11 +152,14 @@ class MultiTermAtomSEE:
         )
 
     def precompute_coherence_decay(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        """
-        Precompute all coherence decay N kernel parameters n_0 and n_1:
-        N = n_0 + n_1 * nu_larmor
+        r"""
+        Precompute all coherence decay :math:`N` kernel parameters :math:`n_0` and :math:`n_1`:
 
-        Reference: (7.38)
+        .. math::
+
+            N = n_0 + n_1 * \nu_{larmor}
+
+        Reference: (LL04 7.38)
         """
         dfs = []
         for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
@@ -173,21 +175,27 @@ class MultiTermAtomSEE:
 
     @log_method
     def add_precomputed_coherence_decay(self, df, atmosphere_parameters: AtmosphereParameters):
-        """
-        Add the coherence decay N kernel using precomputed n_0 and n_1:
-        N = n_0 + n_1 * nu_larmor
+        r"""
+        Add the coherence decay :math:`N` kernel using precomputed :math:`n_0` and :math:`n_1`:
 
-        Reference: (7.38)
+        .. math::
+
+            N = n_0 + n_1 * \nu_{larmor}
+
+        Reference: (LL04 7.38)
         """
         df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * atmosphere_parameters.nu_larmor)
         self.matrix_builder.add_coefficient_from_df(df)
 
     def precompute_absorption(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        """
-        Precompute all Absorption parameters t_a_1:
-        T_a = t_a_1 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr)
+        r"""
+        Precompute all Absorption parameters :math:`t_{a1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            T_a = t_{a1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
+
+        Reference: (LL04 7.38)
         """
         dfs = []
         for term_lower in self.level_registry.terms.values():
@@ -211,11 +219,14 @@ class MultiTermAtomSEE:
 
     @log_method
     def add_precomputed_absorption(self, df, radiation_tensor: RadiationTensor):
-        """
-        Add the Absorption using precomputed parameter t_a_1:
-        T_a = t_a_1 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr)
+        r"""
+        Add the Absorption using precomputed parameter :math:`t_{a1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            T_a = t_{a1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
+
+        Reference: (LL04 7.38)
         """
         df = df.merge(
             radiation_tensor.get_df().rename(
@@ -228,12 +239,16 @@ class MultiTermAtomSEE:
         self.matrix_builder.add_coefficient_from_df(df)
 
     def precompute_emission(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        """
-        Precompute all Emission parameters coefficient, t_s_1:
-        T_e = coefficient
-        T_s = t_s_1 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr)
+        r"""
+        Precompute all Emission parameters coefficient, :math:`t_{s1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            T_e &= \text{coefficient}
+
+            T_s &= t_{s1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
+
+        Reference: (LL04 7.38)
         """
         dfs_e = []
         dfs_s = []
@@ -268,12 +283,16 @@ class MultiTermAtomSEE:
 
     @log_method
     def add_precomputed_emission(self, df_e, df_s, radiation_tensor: RadiationTensor):
-        """
-        Add the Emission using precomputed parameter t_a_1:
-        T_e = coefficient
-        T_s = t_s_1 * self.radiation_tensor(transition=transition, K=Kr, Q=Qr)
+        r"""
+        Add the Emission using precomputed parameter :math:`t_{a1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            T_e &= \text{coefficient}
+
+            T_s &= t_{s1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
+
+        Reference: (LL04 7.38)
         """
         self.matrix_builder.add_coefficient_from_df(df_e)
 
@@ -287,13 +306,18 @@ class MultiTermAtomSEE:
         self.matrix_builder.add_coefficient_from_df(df_s)
 
     def precompute_relaxation(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        """
-        Precompute all relaxation parameters r_a_1, r_e_0, r_s_1:
-        R_A = - r_a_1 * radiation_tensor
-        R_E = - r_e_0
-        R_S = - r_s_1 * radiation_tensor
+        r"""
+        Precompute all relaxation parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            R_A &= - r_{a1} * \text{radiation_tensor}
+
+            R_E &= - r_{e0}
+
+            R_S &= - r_{s1} * \text{radiation_tensor}
+
+        Reference: (LL04 7.38)
         """
         dfs_a = []
         dfs_e = []
@@ -327,13 +351,18 @@ class MultiTermAtomSEE:
 
     @log_method
     def add_precomputed_relaxation(self, df_a, df_e, df_s, radiation_tensor):
-        """
-        Add all relaxation rates using precomputed parameters r_a_1, r_e_0, r_s_1:
-        R_A = - r_a_1 * radiation_tensor
-        R_E = - r_e_0
-        R_S = - r_s_1 * radiation_tensor
+        r"""
+        Add all relaxation rates using precomputed parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
 
-        Reference: (7.38)
+        .. math::
+
+            R_A &= - r_{a1} * \text{radiation_tensor}
+
+            R_E &= - r_{e0}
+
+            R_S &= - r_{s1} * \text{radiation_tensor}
+
+        Reference: (LL04 7.38)
         """
         df_a = df_a.merge(
             radiation_tensor.get_df().rename(
@@ -359,10 +388,10 @@ class MultiTermAtomSEE:
     def precompute_r_a(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
-        """
-        Compute r_a_1
+        r"""
+        Compute :math:`r_{a1}`
 
-        Reference: (7.46a)
+        Reference: (LL04 7.46a)
         """
         L = term.L
         S = term.S
@@ -431,10 +460,10 @@ class MultiTermAtomSEE:
     def precompute_r_e(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
-        """
-        Compute r_e_0
+        r"""
+        Compute :math:`r_{e0}`
 
-        Reference: (7.46b)
+        Reference: (LL04 7.46b)
         """
         dfs = []
         for term_lower in self.level_registry.terms.values():
@@ -465,10 +494,10 @@ class MultiTermAtomSEE:
     def precompute_r_s(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
-        """
-        Compute r_s_1
+        r"""
+        Compute :math:`r_{s1}`
 
-        Reference: (7.46c)
+        Reference: (LL04 7.46c)
         """
         L = term.L
         S = term.S
@@ -537,10 +566,10 @@ class MultiTermAtomSEE:
 
     @staticmethod
     def gamma(term: Term, J: float, Jʹ: float):
-        """
-        Compute Gamma which is in the coherence relaxation kernel N.
+        r"""
+        Compute :math:`\Gamma` which is in the coherence relaxation kernel :math:`N`.
 
-        Reference: (7.42)
+        Reference: (LL04 7.42)
         """
 
         S = term.S
@@ -554,11 +583,14 @@ class MultiTermAtomSEE:
         return result
 
     def precompute_n(self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
-        """
-        Precompute coherence relaxation parameters n_0, n_1:
-        N = n_0 + n_1 * nu_larmor
+        r"""
+        Precompute coherence relaxation parameters :math:`n_0, n_1`:
 
-        Reference: (7.41)
+        .. math::
+
+            N = n_0 + n_1 * \nu_{larmor}
+
+        Reference: (LL04 7.41)
         """
 
         level = self.level_registry.get_level(term=term, J=J)
@@ -608,10 +640,10 @@ class MultiTermAtomSEE:
         Jl: float,
         Jʹl: float,
     ):
-        """
-        Precompute t_a_1
+        r"""
+        Precompute :math:`t_{a1}`
 
-        Reference: (7.45a)
+        Reference: (LL04 7.45a)
         """
         S = term.S
         L = term.L
@@ -668,10 +700,10 @@ class MultiTermAtomSEE:
         Ju: float,
         Jʹu: float,
     ):
-        """
-        Precompute Te coefficient
+        r"""
+        Precompute :math:`T_e` coefficient
 
-        Reference: (7.45b)
+        Reference: (LL04 7.45b)
         """
 
         S = term.S
@@ -724,10 +756,10 @@ class MultiTermAtomSEE:
         Ju: float,
         Jʹu: float,
     ):
-        """
-        Precompute t_s_1
+        r"""
+        Precompute :math:`t_{s1}`
 
-        Reference: (7.45c)
+        Reference: (LL04 7.45c)
         """
         S = term.S
         L = term.L
@@ -775,7 +807,7 @@ class MultiTermAtomSEE:
 
     @log_method
     def get_solution(self) -> Rho:
-        """
+        r"""
         Get the solution of the Statistical Equilibrium Equations.
 
         :return: Rho instance
@@ -783,12 +815,18 @@ class MultiTermAtomSEE:
         The solution is constructed by manual linalg solving, which proved to be a bit more reliable
         than available homogeneous solvers. The idea is simple:
 
-        The matrix equation is A x = 0.
-        let x[0] = 1 (it is always rho_0_0 of some kind, so it is least likely to be exactly zero)
+        The matrix equation is :math:`A x = 0`.
+
+        Let :math:`x[0] = 1` (it is always :math:`\rho_0^0` of some kind, so it is least likely to be exactly zero).
         Then we have a non-homogeneous system of equations:
-        A[1:] x = 0
-        A[1:, 1:] x[1:] = -A[1:, 0]
-        This system generally behaves well enough for linalg.solve to succeed.
+
+        .. math::
+
+            A[1:] x &= 0
+
+            A[1:, 1:] x[1:] &= -A[1:, 0]
+
+        This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
         """
         # sol = np.linalg.solve(
         #     self.matrix_builder.rho_matrix[:, 1:, 1:],
@@ -814,12 +852,11 @@ class MultiTermAtomSEE:
 
         return rho
 
-    def concat_and_finalize_precomputed_dfs(self, dfs: List[pd.DataFrame], value_columns: List[str]) -> pd.DataFrame:
+    def concat_and_finalize_precomputed_dfs(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
         """
         A helper function to finalize the precomputed frames.
 
         :param dfs: list of dataframes.
-        :param value_columns: Todo: remove this parameter.
         :return: finalized precomputed frame.
         """
         assert len(dfs) > 0, "Empty precomputed of dataframe"
@@ -844,7 +881,7 @@ class MultiTermAtomSEE:
     def _add_equation_index(self, df: pd.DataFrame, term_id: str, K: str, Q: str, J: str, Jʹ: str, index: str):
         """
         A helper function to keep track of which matrix row/column each term in SEE corresponds to.
-        Set either index0 or index1 using the provided K, Q, ... .
+        Set either index0 or index1 using the provided :math:`K, Q,` ....
         See solrat.multi_term_atom.object.rho_matrix_builder.RhoMatrixBuilder.add_coefficient_from_df for reference.
         """
         df[index] = df.apply(
@@ -857,33 +894,35 @@ class MultiTermAtomSEE:
 
 
 class MultiTermAtomSEELTE:
-    def __init__(
-        self,
-        level_registry: LevelRegistry,
-    ):
-        """
-        Statistical Equilibrium Equations within Multi-Term atom model - an LTE implementation.
-        This class will always output an LTE-distributed Rho tensor.
+    r"""
+    Statistical Equilibrium Equations within Multi-Term atom model - an LTE implementation.
+    This class will always output an LTE-distributed Rho tensor.
 
-        TODO: need reference.
+    :param level_registry:  LevelRegistry instance for the multi-term atom under study.
 
-        :param level_registry:  LevelRegistry instance for the multi-term atom under study.
-        This is needed to be able to use SEELTE directly in nonLTE Radiative Transfer Equations.
-        """
+    This is needed to be able to use SEELTE directly in nonLTE Radiative Transfer Equations.
+    """
+
+    def __init__(self, level_registry: LevelRegistry):
         self.level_registry = level_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
 
     @log_method
     def get_solution(self, atmosphere_parameters: AtmosphereParameters) -> Rho:
-        """
+        r"""
         Return LTE Rho solution.
 
         Assume Zeeman splitting does not cause energy shifts so large that they affect populations.
-        then
-        rhoKQJJʹ ~ delta(J, Jʹ) sqrt(2J+1) exp(-E_J/kT)
-        trace = sum( sqrt(2J+1) rhoKQJJʹ ) = 1
 
-        Reference: (3.108) (10.118)
+        Then:
+
+        .. math::
+
+            \rho^K_Q(J,Jʹ) &\sim \delta_{J,Jʹ}\delta_{K,0}\delta_{Q,0} \sqrt{2J+1} \mathrm{exp}(-E_J/kT)
+
+            Tr[\rho^K_Q(J,Jʹ)] &= \Sigma \sqrt{2J+1} \rho^0_0(J,Jʹ) = 1
+
+        Reference: (LL04 3.108) (LL04 10.118)
         """
 
         T = atmosphere_parameters.temperature_K

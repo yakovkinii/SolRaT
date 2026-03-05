@@ -25,6 +25,23 @@ def merge(df1, df2, on=None):
 
 
 class SumLimits:
+    r"""
+    Sum limits base class.
+
+    The inheriting classes control the limits for the summation indexes such as :math:`L, J, K, Q,` etc.
+    We start from the 'base_frame' which has some
+    indexes and quantities already pre-merged, like :math:`L_l, L_u, S`, Einstein coefficients.
+    Then we can determine the boundaries of the summation indexes that follow.
+
+    Triangular means from :math:`|a-b|` to :math:`a + b` (both ends included)
+
+    FromTo means from :math:`a` to :math:`b` (both ends included)
+
+    Intersection means including only shared values of 2 or more sets of values.
+
+    For further information inspect each Looper individually.
+    """
+
     @classmethod
     def get_indexes(cls):
         return {k: v for k, v in cls.__dict__.items() if not k.startswith("__") and not callable(v)}
@@ -92,7 +109,7 @@ class Frame:
         self._n_factors = 0  # for naming only
         logging.info(f"Frame shape after initialization: {self.frame.shape}")
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         result = "=" * 10 + "\n"
         result += "FRAME:\n"
         result += "=" * 10 + "\n"
@@ -107,15 +124,6 @@ class Frame:
             result += str(factor) + "\n"
 
         return result
-
-    def copy(self):
-        new_frame = Frame()
-        new_frame.frame = self.frame.copy()
-        new_frame.factors = {
-            name: Frame.FrameFactor(factor.name, factor.call, factor.dependencies.copy(), factor.merged)
-            for name, factor in self.factors.items()
-        }
-        return new_frame
 
     def construct_sub_frame(self, columns: List[str]) -> pd.DataFrame:
         """
@@ -295,7 +303,7 @@ class Frame:
         frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
 
-    def debug_reduce_legacy(self):
+    def debug_reduce_legacy(self):  # pragma: no cover
         for factor_name in list(self.factors.keys()):
             self.merge_factor(factor_name)
         factor_names = list(self.factors.keys())
