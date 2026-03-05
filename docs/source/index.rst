@@ -12,7 +12,7 @@ Key Features
 ------------
 *   **Physics**: Solves non-LTE radiative transfer for multi-term atoms.
 *   **Magnetic Fields**: Handles arbitrary magnetic field strengths (Zeeman, Hanle, Paschen-Back effects).
-*   **Atmosphere**: Supports multi-slab atmospheres for height stratification.
+*   **Atmosphere**: Supports multi-slab atmospheres for height stratification under anisotropic illumination (ATL08, HAZEL2).
 *   **Flexibility**: Provides a high-level meta-language allowing you to write code that directly resembles the underlying mathematical equations.
 *   **Accessibility**: SolRaT is free, open-source, and platform-independent.
 *   **Performance**: SolRaT uses high-performance libraries that leverage SIMD instruction sets.
@@ -25,9 +25,13 @@ The code provides a multi-level framework for modeling radiative transfer:
 
 *   **Public API** allows to run built-in RT models. Currently, SolRaT ships the non-LTE multi-term atom model (LL04) with multiple constant-slab atmosphere stratification.
 *   **Modeling API** allows to extend existing models or create completely new ones.
-*   **SolRaT Engine** introduces a meta-language that allows the user to write a human-readable code that directly resembles the underlying the mathematical equations. The user does not need to focus on code optimization, as it is handled under the hood.
+*   **SolRaT Engine** introduces a meta-language that allows the user to write a human-readable code that directly resembles the underlying mathematical equations. The user does not need to focus on code optimization, as it is handled under the hood.
 
 [LL04] Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)
+
+[ATL08] Asensio Ramos, A., Trujillo Bueno, J., & Landi Degl’Innocenti, E. (2008). Advanced Forward Modeling and Inversion of Stokes Profiles Resulting from the Joint Action of the Hanle and Zeeman Effects. The Astrophysical Journal, 683(1), 542–565.
+
+[HAZEL2] [Link](https://github.com/aasensio/hazel2)
 
 How to Cite
 -----------
