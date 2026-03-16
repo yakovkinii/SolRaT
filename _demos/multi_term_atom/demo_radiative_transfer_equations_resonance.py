@@ -3,16 +3,10 @@ import logging
 import numpy as np
 from yatools import logging_config
 
-from solrat.gui.plots.plot_stokes_profiles import StokesPlotter
-from solrat.multi_term_atom.atomic_data.mock import get_mock_atom_data
-from solrat.multi_term_atom.legacy.radiative_transfer_equations_legacy import (
-    MultiTermAtomRTELegacy,
-)
-from solrat.multi_term_atom.object.angles import Angles
-from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
-from solrat.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.atom_model.model_registry import PreconfiguredModels
+from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
@@ -24,37 +18,15 @@ def main():
     The results are compared with the analytical solution.
     Reference: (10.127)
     """
+    # TODO check if V is non-zero
+
     logging_config.init(logging.INFO)
 
-    level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu = get_mock_atom_data()
-    nu = np.arange(reference_nu_sm1 - 1e11, reference_nu_sm1 + 1e11, 1e8)  # Hz
+    model = PreconfiguredModels.multi_term_atom_mock()
+    reference_nu = lambda_A_to_frequency_hz(model.config.reference_lambda_A)
 
-    atmosphere_parameters = AtmosphereParameters(
-        magnetic_field_gauss=0, atomic_mass_amu=atomic_mass_amu, temperature_K=5500, delta_v_turbulent_cm_sm1=50_00
-    )
-    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(h_arcsec=30)
+    nu = np.arange(reference_nu - 1e11, reference_nu + 1e11, 1e8)  # Hz
 
-    see = MultiTermAtomSEE(
-        level_registry=level_registry,
-        transition_registry=transition_registry,
-        disable_r_s=True,
-    )
-
-    see.fill_all_equations(
-        atmosphere_parameters=atmosphere_parameters,
-        radiation_tensor_in_magnetic_frame=radiation_tensor,
-    )
-    rho = see.get_solution()
-
-    rte_legacy = MultiTermAtomRTELegacy(
-        transition_registry=transition_registry,
-        nu=nu,
-    )
-    rte = MultiTermAtomRTE(
-        level_registry=level_registry,
-        transition_registry=transition_registry,
-        nu=nu,
-    )
     angles = Angles(
         chi=np.pi / 7,
         theta=np.pi / 7,
@@ -62,8 +34,43 @@ def main():
         chi_B=np.pi / 5,
         theta_B=np.pi / 5,
     )
-    rtc = rte.calculate_all_coefficients(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
-    eta_sI, eta_sQ, eta_sU, eta_sV = rtc.eta_rho_sI, rtc.eta_rho_sQ, rtc.eta_rho_sU, rtc.eta_rho_sV
+
+    see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
+    rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
+
+    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        h_arcsec=30,
+    )
+
+    atmosphere_parameters = model.AtmosphereParameters(
+        model_config=model.config,
+        magnetic_field_gauss=0,
+        temperature_K=5500,
+        delta_v_turbulent_cm_sm1=50_00,
+    )
+
+    plotter = StokesPlotter(r"$\eta_s$ vs Frequency", x_label=r"$\nu$ (1/s)")
+
+    # Construct SEE
+    see.fill_all_equations(
+        atmosphere_parameters=atmosphere_parameters,
+        radiation_tensor_in_magnetic_frame=radiation_tensor.rotate_to_magnetic_frame(angles=angles),
+    )
+
+    # Solve SEE
+    rho = see.get_solution()
+
+    # Solve RTE
+    rtc = rte.calculate_all_coefficients(
+        atmosphere_parameters=atmosphere_parameters,
+        rho=rho,
+        angles=angles,
+    )
+
+    # Analytical expressions:
+    model_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()
+    rte_legacy = model_legacy.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
+
     eta_sI_analytic = rte_legacy.eta_s_no_field(
         rho=rho, stokes_component_index=0, atmosphere_parameters=atmosphere_parameters, angles=angles
     )
@@ -77,14 +84,13 @@ def main():
         rho=rho, stokes_component_index=3, atmosphere_parameters=atmosphere_parameters, angles=angles
     )
 
-    plotter = StokesPlotter(r"$\eta_s$ vs Frequency", x_label=r"$\nu$ (1/s)")
     plotter.add(
         nu,
         0,
-        np.real(eta_sI) / np.max(np.abs(eta_sI_analytic)),
-        np.real(eta_sQ) / np.max(np.abs(eta_sI_analytic)),
-        np.real(eta_sU) / np.max(np.abs(eta_sI_analytic)),
-        np.real(eta_sV) / np.max(np.abs(eta_sI_analytic)),
+        np.real(rtc.eta_rho_sI) / np.max(np.abs(eta_sI_analytic)),
+        np.real(rtc.eta_rho_sQ) / np.max(np.abs(eta_sI_analytic)),
+        np.real(rtc.eta_rho_sU) / np.max(np.abs(eta_sI_analytic)),
+        np.real(rtc.eta_rho_sV) / np.max(np.abs(eta_sI_analytic)),
         label="SEE+RTE implementation",
     )
     plotter.add(

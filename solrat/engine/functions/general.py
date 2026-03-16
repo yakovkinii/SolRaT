@@ -3,6 +3,9 @@ from functools import lru_cache
 
 
 def ensure_positive_if_zero(a: float):
+    """
+    Make sure there are no -0 floats.
+    """
     if a == -0.0:
         return 0.0
     else:

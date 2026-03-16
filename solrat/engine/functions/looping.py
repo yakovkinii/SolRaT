@@ -12,12 +12,12 @@ def FROMTO(a, b):
 
 
 def triangular(a, b):
-    """Triangular Range: from |a-b| to a+b"""
+    r"""Triangular Range: from :math:`|a-b|` to :math:`a+b`"""
     return fromto(abs(a - b), a + b)
 
 
 def TRIANGULAR(a, b):
-    """Triangular Range: from |a-b| to a+b"""
+    r"""Triangular Range: from :math:`|a-b|` to :math:`a+b`"""
     return f"triangular({a}, {b})"
 
 

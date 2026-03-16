@@ -2,7 +2,7 @@ from solrat.engine.functions.looping import fromto, intersection, projection, tr
 
 
 def nested_loops(**kwargs):
-    """
+    r"""
     :param kwargs: iterables to loop through, with iterables for their values.
     :return: generator
 

@@ -17,6 +17,10 @@ def get_unique_name() -> str:
 
 
 class Looper:
+    """
+    Base Looper class
+    """
+
     def __init__(self):
         self.name = None
         self.is_name_user_set = None
@@ -57,6 +61,10 @@ class Looper:
 
 
 class DummyOrAlreadyMerged(Looper):
+    """
+    Looper class for the pre-merged variables.
+    """
+
     def __init__(self, dependency: Union[Looper, None] = None):
         super().__init__()
         self.dependency: Union[Looper, None] = dependency
@@ -79,6 +87,10 @@ class DummyOrAlreadyMerged(Looper):
 
 
 class Value(Looper):
+    """
+    Looper class for a single value.
+    """
+
     def __init__(self, value: Union[int, float, str]):
         super().__init__()
         self.value = value
@@ -96,7 +108,10 @@ class Value(Looper):
         return frame
 
 
-def wrap_in_value_if_needed(x: Union[Looper, int, float, str]) -> Looper:
+def wrap_in_value_if_needed(x: Union[Looper, int, float]) -> Looper:
+    """
+    Helper function to wrap int or float into :any:`Value` looper.
+    """
     if isinstance(x, Looper):
         return x
     if isinstance(x, (int, float)):
@@ -105,6 +120,10 @@ def wrap_in_value_if_needed(x: Union[Looper, int, float, str]) -> Looper:
 
 
 class FromTo(Looper):
+    """
+    Inclusive range looper
+    """
+
     def __init__(self, start: Union[Looper, int, float], end: Union[Looper, int, float]):
         super().__init__()
         self.start: Looper = wrap_in_value_if_needed(start)
@@ -143,6 +162,10 @@ class FromTo(Looper):
 
 
 class Projection(Looper):
+    r"""
+    Projection looper: from -X to X (inclusive).
+    """
+
     def __init__(self, vector: Union[Looper, int, float]):
         super().__init__()
         self.vector: Looper = wrap_in_value_if_needed(vector)
@@ -173,6 +196,10 @@ class Projection(Looper):
 
 
 class Triangular(Looper):
+    r"""
+    Triangular looper: from :math:`|A-B|` to :math:`A+B`
+    """
+
     def __init__(self, vector1: Union[Looper, int, float], vector2: Union[Looper, int, float]):
         super().__init__()
         self.vector1: Looper = wrap_in_value_if_needed(vector1)
@@ -216,6 +243,10 @@ class Triangular(Looper):
 
 
 class Difference(Looper):
+    """
+    Difference looper: A - B
+    """
+
     def __init__(self, left: Looper, right: Looper):
         super().__init__()
         self.left = wrap_in_value_if_needed(left)
@@ -251,6 +282,10 @@ class Difference(Looper):
 
 
 class Intersection(Looper):
+    """
+    Intersection looper: only common values among multiple loopers.
+    """
+
     def __init__(self, *args: Looper):
         super().__init__()
         self.loopers = [wrap_in_value_if_needed(arg) for arg in args]
@@ -303,6 +338,10 @@ class Constraint(DummyOrAlreadyMerged):
 
 
 class ApplyConstraint(Looper):
+    """
+    ApplyConstraint looper: for applying the constraint to another looper.
+    """
+
     def __init__(self, looper: Looper, constraint: Constraint):
         super().__init__()
         # self.loopers = [wrap_in_value_if_needed(arg) for arg in args]

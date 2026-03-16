@@ -1,35 +1,56 @@
-multi_term_atom
+Built-in Models
 ===============
 
 .. toctree::
    :maxdepth: 1
    :glob:
 
-   solrat.multi_term_atom*
+   solrat.atom_model.model_registry*
 
-engine
-======
+Base Atom Model
+===============
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   solrat.atom_model.base_atom_model*
+
+Multi-Term Atom Model
+=====================
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   solrat.atom_model.multi_term_atom_model
+   solrat.atom_model.multi_term_atom_model.*
+
+Multi-Term Atom Model (legacy)
+==============================
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   solrat.atom_model.multi_term_atom_model_legacy
+   solrat.atom_model.multi_term_atom_model_legacy.*
+
+Multi-Term Atom Model (LTE)
+===========================
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   solrat.atom_model.multi_term_atom_model_lte
+   solrat.atom_model.multi_term_atom_model_lte.*
+
+SolRaT Engine
+=============
 
 .. toctree::
    :maxdepth: 1
    :glob:
 
    solrat.engine*
-
-common
-======
-
-.. toctree::
-   :maxdepth: 1
-   :glob:
-
-   solrat.common*
-
-gui
-===
-
-.. toctree::
-   :maxdepth: 1
-   :glob:
-
-   solrat.gui*

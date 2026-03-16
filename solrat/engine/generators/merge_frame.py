@@ -1,9 +1,3 @@
-"""
-TODO
-TODO  This file needs improved documentation.
-TODO
-"""
-
 import inspect
 import logging
 from typing import Callable, Dict, List, Union
@@ -15,6 +9,9 @@ from solrat.engine.generators.merge_loopers import DummyOrAlreadyMerged, Looper
 
 
 def merge(df1, df2, on=None):
+    """
+    Merge helper function with overwritten default behavior.
+    """
     if on is None:
         on = list(set(df1.columns).intersection(set(df2.columns)))
 
@@ -52,32 +49,53 @@ class SumLimits:
             v.name = None
 
 
-class Frame:
-    class FrameFactor:
-        def __init__(
-            self,
-            name: str,
-            factor: Callable = None,
-            dependencies: List[str] = None,
-            merged: bool = False,
-            elementwise: bool = False,
-        ):
-            self.name: str = name
-            self.call: Callable = factor
-            if dependencies is not None:
-                self.dependencies: List[str] = dependencies
-            else:
-                assert factor is not None
-                self.dependencies: List[str] = [p.name for p in inspect.signature(factor).parameters.values()]
-            self.merged: bool = merged
-            self.elementwise: bool = elementwise
-            logging.info(f"Created: {self}")
+class FrameFactor:
+    """
+    Single multiplicand in the frame
+    """
 
-        def __repr__(self):
-            return (
-                f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. "
-                f"Elementwise: {self.elementwise}"
-            )
+    def __init__(
+        self,
+        name: str,
+        factor: Callable = None,
+        dependencies: List[str] = None,
+        merged: bool = False,
+        elementwise: bool = False,
+    ):
+        self.name: str = name
+        self.call: Callable = factor
+        if dependencies is not None:
+            self.dependencies: List[str] = dependencies
+        else:
+            assert factor is not None
+            self.dependencies: List[str] = [p.name for p in inspect.signature(factor).parameters.values()]
+        self.merged: bool = merged
+        self.elementwise: bool = elementwise
+        logging.info(f"Created: {self}")
+
+    def __repr__(self):
+        return (
+            f"FrameFactor {self.name}. Dependencies: {self.dependencies}. Merged: {self.merged}. "
+            f"Elementwise: {self.elementwise}"
+        )
+
+    def copy(self):
+        return FrameFactor(
+            name=self.name,
+            factor=self.call,
+            dependencies=self.dependencies.copy(),
+            merged=self.merged,
+            elementwise=self.elementwise,
+        )
+
+
+class Frame:
+    r"""
+    Frame engine for performing multiplication and summation.
+
+    Loopers are merged immediately to the base frame.
+    Factors are stored and evaluated+merged when needed.
+    """
 
     @staticmethod
     def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits)) -> "Frame":
@@ -85,10 +103,6 @@ class Frame:
         return Frame(base_frame=base_frame, **looper_dict)
 
     def __init__(self, base_frame: pd.DataFrame = None, **kwargs: Looper):
-        """
-        1. loopers are merged IMMEDIATELY to the base frame.
-        2. factors are stored and evaluated+merged when needed.
-        """
         if base_frame is not None:
             self.frame: pd.DataFrame = base_frame.copy()
         else:
@@ -105,9 +119,17 @@ class Frame:
             self.frame = merge(self.frame, sub_frame_filled)
             logging.info(f"Merged {looper_name}, frame shape = {self.frame.shape}")
 
-        self.factors: Dict[str, Frame.FrameFactor] = {}
+        self.factors: Dict[str, FrameFactor] = {}
         self._n_factors = 0  # for naming only
         logging.info(f"Frame shape after initialization: {self.frame.shape}")
+
+    def copy(self):
+        new_frame = Frame()
+        new_frame.frame = self.frame.copy()
+        new_frame.factors = {k: factor.copy() for k, factor in self.factors.items()}
+        new_frame._n_factors = self._n_factors
+        logging.info(f"new frame: {new_frame}")
+        return new_frame
 
     def __repr__(self):  # pragma: no cover
         result = "=" * 10 + "\n"
@@ -120,8 +142,8 @@ class Frame:
         result += "-" * 10 + "\n"
         result += "factors:\n"
         result += "-" * 10 + "\n"
-        for factor in self.factors:
-            result += str(factor) + "\n"
+        for fn, factor in self.factors.items():
+            result += f"{fn}: {factor}\n"
 
         return result
 
@@ -141,19 +163,16 @@ class Frame:
         for factor_callable in args:
             name = f"factor_{self._n_factors}"
             assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
-            self.factors[name] = self.FrameFactor(name, factor_callable, elementwise=elementwise)
+            self.factors[name] = FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
         for name, factor_callable in kwargs.items():
             assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
-            self.factors[name] = self.FrameFactor(name, factor_callable, elementwise=elementwise)
+            self.factors[name] = FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
     def get_dependent_factors(self, column: str) -> List[str]:
         return [name for name, factor in self.factors.items() if column in factor.dependencies]
-
-    # def get_merged_independent_factors(self, column: str) -> List[str]:
-    #     return [name for name, factor in self.factors.items() if factor.merged and column not in factor.dependencies]
 
     def merge_factor(self, factor_name: str):
         """
@@ -193,7 +212,7 @@ class Frame:
         new_factor_name = "*".join(factor_names)
         self.frame[new_factor_name] = self.frame[factor_names].prod(axis=1)
         dependencies = list(set().union(*[self.factors[name].dependencies for name in factor_names]))
-        self.factors[new_factor_name] = self.FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
+        self.factors[new_factor_name] = FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
 
         for factor_name in factor_names:
             del self.frame[factor_name]
@@ -222,6 +241,7 @@ class Frame:
         logging.info(f"Reducing column {column}:")
         dependent_factors = self.get_dependent_factors(column)
         logging.info(f"Dependent factors: {dependent_factors}")
+        logging.info(f"Dependent factors details: {[self.factors[df] for df in dependent_factors]}")
 
         if len(dependent_factors) == 0:
             logging.info(f"No dependent factors for column {column}, dropping it directly.")
@@ -250,15 +270,6 @@ class Frame:
             logging.info("Calculating the sum over the last looper and returning the result")
             return self.frame[factor_name].sum()
 
-        # Otherwise, group by the loopers that will be needed in future, and summate over current looper
-        # self.frame = self.frame.groupby(group_columns).agg(
-        #     {
-        #         factor_name: "sum",
-        #          **{f: "first" for f in merged_independent_factors},
-        # }
-        # )
-        # self.frame = self.frame.reset_index()
-
         self.frame = self.frame.groupby(group_columns)[factor_name].sum().reset_index()
         logging.info(f"  Reduced frame shape: {self.frame.shape}")
         return None
@@ -272,7 +283,7 @@ class Frame:
         return result
 
     def reduce(self, *args: Union[Looper, str]):
-        """usage:
+        r"""usage:
         frame.reduce() to reduce all,
         frame.reduce(col1, col2, ..., col5, col6) to specify first and last columns to reduce
         """

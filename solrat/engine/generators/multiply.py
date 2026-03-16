@@ -2,12 +2,7 @@ import numpy as np
 
 
 def multiply(*args, is_complex=False, is_scalar=False):
-    """
-    DO NOT DELAY EVALUATION!
-    DO NOT PUT multiply INSIDE DELAYED-EVALUATION FUNCTIONS/CALLABLES!
-
-    ---
-
+    r"""
     multiplies all args in order. If arg is a callable, it can be short-circuited.
 
     usage:
@@ -18,37 +13,24 @@ def multiply(*args, is_complex=False, is_scalar=False):
 
     It is most efficient to put the most likely to be 0 terms first, like delta or 3j symbols.
 
-    ==== NOTICE ON CALLABLES ====
+    ==== NOTE ON CALLABLES ====
 
-    multiply should be safe to use in loops on its own.
+    multiply is safe to use in loops on its own.
     It returns immediately, during the loop iteration, so the fact that lambdas in the arguments
     use references to the variables and not the actual values will not cause errors.
 
     The only scenario where it can cause an error is if the multiply function itself is evaluated
-    with delay.
+    with delay. This behavior is not specific to multiply, it follows from the behavior of delayed
+    evaluation as implemented in python.
 
-    If multiply is to be used in a callable, one should proceed with utmost caution, as it can cause
-    hard-to-detect errors, as illustrated below.
-
-    multiply has to be evaluated IMMEDIATELY, or the innermost lambda should encapsulate
-    the entire scope where the local variables change.
-
-    The following code illustrates the problem:
+    The following code illustrates the potential problem:
 
     callables = []
     for i in [0, 1]:
         callables.append(lambda : multiply(
             lambda: delta(i, 1)  # This will be evaluated for i==1 both times!
-        ))
-    results = [c() for c in callables]
+        ))  # multiply should be evaluated here instead of being delayed.
 
-    Same goes for the following:
-
-    callables = []
-    for i in [0, 1]:
-        callables.append(lambda : multiply(
-            delta(i, 1) # This will be evaluated for i==1 both times!
-        ))
     results = [c() for c in callables]
     """
     if is_scalar:

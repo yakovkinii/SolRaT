@@ -1,22 +1,12 @@
 import logging
-from pathlib import Path
 
 import numpy as np
-from numpy import real
 from yatools import logging_config
 
-from solrat.common.constants import atomic_mass_unit_g, kB_erg_Km1
-from solrat.common.functions import lambda_cm_to_frequency_hz
-from solrat.gui.plots.plot_stokes_profiles import StokesPlotter_IV
-from solrat.multi_term_atom.atomic_data.HeI import (
-    fill_precomputed_He_I_D3_data,
-    get_He_I_D3_data,
-)
-from solrat.multi_term_atom.object.angles import Angles
-from solrat.multi_term_atom.object.atmosphere_parameters import AtmosphereParameters
-from solrat.multi_term_atom.object.radiation_tensor import RadiationTensor
-from solrat.multi_term_atom.radiative_transfer_equations import MultiTermAtomRTE
-from solrat.multi_term_atom.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.atom_model.model_registry import PreconfiguredModels
+from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV
 
 
 def main():
@@ -30,21 +20,12 @@ def main():
 
     logging_config.init(logging.INFO)
 
-    # Load the atomic data for He I D3
-    level_registry, transition_registry, reference_lambda_A, reference_nu_sm1, atomic_mass_amu = get_He_I_D3_data()
+    model = PreconfiguredModels.multi_term_atom_HeID3()
+    reference_lambda = model.config.reference_lambda_A
 
     # The calculation itself needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda_A - 2, reference_lambda_A + 2, 5e-4)
-    nu = lambda_cm_to_frequency_hz(lambda_A * 1e-8)
-
-    # Set up the statistical equilibrium equations.
-    # Do not pre-compute coefficients, load them from file instead for the purpose of this demo.
-    see = MultiTermAtomSEE(
-        level_registry=level_registry,
-        transition_registry=transition_registry,
-        precompute=False,
-    )
-    fill_precomputed_He_I_D3_data(see, root=Path(__file__).resolve().parent.parent.parent.as_posix())
+    lambda_A = np.arange(reference_lambda - 2, reference_lambda + 2, 5e-4)
+    nu = lambda_A_to_frequency_hz(lambda_A)
 
     angles = Angles(
         chi=0,
@@ -54,47 +35,47 @@ def main():
         theta_B=0,
     )
 
-    # Set up the radiative transfer equations
-    rte = MultiTermAtomRTE(
-        level_registry=level_registry,
-        transition_registry=transition_registry,
-        nu=nu,
-    )
+    see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
+    rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
     # Fill the radiation tensor with anisotropic radiation field 10 arcsec from the Sun's apparent surface
-    radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_NLTE_n_w_parametrized(h_arcsec=10)
-    # radiation_tensor = RadiationTensor(transition_registry=transition_registry).fill_planck(T_K=5000)
+    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        h_arcsec=10,
+    )
 
     # Set up the plotter
     plotter = StokesPlotter_IV(title="He I D3: Emission coefficient vs wavelength")
 
     # loop through the magnetic field values
     for Bz in [20000, 40000, 60000, 80000, 100000]:
-        # for Bz in [20000]:
-        # Set up the atmosphere parameters
-        atmosphere_parameters = AtmosphereParameters(
+        atmosphere_parameters = model.AtmosphereParameters(
+            model_config=model.config,
             magnetic_field_gauss=Bz,
-            temperature_K=1_000_00**2 / kB_erg_Km1 / 2 * 4 * atomic_mass_unit_g,
-            atomic_mass_amu=atomic_mass_amu,
+            temperature_K=1000,  # Low temperature to see the details of fine structure
         )
 
-        # Construct all equations for rho
+        # Construct SEE
         see.fill_all_equations(
-            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+            atmosphere_parameters=atmosphere_parameters,
+            radiation_tensor_in_magnetic_frame=radiation_tensor.rotate_to_magnetic_frame(angles=angles),
         )
 
-        # Solve all equations for rho
+        # Solve SEE
         rho = see.get_solution()
 
-        rtc = rte.calculate_all_coefficients(atmosphere_parameters=atmosphere_parameters, rho=rho, angles=angles)
-        eta_rho_sI = rtc.eta_rho_sI
-        eta_rho_sV = rtc.eta_rho_sV
+        # Solve RTE
+        rtc = rte.calculate_all_coefficients(
+            atmosphere_parameters=atmosphere_parameters,
+            rho=rho,
+            angles=angles,
+        )
 
+        # Plot emission coefficient
         plotter.add(
             lambda_A=lambda_A,
-            stokes_I=real(eta_rho_sI),
-            stokes_V=real(eta_rho_sV),
-            reference_lambda_A=reference_lambda_A,
+            stokes_I=rtc.get_epsilon_I(),
+            stokes_V=rtc.get_epsilon_V(),
+            reference_lambda_A=reference_lambda,
             color="auto",
             label=rf"$B_z = {Bz/1000:.0f}$ kG",
         )

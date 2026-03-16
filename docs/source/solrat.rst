@@ -12,10 +12,8 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
-   solrat.common
+   solrat.atom_model
    solrat.engine
-   solrat.gui
-   solrat.multi_term_atom
 
 Submodules
 ----------

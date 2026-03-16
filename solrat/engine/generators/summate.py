@@ -4,7 +4,7 @@ from solrat.engine.functions.looping import fromto, intersection, projection, tr
 
 
 def summate(expression: callable, tqdm_level=0, **kwargs):
-    """
+    r"""
     :param expression: expression to sum
     :param tqdm_level: Number of levels of tqdm to show.
     For tqdm_level>1 multiline editing support is needed from console.
