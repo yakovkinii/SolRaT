@@ -34,8 +34,7 @@ as it is handled under the hood.
 3. Explore the [documentation](https://solrat.readthedocs.io/latest/).
 
 #### Citing:
-SolRaT is currently in beta testing. Journal article is pending and the detailed documentation is under development.
-In the meantime, if SolRaT has found use in your research, please cite it as 
+Journal article is pending. In the meantime, if SolRaT has found use in your research, please cite it as 
 ```
 Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yakovkinii.com/solrat/
 ```
