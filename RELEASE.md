@@ -33,6 +33,11 @@
     sphinx-apidoc -o .\docs\source\ ./solrat -M -e -T
     ```
     ```bash
+    rm docs/source/solrat.rst
+    rm docs/source/solrat.about.rst
+    rm docs/source/solrat.atom_model.rst
+    ```
+    ```bash
     sphinx-build -M html docs/source/ docs/build/
     ```
     ```bash

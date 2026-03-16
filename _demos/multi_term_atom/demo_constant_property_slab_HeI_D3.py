@@ -29,12 +29,12 @@ def main():
     reference_lambda = model.config.reference_lambda_A
 
     # The calculation itself needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda - 2, reference_lambda + 2, 5e-4)
+    lambda_A = np.arange(reference_lambda - 0.5, reference_lambda + 0.8, 5e-4)
     nu = lambda_A_to_frequency_hz(lambda_A)
 
     angles = Angles(
         chi=0,
-        theta=45,
+        theta=np.pi / 4,
         gamma=0,
         chi_B=0,
         theta_B=0,

@@ -11,8 +11,8 @@ from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
 from solrat.engine.functions.special import pseudo_hash
 
 
-class TestRadiativeTransferEquations(unittest.TestCase):
-    def test_radiative_transfer_equations(self):
+class TestRadiativeTransferEquationsD3(unittest.TestCase):
+    def test_radiative_transfer_equations_d3(self):
         logging_config.init(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_HeID3()

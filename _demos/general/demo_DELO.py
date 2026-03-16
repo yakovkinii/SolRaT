@@ -29,11 +29,11 @@ def main():
     nu = lambda_A_to_frequency_hz(lambda_A)
 
     angles = Angles(
-        chi=30,
-        theta=40,
-        gamma=50,
-        chi_B=10,
-        theta_B=20,
+        chi=30 * np.pi / 180,
+        theta=40 * np.pi / 180,
+        gamma=50 * np.pi / 180,
+        chi_B=10 * np.pi / 180,
+        theta_B=20 * np.pi / 180,
     )
 
     plotter = StokesPlotter("Comparison of DELO and Finite Difference (Euler) integration")

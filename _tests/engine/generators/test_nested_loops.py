@@ -10,7 +10,10 @@ class TestNestedLoops(unittest.TestCase):
         R_nested = 0
         R = 0
 
-        for k, q in nested_loops(k=FROMTO(0, p0 - 1), q=FROMTO("-k", "k")):
+        for k, q in nested_loops(
+            k=FROMTO(0, p0 - 1),
+            q=FROMTO("-k", "k"),
+        ):
             R_nested += k * abs(q)
 
         for k in range(p0):

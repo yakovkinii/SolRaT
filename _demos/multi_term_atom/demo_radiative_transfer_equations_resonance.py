@@ -13,12 +13,11 @@ def main():
     """
     This demo shows the calculation of the stimulated emission eta_S profiles
     in the case of a two-term atom under anisotropic irradiation.
-    The inclined POV results in non-zero Stokes I, Q, U, and V parameters
-    even when no magnetic field is present.
+    The inclined POV results in non-zero Stokes I, Q, and U parameters
+    even when no magnetic field is present (Stokes V is still 0 since J1Q is 0).
     The results are compared with the analytical solution.
-    Reference: (10.127)
+    Reference: (LL04 10.127)
     """
-    # TODO check if V is non-zero
 
     logging_config.init(logging.INFO)
 
@@ -28,11 +27,11 @@ def main():
     nu = np.arange(reference_nu - 1e11, reference_nu + 1e11, 1e8)  # Hz
 
     angles = Angles(
-        chi=np.pi / 7,
-        theta=np.pi / 7,
-        gamma=np.pi / 7,
-        chi_B=np.pi / 5,
-        theta_B=np.pi / 5,
+        chi=0,
+        theta=np.pi / 4,
+        gamma=0,
+        chi_B=0,
+        theta_B=0,
     )
 
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
@@ -105,7 +104,6 @@ def main():
         linewidth=2,
     )
     plotter.axs[3].set_ylim(-1, 1)
-    # Todo investigate: confirm that sV should be exactly zero here
     plotter.show()
 
 

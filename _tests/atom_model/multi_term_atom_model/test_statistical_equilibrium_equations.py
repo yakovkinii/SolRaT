@@ -11,7 +11,7 @@ from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
 )
 
 
-class TestStatisticalEquilibriumEquations(unittest.TestCase):
+class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
     def test_statistical_equilibrium_equations_resonance(self):
         # (10.126)
         logging_config.init(logging.INFO)

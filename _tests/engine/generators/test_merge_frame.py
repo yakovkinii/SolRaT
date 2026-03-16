@@ -17,14 +17,14 @@ class TestMergeFrame(unittest.TestCase):
     def test_merge_frame(self):
         def f(J, Jʹ):
             # This is a non-physical function that simulates some complex operation using J and Jʹ
-            return (J + 0.1) ** 5 + 0.37 * (Jʹ + 0.7) ** 3
+            return (J + 0.1) * 0.123 + 0.37 * (Jʹ + 0.7) ** 3
 
         def g(L, Jʹ):
             # This is a non-physical function that simulates some complex operation using L and Jʹ
-            return (L + 0.86) ** 5 + 0.37 * (Jʹ + 0.23) ** 3
+            return (L + 0.86) * 2.345 + 0.37 * (Jʹ + 0.23) ** 3
 
         # We will calculate the sum of f(J, Jʹ)*g(L, Jʹ) over all:
-        # 1) L=0..2,
+        # 1) L=0...2,
         # 2) S=0.5,
         # 3) all triangular J limited to J=0.5,
         # 4) all triangular Jʹ.
@@ -86,7 +86,7 @@ class TestMergeFrame(unittest.TestCase):
         # ======================
 
         result_regular = 0
-        for l2 in range(0, 2 * 2 + 1):  # l2 = 2L
+        for l2 in range(0, 2 * 2 + 1, 2):  # l2 = 2L
             s2 = int(0.5 * 2)  # s2 = 2S
             for j2 in range(abs(l2 - s2), l2 + s2 + 1, 2):  # j2 = 2J
                 if j2 != int(2 * 0.5):

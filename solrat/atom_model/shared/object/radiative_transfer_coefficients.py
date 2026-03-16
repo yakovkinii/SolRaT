@@ -93,6 +93,7 @@ class RadiativeTransferCoefficients:
         RT matrix K related to the z-propagation equation:
 
         .. math::
+
             dStokes/dz = - K * Stokes + epsilon - K_continuum Stokes + epsilon_continuum
 
             K = K_A - K_S
@@ -100,6 +101,7 @@ class RadiativeTransferCoefficients:
         If N = 1 was used (no atom concentration provided), then the RTE code computes primed Kʹ and epsilonʹ:
 
         .. math::
+
             Kʹ = K /  N
 
             epsilonʹ = epsilon / N
@@ -135,7 +137,9 @@ class RadiativeTransferCoefficients:
     def K_tau(self) -> np.ndarray:
         r"""
         RT matrix K related to the tau-propagation equation:
+
         .. math::
+
             dtau_line = - eta_line * dz
 
             dStokes/dtau_line = K_tau_line * Stokes - epsilon_tau_line + Stokes / eta_LC - BP(T) eI / eta_LC

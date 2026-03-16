@@ -6,10 +6,13 @@ def multiply(*args, is_complex=False, is_scalar=False):
     multiplies all args in order. If arg is a callable, it can be short-circuited.
 
     usage:
-    result = multiply(
-        delta(i, 1),
-        lambda: expensive_calculation(i),  # <- this will be evaluated only if previous terms are not 0
-    )
+
+    .. code-block:: python
+
+        result = multiply(
+            delta(i, 1),
+            lambda: expensive_calculation(i),  # <- this will be evaluated only if previous terms are not 0
+        )
 
     It is most efficient to put the most likely to be 0 terms first, like delta or 3j symbols.
 
@@ -25,13 +28,16 @@ def multiply(*args, is_complex=False, is_scalar=False):
 
     The following code illustrates the potential problem:
 
-    callables = []
-    for i in [0, 1]:
-        callables.append(lambda : multiply(
-            lambda: delta(i, 1)  # This will be evaluated for i==1 both times!
-        ))  # multiply should be evaluated here instead of being delayed.
+    .. code-block:: python
 
-    results = [c() for c in callables]
+        callables = []
+        for i in [0, 1]:
+            callables.append(lambda : multiply(
+                lambda: delta(i, 1)  # This will be evaluated for i==1 both times!
+            ))  # multiply should be evaluated here instead of being delayed.
+
+        results = [c() for c in callables]
+
     """
     if is_scalar:
         result = 1.0

@@ -1,5 +1,6 @@
 import logging
 
+import matplotlib.pyplot as plt
 import numpy as np
 from yatools import logging_config
 
@@ -21,11 +22,22 @@ def main():
 
     logging_config.init(logging.INFO)
 
+    plt.rcParams.update(
+        {
+            "font.size": 16,
+            "axes.titlesize": 16,
+            "axes.labelsize": 18,
+            "xtick.labelsize": 16,
+            "ytick.labelsize": 16,
+            "legend.fontsize": 16,
+        }
+    )
+
     model = PreconfiguredModels.multi_term_atom_HeID3()
     reference_lambda = model.config.reference_lambda_A
 
     # The calculation itself needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda - 2, reference_lambda + 2, 5e-4)
+    lambda_A = np.arange(reference_lambda - 0.2, reference_lambda + 0.5, 2e-4)
     nu = lambda_A_to_frequency_hz(lambda_A)
 
     angles = Angles(
@@ -45,10 +57,10 @@ def main():
     )
 
     # Set up the plotter
-    plotter = StokesPlotter_IV(title="He I D3: Emission coefficient vs wavelength")
+    plotter = StokesPlotter_IV()
 
     # loop through the magnetic field values
-    for Bz in [20000, 40000, 60000, 80000, 100000]:
+    for Bz in [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000]:
         atmosphere_parameters = model.AtmosphereParameters(
             model_config=model.config,
             magnetic_field_gauss=Bz,
@@ -78,9 +90,12 @@ def main():
             stokes_V=rtc.get_epsilon_V(),
             reference_lambda_A=reference_lambda,
             color="auto",
-            label=rf"$B_z = {Bz/1000:.0f}$ kG",
+            label=rf"$B_z = {Bz/1000:.1f}$ kG",
+            linewidth=2,
         )
 
+    plt.gcf().align_ylabels()
+    plt.suptitle("He I D3 emission at different magnetic fields")
     plotter.show()
 
 

@@ -7,7 +7,7 @@ from yatools import logging_config
 from solrat.atom_model.shared.utility.voigt_profile import voigt
 
 
-class TestMathUtils(unittest.TestCase):
+class TestVoigt(unittest.TestCase):
     def test_voigt(self):
         logging_config.init(logging.INFO)
 

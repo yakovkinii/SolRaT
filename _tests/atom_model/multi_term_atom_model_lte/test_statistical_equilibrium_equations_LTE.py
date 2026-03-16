@@ -9,8 +9,8 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.constants import h_erg_s, kB_erg_Km1, sqrt2
 
 
-class TestStatisticalEquilibriumEquations(unittest.TestCase):
-    def test_statistical_equilibrium_equations_resonance(self):
+class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
+    def test_statistical_equilibrium_equations_lte(self):
         # (10.126)
         logging_config.init(logging.INFO)
 

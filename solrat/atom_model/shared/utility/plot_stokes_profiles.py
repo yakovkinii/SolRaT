@@ -17,18 +17,18 @@ class StokesPlotter_IV:  # pragma: no cover
         self.axs[0].set_ylabel(r"Stokes $I/I_{max}$")
         self.axs[1].set_ylabel(r"Stokes $V/I_{max}$")
 
-    def add(self, lambda_A, reference_lambda_A, stokes_I, stokes_V, color=None, label=""):
+    def add(self, lambda_A, reference_lambda_A, stokes_I, stokes_V, color=None, label="", linewidth=1):
         if color == "auto":
             color = self.colors[self.next_color_index % len(self.colors)]
             self.next_color_index += 1
 
         if stokes_I is not None:
             self.axs[0].plot(
-                lambda_A - reference_lambda_A, stokes_I / max(stokes_I), label=label, color=color, linewidth=1
+                lambda_A - reference_lambda_A, stokes_I / max(stokes_I), label=label, color=color, linewidth=linewidth
             )
         if stokes_V is not None:
             self.axs[1].plot(
-                lambda_A - reference_lambda_A, stokes_V / max(stokes_I), label=label, color=color, linewidth=1
+                lambda_A - reference_lambda_A, stokes_V / max(stokes_I), label=label, color=color, linewidth=linewidth
             )
 
     def show(self):

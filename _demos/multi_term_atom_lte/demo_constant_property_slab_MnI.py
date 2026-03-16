@@ -1,7 +1,3 @@
-"""
-Multiple spectral lines within constant property slab formalism
-"""
-
 import logging
 
 import numpy as np
@@ -29,7 +25,7 @@ def demo_constant_property_slab_MnI():
     model = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
     reference_lambda = model.config.reference_lambda_A
 
-    lambda_A = np.arange(reference_lambda + 1.5 - 0.5, reference_lambda + 1.1 + 1, 1e-3)
+    lambda_A = np.arange(reference_lambda + 1.4, reference_lambda + 1.7, 1e-3)
     nu = lambda_A_to_frequency_hz(lambda_A)
 
     # Test different magnetic field strengths

@@ -13,7 +13,7 @@ from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import (
 def main():
     """
     This recreates Fig. 4 in A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
-    Here, we use the parametrized version of the n(lambda) and w(lambda) function
+    Here, we use the parametrized smooth version of the n(lambda) and w(lambda) function
     """
     logging_config.init(logging.INFO)
     # Load the atomic data for He I D3

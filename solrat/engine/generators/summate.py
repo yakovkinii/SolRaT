@@ -7,19 +7,22 @@ def summate(expression: callable, tqdm_level=0, **kwargs):
     r"""
     :param expression: expression to sum
     :param tqdm_level: Number of levels of tqdm to show.
-    For tqdm_level>1 multiline editing support is needed from console.
+        For tqdm_level>1 multiline editing support is needed from console.
     :param kwargs: indexes to loop through, with iterables for their values.
-    values can be callable
+        values can be callable
     :return:
 
     usage:
-    R2 = summate(
-        lambda K, Q, Kʹ, Qʹ: K * abs(Q) + Kʹ * abs(Qʹ),
-        K=f"range({p0})",
-        Kʹ=f"range({p0})",
-        Q="fromto(-K, K)",
-        Qʹ="fromto(-Kʹ, Kʹ)",
-    )
+
+    .. code-block:: python
+
+        R2 = summate(
+            lambda K, Q, Kʹ, Qʹ: K * abs(Q) + Kʹ * abs(Qʹ),
+            K=f"range({p0})",
+            Kʹ=f"range({p0})",
+            Q="fromto(-K, K)",
+            Qʹ="fromto(-Kʹ, Kʹ)",
+        )
 
     Order of summation indexes in the first argument is not critical: the lambda is called using kwargs.
 

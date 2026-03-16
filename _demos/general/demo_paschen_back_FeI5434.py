@@ -13,9 +13,7 @@ from solrat.atom_model.multi_term_atom_model.utility.paschen_back import (
 
 def main():
     """
-    This demo shows the calculation of the Zeeman splitting for the 2p term of hydrogen,
-    spanning the linear Zeeman effect regime, the intermediate fields regime,
-    and the complete Paschen-Back regime.
+    This demo shows the calculation of the Zeeman splitting for the Fe I 5434 A line.
     """
 
     logging_config.init(logging.INFO)

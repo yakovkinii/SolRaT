@@ -9,8 +9,8 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
 
 
-class TestRadiativeTransferEquationsNoFS(unittest.TestCase):
-    def test_radiative_transfer_equations_nofs(self):
+class TestRadiativeTransferEquationsResonanceNoFS(unittest.TestCase):
+    def test_radiative_transfer_equations_resonance_nofs(self):
         # (10.127)
         logging_config.init(logging.INFO)
 

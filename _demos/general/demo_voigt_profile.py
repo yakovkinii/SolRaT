@@ -10,7 +10,7 @@ from solrat.atom_model.shared.utility.voigt_profile import voigt
 
 def main():
     """
-    Reference: (5.43)
+    Reference: (LL04 5.43)
     This corresponds to Fig. 5.3.
     """
     logging_config.init(logging.INFO)

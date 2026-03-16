@@ -1,7 +1,3 @@
-"""
-Multiple spectral lines within constant property slab formalism
-"""
-
 import logging
 
 import numpy as np
