@@ -17,7 +17,7 @@ def get_Fe_I_5434_config() -> MultiTermAtomConfig:  # pragma: no cover
     Atomic model for Fe I 5434.523 A line, constrained to :math:`J=0 \to J=1` transition.
 
     Additionally, the Lande factor is artificially deviated from pure LS coupling to model
-    the experimental value of :math:`g=0.014`.
+    the experimental value of :math:`g=-0.014`.
 
     :return: :any:`MultiTermAtomConfig` instance
 
