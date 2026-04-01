@@ -22,7 +22,7 @@ class RadiationTensorLTE(BaseRadiationTensor):
         r"""
         Constructor from the model config.
         """
-        return Self
+        return cls()
 
     @abstractmethod
     def rotate_to_magnetic_frame(self, angles: Angles) -> Self:
