@@ -1,8 +1,12 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from typing import Union
 
 import numpy as np
 from numpy import sqrt
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
@@ -28,7 +32,13 @@ class MultiTermAtomSEELTE(BaseSEE):
     def __init__(self, level_registry: LevelRegistry):
         self.level_registry = level_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
-        self.atmosphere_parameters: Union[AtmosphereParameters, None] = None
+        self._atmosphere_parameters: Union[AtmosphereParameters, None] = None
+
+    @property
+    def atmosphere_parameters(self) -> AtmosphereParameters:
+        if self._atmosphere_parameters is None:
+            raise RuntimeError("atmosphere_parameters has not been initialized")
+        return self._atmosphere_parameters
 
     @classmethod
     def from_model_config(cls, config: MultiTermAtomConfig) -> Self:
@@ -51,7 +61,7 @@ class MultiTermAtomSEELTE(BaseSEE):
         :param atmosphere_parameters:  AtmosphereParameters instance carrying the magnetic field and other variables.
         :param radiation_tensor_in_magnetic_frame:  RadiationTensor instance
         """
-        self.atmosphere_parameters = atmosphere_parameters
+        self._atmosphere_parameters = atmosphere_parameters
 
     @log_method
     def get_solution(self) -> Rho:
@@ -71,13 +81,12 @@ class MultiTermAtomSEELTE(BaseSEE):
         Reference: (LL04 3.108) (LL04 10.118)
         """
 
-        assert self.atmosphere_parameters is not None
         T = self.atmosphere_parameters.temperature_K
 
         # Fill with zeros
         rho = Rho(terms=list(self.level_registry.terms.values()))
         for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
-            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=0.0)  # Todo
+            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=0.0)
 
         min_energy = min([level.energy_cmm1 for level in self.level_registry.levels.values()])
         trace = 0.0

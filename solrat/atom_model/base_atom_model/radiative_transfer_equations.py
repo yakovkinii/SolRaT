@@ -1,23 +1,28 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from abc import abstractmethod
+from typing import Generic, TypeVar
 
 import numpy as np
-from typing_extensions import Self
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
-from solrat.atom_model.base_atom_model.object.config import BaseConfig
-from solrat.atom_model.base_atom_model.object.rho import BaseRho
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import AtmosphereParametersT
+from solrat.atom_model.base_atom_model.object.config import ConfigT
+from solrat.atom_model.base_atom_model.object.rho import RhoT
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 
 
-class BaseRTE:
+class BaseRTE(Generic[ConfigT, AtmosphereParametersT, RhoT]):
     r"""
     Base class for radiative Transfer Equations.
     """
 
     @classmethod
     @abstractmethod
-    def from_model_config(cls, config: BaseConfig, nu: np.ndarray) -> Self:
+    def from_model_config(cls, config: ConfigT, nu: np.ndarray) -> Self:
         r"""
         Constructor from the model config.
         :param config: Model config
@@ -28,9 +33,9 @@ class BaseRTE:
     @abstractmethod
     def calculate_all_coefficients(
         self,
-        atmosphere_parameters: BaseAtmosphereParameters,
+        atmosphere_parameters: AtmosphereParametersT,
         angles: Angles,
-        rho: BaseRho,
+        rho: RhoT,
     ) -> RadiativeTransferCoefficients:
         r"""
         Compute all radiative transfer coefficients.
@@ -40,3 +45,6 @@ class BaseRTE:
         :param rho:  density tensor :math:`\rho^K_Q`
         :return: :any:`RadiativeTransferCoefficients` instance
         """
+
+
+RTET = TypeVar("RTET", bound=BaseRTE)

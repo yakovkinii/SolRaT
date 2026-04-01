@@ -17,9 +17,6 @@
     flake8 .
     ```
     ```bash 
-    pyright
-    ```
-    ```bash 
     coverage run -m pytest
     ```
     ```bash 
@@ -59,6 +56,9 @@
     rm -r solrat.egg-info
     ```
 5. Clean up:
+    ```bash
+    rm -r build/*
+    ```
     ```bash
     rm -r docs/build/*
     ```

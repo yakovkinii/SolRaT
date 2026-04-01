@@ -1,207 +1,156 @@
 import functools
 import inspect
 import logging
+import threading
 import time
 
 LOGGING_LEVEL = logging.INFO
-level = 0
+_state = threading.local()
+
+
+def _get_level() -> int:
+    return getattr(_state, "level", 0)
+
+
+def _set_level(value: int) -> None:
+    _state.level = value
+
+
+def _log_call_start(name: str, level: int, levelno: int, source_file: str, line_number: int) -> None:
+    ident = "⋅ " * level
+    logger = logging.getLogger()
+    record = logger.makeRecord(
+        logger.name,
+        levelno,
+        source_file,
+        line_number,
+        ident + name,
+        {},
+        None,
+        "",
+    )
+    logger.handle(record)
+
+
+def _log_call_end(message: str, level: int, source_file: str, line_number: int) -> None:
+    ident = "⋅ " * level
+    logger = logging.getLogger()
+    record = logger.makeRecord(
+        logger.name,
+        LOGGING_LEVEL,
+        source_file,
+        line_number,
+        ident + message,
+        {},
+        None,
+        "",
+    )
+    logger.handle(record)
 
 
 def log_method(method):
-    """
-    A decorator to log the name of a class method when it is executed.
-    """
-
     @functools.wraps(method)
     def decorator(self, *args, **kwargs):
-        global level
         class_name = self.__class__.__name__
-        ident = "⋅ " * level
-
-        logger = logging.getLogger()
         source_file = inspect.getsourcefile(method)
         line_number = inspect.getsourcelines(method)[1]
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{class_name}.{method.__name__}",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
 
-        level += 1
-        if args or kwargs:
-            start_time = time.perf_counter()
-            result = method(self, *args, **kwargs)
+        level = _get_level()
+        _log_call_start(f"{class_name}.{method.__name__}", level, LOGGING_LEVEL, source_file, line_number)
+
+        _set_level(level + 1)
+        start_time = time.perf_counter()
+        try:
+            return method(self, *args, **kwargs)
+        finally:
             end_time = time.perf_counter()
-        else:
-            start_time = time.perf_counter()
-            result = method(self)
-            end_time = time.perf_counter()
-        level -= 1
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{end_time - start_time:.4f}s",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
-        return result
+            _set_level(level)
+            _log_call_end(f"{end_time - start_time:.4f}s", level, source_file, line_number)
 
     return decorator
 
 
 def log_method_experimental(method):  # pragma: no cover
-    """
-    A decorator to log the name of a class method when it is executed.
-    For marking the experimental features.
-    """
-
     @functools.wraps(method)
     def decorator(self, *args, **kwargs):
-        global level
         class_name = self.__class__.__name__
-        ident = "⋅ " * level
-
-        logger = logging.getLogger()
         source_file = inspect.getsourcefile(method)
         line_number = inspect.getsourcelines(method)[1]
-        lr = logger.makeRecord(
-            logger.name,
+
+        level = _get_level()
+        _log_call_start(
+            f"{class_name}.{method.__name__} (experimental feature, use with caution!)",
+            level,
             logging.WARNING,
             source_file,
             line_number,
-            ident + f"{class_name}.{method.__name__} (experimental feature, use with caution!)",
-            {},
-            None,
-            "",
         )
-        logger.handle(lr)
 
-        level += 1
-        if args or kwargs:
-            start_time = time.perf_counter()
-            result = method(self, *args, **kwargs)
+        _set_level(level + 1)
+        start_time = time.perf_counter()
+        try:
+            return method(self, *args, **kwargs)
+        finally:
             end_time = time.perf_counter()
-        else:
-            start_time = time.perf_counter()
-            result = method(self)
-            end_time = time.perf_counter()
-        level -= 1
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{end_time - start_time:.4f}s",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
-        return result
+            _set_level(level)
+            _log_call_end(f"{end_time - start_time:.4f}s", level, source_file, line_number)
 
     return decorator
 
 
 def log_function(function):
-    """
-    A decorator to log the name of a function when it is executed.
-    """
-
     @functools.wraps(function)
     def decorator(*args, **kwargs):
-        global level
-        ident = "⋅ " * level
-
-        logger = logging.getLogger()
         source_file = inspect.getsourcefile(function)
         line_number = inspect.getsourcelines(function)[1]
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{function.__name__}",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
 
-        level += 1
+        level = _get_level()
+        _log_call_start(function.__name__, level, LOGGING_LEVEL, source_file, line_number)
+
+        _set_level(level + 1)
         start_time = time.perf_counter()
-        result = function(*args, **kwargs)
-        end_time = time.perf_counter()
-        level -= 1
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{function.__name__} finished in {end_time - start_time:.6f}s",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
-
-        return result
+        try:
+            return function(*args, **kwargs)
+        finally:
+            end_time = time.perf_counter()
+            _set_level(level)
+            _log_call_end(
+                f"{function.__name__} finished in {end_time - start_time:.6f}s",
+                level,
+                source_file,
+                line_number,
+            )
 
     return decorator
 
 
 def log_function_experimental(function):  # pragma: no cover
-    """
-    A decorator to log the name of a function when it is executed.
-    For marking the experimental features.
-    """
-
     @functools.wraps(function)
     def decorator(*args, **kwargs):
-        global level
-        ident = "⋅ " * level
-
-        logger = logging.getLogger()
         source_file = inspect.getsourcefile(function)
         line_number = inspect.getsourcelines(function)[1]
-        lr = logger.makeRecord(
-            logger.name,
+
+        level = _get_level()
+        _log_call_start(
+            f"{function.__name__} (experimental feature, use with caution!)",
+            level,
             logging.WARNING,
             source_file,
             line_number,
-            ident + f"{function.__name__} (experimental feature, use with caution!)",
-            {},
-            None,
-            "",
         )
-        logger.handle(lr)
 
-        level += 1
+        _set_level(level + 1)
         start_time = time.perf_counter()
-        result = function(*args, **kwargs)
-        end_time = time.perf_counter()
-        level -= 1
-        lr = logger.makeRecord(
-            logger.name,
-            LOGGING_LEVEL,
-            source_file,
-            line_number,
-            ident + f"{function.__name__} finished in {end_time - start_time:.6f}s",
-            {},
-            None,
-            "",
-        )
-        logger.handle(lr)
-
-        return result
+        try:
+            return function(*args, **kwargs)
+        finally:
+            end_time = time.perf_counter()
+            _set_level(level)
+            _log_call_end(
+                f"{function.__name__} finished in {end_time - start_time:.6f}s",
+                level,
+                source_file,
+                line_number,
+            )
 
     return decorator

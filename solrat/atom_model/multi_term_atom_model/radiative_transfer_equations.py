@@ -1,9 +1,13 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 import logging
 
 import numpy as np
 import pandas as pd
 from numpy import pi, sqrt
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
@@ -62,9 +66,11 @@ class MultiTermAtomRTE(BaseRTE):
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.nu = nu
-        self.delta_nu_cutoff = custom_delta_nu_cutoff
-        if self.delta_nu_cutoff is None:
-            self.delta_nu_cutoff = max(10 * (np.max(nu) - np.min(nu)), np.mean(nu) * 1e-3)
+        self.delta_nu_cutoff = (
+            custom_delta_nu_cutoff
+            if custom_delta_nu_cutoff is not None
+            else max(10 * (np.max(nu) - np.min(nu)), np.mean(nu) * 1e-3)
+        )
         self.N = N
         self.j_constrained = j_constrained
 
@@ -313,6 +319,8 @@ class MultiTermAtomRTE(BaseRTE):
                 "S": term_lower.S,
             }
             if self.j_constrained:
+                assert transition.lower_J_for_RTE is not None
+                assert transition.upper_J_for_RTE is not None
                 row_dict["lower_J_constraint"] = tuple(transition.lower_J_for_RTE)
                 row_dict["upper_J_constraint"] = tuple(transition.upper_J_for_RTE)
             rows.append(row_dict)

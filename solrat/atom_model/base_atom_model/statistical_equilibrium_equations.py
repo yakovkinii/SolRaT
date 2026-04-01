@@ -1,19 +1,25 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from abc import abstractmethod
+from typing import Generic, TypeVar
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
-from solrat.atom_model.base_atom_model.object.config import BaseConfig
-from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
-from solrat.atom_model.base_atom_model.object.rho import BaseRho
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import AtmosphereParametersT
+from solrat.atom_model.base_atom_model.object.config import ConfigT
+from solrat.atom_model.base_atom_model.object.radiation_tensor import RadiationTensorT
+from solrat.atom_model.base_atom_model.object.rho import RhoT
 
 
-class BaseSEE:
+class BaseSEE(Generic[ConfigT, AtmosphereParametersT, RadiationTensorT, RhoT]):
     r"""
     Base class for Statistical Equilibrium Equations
     """
 
     @classmethod
     @abstractmethod
-    def from_model_config(cls, config: BaseConfig) -> "BaseSEE":
+    def from_model_config(cls, config: ConfigT) -> Self:
         r"""
         Constructor from the model config.
         :param config: model config
@@ -23,8 +29,8 @@ class BaseSEE:
     @abstractmethod
     def fill_all_equations(
         self,
-        atmosphere_parameters: BaseAtmosphereParameters,
-        radiation_tensor_in_magnetic_frame: BaseRadiationTensor,
+        atmosphere_parameters: AtmosphereParametersT,
+        radiation_tensor_in_magnetic_frame: RadiationTensorT,
     ) -> None:
         r"""
         Loop through all equations to construct the complete system of equations for rho.
@@ -35,9 +41,12 @@ class BaseSEE:
         """
 
     @abstractmethod
-    def get_solution(self) -> BaseRho:
+    def get_solution(self) -> RhoT:
         r"""
         Get the solution of the Statistical Equilibrium Equations.
 
         :return: :any:`Rho` instance
         """
+
+
+SEET = TypeVar("SEET", bound=BaseSEE)

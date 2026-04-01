@@ -1,9 +1,13 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 import logging
 
 import numpy as np
 from numpy import pi, sqrt
 from tqdm import tqdm
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
@@ -321,14 +325,17 @@ class MultiTermAtomSEELegacy(BaseSEE):
                             lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                             lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                            is_scalar=True,
                         )
                         + multiply(
                             lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
                             lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
                             lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                            is_scalar=True,
                         )
                     ),
+                    is_scalar=True,
                 ),
                 Kr=FROMTO(0, 2),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
@@ -392,14 +399,17 @@ class MultiTermAtomSEELegacy(BaseSEE):
                             lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                             lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                            is_scalar=True,
                         )
                         + multiply(
                             lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
                             lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
                             lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                            is_scalar=True,
                         )
                     ),
+                    is_scalar=True,
                 ),
                 Kr=FROMTO(0, 2),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
@@ -494,6 +504,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
                 lambda: radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                is_scalar=True,
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -531,6 +542,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
             lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
             lambda: wigner_6j(Lu, L, 1, J, Ju, S),
             lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
+            is_scalar=True,
         )
 
         return result
@@ -568,6 +580,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
                 lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
                 lambda: radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                is_scalar=True,
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
@@ -575,30 +588,47 @@ class MultiTermAtomSEELegacy(BaseSEE):
 
     @log_method
     def get_solution(self) -> Rho:
-        """
-        # A x = 0
-        # let x[0] = 1 (it is always rho_0_0 of some kind, so it is unlikely to be exactly zero)
-        # A[1:] x = 0
-        # A[1:, 1:] x[1:] = -A[1:, 0]
-        """
-        logging.info("Get Solution of Statistical Equilibrium Equations")
-        sol = np.linalg.solve(
-            self.matrix_builder.rho_matrix[:, 1:, 1:],
-            -self.matrix_builder.rho_matrix[:, 1:, 0:1],
-        )
-        sol = np.insert(sol, 0, 1.0, 1)
-        sol = sol[:, :, 0]
+        r"""
+        Get the solution of the Statistical Equilibrium Equations.
 
+        :return: Rho instance
+
+        The solution is constructed by manual linalg solving, which proved to be a bit more reliable
+        than available homogeneous solvers. The idea is simple:
+
+        The matrix equation is :math:`A x = 0`.
+
+        Let :math:`x[0] = 1` (it is always :math:`\rho_0^0` of some kind, so it is least likely to be exactly zero).
+        Then we have a non-homogeneous system of equations:
+
+        .. math::
+
+            A[1:] x &= 0
+
+            A[1:, 1:] x[1:] &= -A[1:, 0]
+
+        This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
+        """
+        # sol = np.linalg.solve(
+        #     self.matrix_builder.rho_matrix[:, 1:, 1:],
+        #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],
+        # )
+        sol = -np.linalg.pinv(self.matrix_builder.rho_matrix[1:, 1:]) @ self.matrix_builder.rho_matrix[1:, 0:1]
+        sol = np.insert(sol, 0, 1.0, 0)
+        sol = sol[:, 0]
+
+        # Normalize the solution:
         # Sum sqrt(2J+1) rho00(J, J) = 1
         weights = np.zeros_like(sol)
         for index, weight in zip(self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights):
-            weights[:, index] = weight
-        trace = (sol * weights).sum(axis=1, keepdims=True)
+            weights[index] = weight
+        trace = (sol * weights).sum()
 
-        solution_vector = sol / trace
+        rho_vector = sol / trace
 
+        # Fill out the Rho instance
         rho = Rho(terms=list(self.level_registry.terms.values()))
         for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
-            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=solution_vector[:, index])
+            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=rho_vector[index])
 
         return rho

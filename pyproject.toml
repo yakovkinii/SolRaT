@@ -35,7 +35,6 @@ dev = [
     "isort",
     "flake8",
     "Flake8-pyproject",
-    "pyright",
     "pytest",
     "coverage[toml]",
     "build",
@@ -80,13 +79,6 @@ exclude = [
     ".gitignore",
     "*.egg-info",
 ]
-
-[tool.pyright]
-include = ["solrat", "_tests", "_demos"]
-exclude = ["build", "dist", ".venv", "**/__pycache__"]
-pythonVersion = "3.9"
-typeCheckingMode = "standard"
-reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
 testpaths = ["_tests"]

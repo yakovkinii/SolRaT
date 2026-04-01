@@ -1,8 +1,12 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from typing import Dict, Union
 
 import numpy as np
 import pandas as pd
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
@@ -32,20 +36,22 @@ class RadiationTensor(BaseRadiationTensor):
         """
         super().__init__()
         self.transition_registry = transition_registry
-        self.df: Union[pd.DataFrame, None] = None
-        self.data: Dict[str, Union[float, np.ndarray]] = {}
+        self._df: Union[pd.DataFrame, None] = None
+        self.data: Dict[str, float] = {}
+
+    @property
+    def df(self) -> pd.DataFrame:
+        if self._df is None:
+            self.construct_df()
+
+        if self._df is None:
+            raise RuntimeError("df has not been initialized")
+
+        return self._df
 
     @classmethod
     def from_model_config(cls, config: MultiTermAtomConfig) -> Self:
         return cls(transition_registry=config.transition_registry)
-
-    def get_df(self) -> pd.DataFrame:
-        r"""
-        Get the dataframe representation of the :math:`J^K_Q` radiation tensor.
-        """
-        if self.df is None:
-            self.construct_df()
-        return self.df
 
     @staticmethod
     def get_key(transition_id: str, K: int, Q: int) -> str:
@@ -65,7 +71,7 @@ class RadiationTensor(BaseRadiationTensor):
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = planck * delta(K, 0) * delta(Q, 0)
-        self.df = None
+        self._df = None
         return self
 
     @staticmethod
@@ -114,7 +120,7 @@ class RadiationTensor(BaseRadiationTensor):
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
-        self.df = None
+        self._df = None
         return self
 
     def get_NLTE_n_w_parametrized_stokes_I(self, h_arcsec, theta, nu):
@@ -151,7 +157,7 @@ class RadiationTensor(BaseRadiationTensor):
         """
         key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
         self.data[key] = value
-        self.df = None
+        self._df = None
 
     def construct_df(self):
         r"""
@@ -173,7 +179,7 @@ class RadiationTensor(BaseRadiationTensor):
                         index=[0],
                     )
                 )
-        self.df = pd.concat(dfs, ignore_index=True)
+        self._df = pd.concat(dfs, ignore_index=True)
 
     def rotate(self, D: WignerD) -> "RadiationTensor":
         r"""
@@ -198,7 +204,7 @@ class RadiationTensor(BaseRadiationTensor):
                 )
         return new_J
 
-    def rotate_to_magnetic_frame(self, angles: Angles) -> Self:
+    def rotate_to_magnetic_frame(self, angles: Angles) -> "RadiationTensor":
         r"""
         Rotate :math:`J^K_Q` to the magnetic reference frame.
 

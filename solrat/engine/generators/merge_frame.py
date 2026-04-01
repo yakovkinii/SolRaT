@@ -1,6 +1,6 @@
 import inspect
 import logging
-from typing import Callable, Dict, List, Union
+from typing import Callable, Dict, Generic, List, TypeVar, Union
 
 import numpy as np
 import pandas as pd
@@ -49,6 +49,9 @@ class SumLimits:
             v.name = None
 
 
+SumLimitsT = TypeVar("SumLimitsT", bound=SumLimits)
+
+
 class FrameFactor:
     """
     Single multiplicand in the frame
@@ -57,13 +60,13 @@ class FrameFactor:
     def __init__(
         self,
         name: str,
-        factor: Callable = None,
-        dependencies: List[str] = None,
+        factor: Union[Callable, None] = None,
+        dependencies: Union[List[str], None] = None,
         merged: bool = False,
         elementwise: bool = False,
     ):
         self.name: str = name
-        self.call: Callable = factor
+        self.call: Union[Callable, None] = factor
         if dependencies is not None:
             self.dependencies: List[str] = dependencies
         else:
@@ -89,7 +92,7 @@ class FrameFactor:
         )
 
 
-class Frame:
+class Frame(Generic[SumLimitsT]):
     r"""
     Frame engine for performing multiplication and summation.
 
@@ -98,11 +101,11 @@ class Frame:
     """
 
     @staticmethod
-    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: type(SumLimits)) -> "Frame":
+    def from_sum_limits(base_frame: pd.DataFrame, sum_limits: SumLimitsT) -> "Frame":
         looper_dict = sum_limits.get_indexes()
         return Frame(base_frame=base_frame, **looper_dict)
 
-    def __init__(self, base_frame: pd.DataFrame = None, **kwargs: Looper):
+    def __init__(self, base_frame: Union[pd.DataFrame, None] = None, **kwargs: Looper):
         if base_frame is not None:
             self.frame: pd.DataFrame = base_frame.copy()
         else:
@@ -274,7 +277,7 @@ class Frame:
         logging.info(f"  Reduced frame shape: {self.frame.shape}")
         return None
 
-    def _reduce(self, columns):
+    def _reduce(self, columns) -> Union[np.ndarray, float, complex, None]:
         result = None
         for col in columns:
             assert col not in self.factors, f"Reduction is to be performed on loopers, not factors: {col}"
@@ -282,7 +285,7 @@ class Frame:
             result = self.reduce_single_index(col)
         return result
 
-    def reduce(self, *args: Union[Looper, str]):
+    def reduce(self, *args: Union[Looper, str]) -> Union[np.ndarray, float, complex, None]:
         r"""usage:
         frame.reduce() to reduce all,
         frame.reduce(col1, col2, ..., col5, col6) to specify first and last columns to reduce
@@ -290,7 +293,11 @@ class Frame:
         factor_columns = list(self.factors.keys())
 
         if len(args) == 0 or (len(args) == 1 and args[0] is Ellipsis):
-            return self._reduce([col for col in self.frame.columns[::-1] if col not in factor_columns])
+            result = self._reduce([col for col in self.frame.columns[::-1] if col not in factor_columns])
+            if result is None:
+                raise ValueError("Trying to return a partially reduced result")
+            return result
+
         if Ellipsis not in args:
             result = self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
             if result is None:

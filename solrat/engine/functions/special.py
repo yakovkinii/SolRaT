@@ -1,6 +1,11 @@
 import logging
+from typing import TypeVar
 
 import numpy as np
+
+FloatOrNDArrayT = TypeVar("FloatOrNDArrayT", float, np.ndarray)
+IntOrFloatT = TypeVar("IntOrFloatT", int, float)
+NumericT = TypeVar("NumericT", int, float, complex, np.ndarray)
 
 
 def pseudo_hash(stokesI, stokesQ, stokesU, stokesV):

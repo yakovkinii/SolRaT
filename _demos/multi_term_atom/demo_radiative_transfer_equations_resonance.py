@@ -29,7 +29,7 @@ def main():
     angles = Angles(
         chi=0,
         theta=np.pi / 4,
-        gamma=0,
+        gamma=np.pi / 8,
         chi_B=0,
         theta_B=0,
     )
