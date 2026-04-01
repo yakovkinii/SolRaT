@@ -5,9 +5,7 @@ import numpy as np
 from yatools import logging_config
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_term_atom_model.utility.paschen_back import (
-    calculate_paschen_back,
-)
+from solrat.atom_model.multi_term_atom_model.utility.paschen_back import calculate_paschen_back
 
 
 def main():

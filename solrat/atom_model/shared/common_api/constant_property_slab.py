@@ -4,18 +4,12 @@ import numpy as np
 from numpy import real
 from scipy.linalg import expm
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import (
-    BaseAtmosphereParameters,
-)
-from solrat.atom_model.base_atom_model.object.radiation_tensor import (
-    BaseRadiationTensor,
-)
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
+from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
 from solrat.atom_model.model_registry import Model
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.object.radiative_transfer_coefficients import (
-    RadiativeTransferCoefficients,
-)
+from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import get_planck_BP
 from solrat.engine.functions.decorators import log_method

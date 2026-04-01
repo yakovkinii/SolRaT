@@ -5,9 +5,7 @@ import numpy as np
 from yatools import logging_config
 
 from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
-from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import (
-    RadiationTensor,
-)
+from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
 
 
 def main():

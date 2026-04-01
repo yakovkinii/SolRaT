@@ -6,41 +6,17 @@ from tqdm import tqdm
 from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
-from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import (
-    AtmosphereParameters,
-)
-from solrat.atom_model.multi_term_atom_model.object.level_registry import (
-    LevelRegistry,
-    Term,
-)
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
-from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import (
-    RadiationTensor,
-)
-from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import (
-    Rho,
-    RhoMatrixBuilder,
-)
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    TransitionRegistry,
-)
+from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
+from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry, Term
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
+from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho, RhoMatrixBuilder
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
-from solrat.atom_model.shared.utility.wigner_3j_6j_9j import (
-    wigner_3j,
-    wigner_6j,
-    wigner_9j,
-)
+from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, m1p, n_proj
-from solrat.engine.functions.looping import (
-    FROMTO,
-    INTERSECTION,
-    PROJECTION,
-    TRIANGULAR,
-    VALUE,
-)
+from solrat.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
 from solrat.engine.generators.multiply import multiply
 from solrat.engine.generators.nested_loops import nested_loops
 from solrat.engine.generators.summate import summate

@@ -4,23 +4,13 @@ import numpy as np
 import pandas as pd
 from typing_extensions import Self
 
-from solrat.atom_model.base_atom_model.object.radiation_tensor import (
-    BaseRadiationTensor,
-)
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    Transition,
-    TransitionRegistry,
-)
+from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import Transition, TransitionRegistry
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt2
-from solrat.atom_model.shared.utility.functions import (
-    frequency_hz_to_lambda_A,
-    get_planck_BP,
-)
+from solrat.atom_model.shared.utility.functions import frequency_hz_to_lambda_A, get_planck_BP
 from solrat.engine.functions.general import delta, half_int_to_str
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops

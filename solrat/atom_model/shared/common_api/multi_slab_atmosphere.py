@@ -1,6 +1,4 @@
-from solrat.atom_model.shared.common_api.constant_property_slab import (
-    ConstantPropertySlabAtmosphere,
-)
+from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.object.stokes import Stokes
 
 

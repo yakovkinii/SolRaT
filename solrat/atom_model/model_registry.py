@@ -2,13 +2,9 @@ from typing import Generic, TypeVar, Union
 
 from typing_extensions import Self
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import (
-    BaseAtmosphereParameters,
-)
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
-from solrat.atom_model.base_atom_model.object.radiation_tensor import (
-    BaseRadiationTensor,
-)
+from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.data.FeI import get_Fe_I_5434_config
@@ -16,33 +12,17 @@ from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
 from solrat.atom_model.multi_term_atom_model.data.MnI import get_Mn_I_5432_config
 from solrat.atom_model.multi_term_atom_model.data.mock import get_mock_atom_config
 from solrat.atom_model.multi_term_atom_model.data.NiI import get_Ni_I_5435_config
-from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import (
-    AtmosphereParameters,
-)
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
-from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import (
-    RadiationTensor,
-)
-from solrat.atom_model.multi_term_atom_model.radiative_transfer_equations import (
-    MultiTermAtomRTE,
-)
-from solrat.atom_model.multi_term_atom_model.statistical_equilibrium_equations import (
-    MultiTermAtomSEE,
-)
-from solrat.atom_model.multi_term_atom_model_legacy.radiative_transfer_equations_legacy import (
-    MultiTermAtomRTELegacy,
-)
+from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
+from solrat.atom_model.multi_term_atom_model.radiative_transfer_equations import MultiTermAtomRTE
+from solrat.atom_model.multi_term_atom_model.statistical_equilibrium_equations import MultiTermAtomSEE
+from solrat.atom_model.multi_term_atom_model_legacy.radiative_transfer_equations_legacy import MultiTermAtomRTELegacy
 from solrat.atom_model.multi_term_atom_model_legacy.statistical_equilibrium_equations_legacy import (
     MultiTermAtomSEELegacy,
 )
-from solrat.atom_model.multi_term_atom_model_lte.object.radiation_tensor import (
-    RadiationTensorLTE,
-)
-from solrat.atom_model.multi_term_atom_model_lte.statistical_equilibrium_equations import (
-    MultiTermAtomSEELTE,
-)
+from solrat.atom_model.multi_term_atom_model_lte.object.radiation_tensor import RadiationTensorLTE
+from solrat.atom_model.multi_term_atom_model_lte.statistical_equilibrium_equations import MultiTermAtomSEELTE
 
 SEET = TypeVar("SEET", bound=BaseSEE)
 RTET = TypeVar("RTET", bound=BaseRTE)

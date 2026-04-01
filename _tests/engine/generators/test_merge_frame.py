@@ -4,12 +4,7 @@ import pandas as pd
 
 from solrat.engine.functions.looping import FROMTO, INTERSECTION, TRIANGULAR, VALUE
 from solrat.engine.generators.merge_frame import Frame, SumLimits
-from solrat.engine.generators.merge_loopers import (
-    ApplyConstraint,
-    Constraint,
-    DummyOrAlreadyMerged,
-    Triangular,
-)
+from solrat.engine.generators.merge_loopers import ApplyConstraint, Constraint, DummyOrAlreadyMerged, Triangular
 from solrat.engine.generators.nested_loops import nested_loops
 
 

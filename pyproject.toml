@@ -6,10 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "solrat"
 dynamic = ["version"]
 description = "Solar Radiative Transfer non-LTE forward-modeling code."
-authors = [{name = "Ivan I. Yakovkin"}]
-license = {text = "MIT"}
+authors = [{ name = "Ivan I. Yakovkin" }]
+license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
     "numpy",
     "pandas",
@@ -17,9 +17,11 @@ dependencies = [
     "tqdm",
     "yatools",
     "sympy",
+    "scipy",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
@@ -27,12 +29,77 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/yakovkinii/solrat"
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "flake8",
+    "Flake8-pyproject",
+    "pyright",
+    "pytest",
+    "coverage[toml]",
+    "build",
+    "packaging",
+]
+
 [tool.setuptools.dynamic]
-version = {attr = "solrat.about.version"}
+version = { attr = "solrat.about.version" }
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["solrat*"]
 
 [tool.setuptools.package-data]
-solrat = ["multi_term_atom/atomic_data/**/*.csv"]
+solrat = [
+    "py.typed",
+    "multi_term_atom/atomic_data/**/*.csv",
+]
+
+[tool.black]
+line-length = 120
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 120
+py_version = 39
+
+[tool.flake8]
+max-line-length = 120
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    ".venv",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".pyright",
+    "build",
+    "dist",
+    "docs",
+    ".github",
+    ".gitignore",
+    "*.egg-info",
+]
+
+[tool.pyright]
+include = ["solrat", "_tests", "_demos"]
+exclude = ["build", "dist", ".venv", "**/__pycache__"]
+pythonVersion = "3.9"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["_tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["solrat"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = false
+
+[tool.coverage.xml]
+output = "coverage.xml"

@@ -4,12 +4,8 @@ import numpy as np
 from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
-from solrat.atom_model.shared.common_api.constant_property_slab import (
-    ConstantPropertySlabAtmosphere,
-)
-from solrat.atom_model.shared.common_api.multi_slab_atmosphere import (
-    MultiSlabAtmosphere,
-)
+from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
+from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz

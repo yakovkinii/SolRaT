@@ -6,27 +6,14 @@ from numpy import pi, sqrt
 from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
-from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import (
-    AtmosphereParameters,
-)
-from solrat.atom_model.multi_term_atom_model.object.level_registry import (
-    LevelRegistry,
-    Term,
-)
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
+from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
+from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry, Term
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    TransitionRegistry,
-)
-from solrat.atom_model.multi_term_atom_model.utility.paschen_back import (
-    calculate_paschen_back,
-)
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
+from solrat.atom_model.multi_term_atom_model.utility.paschen_back import calculate_paschen_back
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.object.radiative_transfer_coefficients import (
-    RadiativeTransferCoefficients,
-)
+from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from solrat.atom_model.shared.object.rotations import T_K_Q_double_rotation, WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz

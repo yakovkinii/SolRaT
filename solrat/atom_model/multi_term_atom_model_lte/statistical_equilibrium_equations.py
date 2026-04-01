@@ -5,20 +5,11 @@ from numpy import sqrt
 from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
-from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import (
-    AtmosphereParameters,
-)
+from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
-from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import (
-    RadiationTensor,
-)
-from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import (
-    Rho,
-    RhoMatrixBuilder,
-)
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
+from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho, RhoMatrixBuilder
 from solrat.atom_model.shared.utility.constants import kB_erg_Km1
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_erg
 from solrat.engine.functions.decorators import log_method

@@ -6,9 +6,7 @@ from yatools import logging_config
 
 from solrat.atom_model.model_registry import Models
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    TransitionRegistry,
-)
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 
 
 class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):

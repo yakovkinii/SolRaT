@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["master"]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install package + dev dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Check version bump against master
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git fetch origin master
+          BASE_VERSION=$(git show origin/master:solrat/about.py | python -c 'import ast,sys; m=ast.parse(sys.stdin.read()); print(next(n.value.value for n in m.body if isinstance(n, ast.Assign) for t in n.targets if getattr(t, "id", None)=="version"))')
+          CUR_VERSION=$(python -c 'import ast,pathlib; m=ast.parse(pathlib.Path("solrat/about.py").read_text()); print(next(n.value.value for n in m.body if isinstance(n, ast.Assign) for t in n.targets if getattr(t, "id", None)=="version"))')
+          python - <<PY
+          from packaging.version import Version
+          base = Version("${BASE_VERSION}")
+          cur = Version("${CUR_VERSION}")
+          print("Base version:", base)
+          print("Current version:", cur)
+          if cur <= base:
+              raise SystemExit("Version in solrat/about.py must be bumped")
+          PY
+
+      - name: Check import sorting
+        run: isort --check-only .
+
+      - name: Check formatting
+        run: black --check .
+
+      - name: Lint
+        run: flake8 .
+
+#      - name: Type check
+#        run: pyright
+
+      - name: Run tests with coverage
+        run: |
+          coverage run -m pytest
+          coverage report
+          coverage xml
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload coverage to Coveralls
+        if: matrix.python-version == '3.9'
+        uses: coverallsapp/github-action@v2
+        with:
+          file: coverage.xml

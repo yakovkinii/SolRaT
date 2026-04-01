@@ -1,12 +1,8 @@
 from abc import abstractmethod
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import (
-    BaseAtmosphereParameters,
-)
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
-from solrat.atom_model.base_atom_model.object.radiation_tensor import (
-    BaseRadiationTensor,
-)
+from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.base_atom_model.object.rho import BaseRho
 
 

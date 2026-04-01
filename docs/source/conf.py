@@ -1,4 +1,4 @@
-from solrat.about import version   # now works because package is installed
+from solrat.about import version  # now works because package is installed
 
 project = "SolRaT"
 copyright = "2026, Ivan I. Yakovkin"
