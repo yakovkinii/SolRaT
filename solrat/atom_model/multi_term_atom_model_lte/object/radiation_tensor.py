@@ -3,9 +3,7 @@ from abc import abstractmethod
 from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
-from solrat.atom_model.base_atom_model.object.radiation_tensor import (
-    BaseRadiationTensor,
-)
+from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.shared.object.angles import Angles
 
 

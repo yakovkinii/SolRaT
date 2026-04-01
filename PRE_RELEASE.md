@@ -1,25 +1,34 @@
 1. Bump version.
-2. Run tests: 
+2. Run formatters:
     ```bash 
-    python run_all_tests.py
+    isort .
     ```
-3. Run coverage:
-    ```bash
-    coverage run -m unittest discover
+    ```bash 
+    black .
     ```
-    ```bash
+3. Run pre-release checks: 
+    ```bash 
+    isort --check-only .
+    ```
+    ```bash 
+    black --check .
+    ```
+    ```bash 
+    flake8 .
+    ```
+    ```bash 
+    pyright
+    ```
+    ```bash 
+    coverage run -m pytest
+    ```
+    ```bash 
     coverage report
     ```
-    ```bash
-    coverage html
+    ```bash 
+    python -m build
     ```
-    ```bash
-    rm .coverage
-    ```
-    ```bash
-    rm -r htmlcov
-    ```
-4. Build docs:
+4. Check docs:
     ```bash
     pip install -e .
     ```
@@ -49,18 +58,9 @@
     ```bash
     rm -r solrat.egg-info
     ```
-5. Build and upload package
+5. Clean up:
     ```bash
-    pip install build twine
-    ```
-    ```bash
-    rm -r dist
-    ```
-    ```bash
-    python -m build
-    ```
-    ```bash
-    twine upload dist/*
+    rm -r docs/build/*
     ```
     ```bash
     rm -r dist

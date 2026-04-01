@@ -3,12 +3,7 @@ from typing import Union
 import numpy as np
 from numpy import exp
 
-from solrat.atom_model.shared.utility.constants import (
-    c_cm_sm1,
-    h_erg_s,
-    kB_erg_Km1,
-    mu0_erg_gaussm1,
-)
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1, mu0_erg_gaussm1
 
 
 def get_planck_BP(nu_sm1: Union[float, np.ndarray], T_K: float) -> Union[float, np.ndarray]:

@@ -75,18 +75,21 @@ exclude = [
     ".pyright",
     "build",
     "dist",
+    "docs",
+    ".github",
+    ".gitignore",
     "*.egg-info",
 ]
 
 [tool.pyright]
-include = ["solrat", "tests"]
+include = ["solrat", "_tests", "_demos"]
 exclude = ["build", "dist", ".venv", "**/__pycache__"]
 pythonVersion = "3.9"
 typeCheckingMode = "standard"
 reportMissingTypeStubs = false
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["_tests"]
 addopts = "-q"
 
 [tool.coverage.run]

@@ -3,15 +3,11 @@ from abc import abstractmethod
 import numpy as np
 from typing_extensions import Self
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import (
-    BaseAtmosphereParameters,
-)
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
 from solrat.atom_model.base_atom_model.object.rho import BaseRho
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.object.radiative_transfer_coefficients import (
-    RadiativeTransferCoefficients,
-)
+from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 
 
 class BaseRTE:

@@ -1,10 +1,6 @@
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    TransitionRegistry,
-)
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 from solrat.engine.functions.decorators import log_function
 
 

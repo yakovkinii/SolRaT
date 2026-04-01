@@ -2,12 +2,8 @@ from typing import Union
 
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_term_atom_model.object.precomputed_data import (
-    PrecomputedData,
-)
-from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-    TransitionRegistry,
-)
+from solrat.atom_model.multi_term_atom_model.object.precomputed_data import PrecomputedData
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 
 
 class MultiTermAtomConfig(BaseConfig):

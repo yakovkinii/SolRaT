@@ -5,15 +5,10 @@ from numpy import real
 from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
-from solrat.atom_model.shared.common_api.constant_property_slab import (
-    ConstantPropertySlabAtmosphere,
-)
+from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import (
-    get_planck_BP,
-    lambda_A_to_frequency_hz,
-)
+from solrat.atom_model.shared.utility.functions import get_planck_BP, lambda_A_to_frequency_hz
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 

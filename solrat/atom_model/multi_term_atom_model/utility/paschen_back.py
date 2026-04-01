@@ -4,11 +4,7 @@ import numpy as np
 from numpy import sqrt
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import Term
-from solrat.atom_model.shared.utility.constants import (
-    c_cm_sm1,
-    h_erg_s,
-    mu0_erg_gaussm1,
-)
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
 from solrat.engine.functions.decorators import log_function_experimental
 from solrat.engine.functions.general import half_int_to_str
 from solrat.engine.functions.looping import fromto

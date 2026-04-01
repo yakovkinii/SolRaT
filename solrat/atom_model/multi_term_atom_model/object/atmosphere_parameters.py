@@ -1,11 +1,7 @@
 import numpy as np
 
-from solrat.atom_model.base_atom_model.object.atmosphere_parameters import (
-    BaseAtmosphereParameters,
-)
-from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import (
-    MultiTermAtomConfig,
-)
+from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
+from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.shared.utility.constants import atomic_mass_unit_g, kB_erg_Km1
 from solrat.atom_model.shared.utility.functions import nu_larmor
 
