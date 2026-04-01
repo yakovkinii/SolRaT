@@ -325,14 +325,17 @@ class MultiTermAtomSEELegacy(BaseSEE):
                             lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                             lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                            is_scalar=True,
                         )
                         + multiply(
                             lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
                             lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
                             lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                            is_scalar=True,
                         )
                     ),
+                    is_scalar=True,
                 ),
                 Kr=FROMTO(0, 2),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
@@ -396,14 +399,17 @@ class MultiTermAtomSEELegacy(BaseSEE):
                             lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
                             lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
+                            is_scalar=True,
                         )
                         + multiply(
                             lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
                             lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
                             lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
                             lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
+                            is_scalar=True,
                         )
                     ),
+                    is_scalar=True,
                 ),
                 Kr=FROMTO(0, 2),
                 Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
@@ -498,6 +504,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
                 lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
                 lambda: radiation_tensor.get(transition=transition, K=Kr, Q=Qr),
+                is_scalar=True,
             ),
             Kr=FROMTO(0, 2),
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
@@ -535,6 +542,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
             lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
             lambda: wigner_6j(Lu, L, 1, J, Ju, S),
             lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
+            is_scalar=True,
         )
 
         return result

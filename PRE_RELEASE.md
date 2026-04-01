@@ -57,6 +57,9 @@
     ```
 5. Clean up:
     ```bash
+    rm -r build/*
+    ```
+    ```bash
     rm -r docs/build/*
     ```
     ```bash
