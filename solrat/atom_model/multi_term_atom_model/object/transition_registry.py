@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Union
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import Term
 from solrat.atom_model.multi_term_atom_model.utility.einstein_coefficients import (
@@ -25,8 +25,8 @@ class TransitionRegistry:
         term_upper: Term,
         term_lower: Term,
         einstein_a_ul_sm1: float,
-        lower_J_constraint: List[float] = None,
-        upper_J_constraint: List[float] = None,
+        lower_J_constraint: Union[List[float], None] = None,
+        upper_J_constraint: Union[List[float], None] = None,
     ):
         r"""
         Einstein coefficients are on :math:`\beta LS \to \beta LS` level, so need to sum over :math:`J` in advance.
@@ -102,8 +102,8 @@ class Transition:
         einstein_a_ul: float,
         einstein_b_ul: float,
         einstein_b_lu: float,
-        lower_J_constraint: List[float] = None,
-        upper_J_constraint: List[float] = None,
+        lower_J_constraint: Union[List[float], None] = None,
+        upper_J_constraint: Union[List[float], None] = None,
     ):
         assert term_lower.S == term_lower.S
         self.transition_id = transition_id

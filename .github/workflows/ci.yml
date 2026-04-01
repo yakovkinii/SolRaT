@@ -57,9 +57,6 @@ jobs:
       - name: Lint
         run: flake8 .
 
-#      - name: Type check
-#        run: pyright
-
       - name: Run tests with coverage
         run: |
           coverage run -m pytest

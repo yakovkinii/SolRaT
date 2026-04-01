@@ -17,9 +17,6 @@
     flake8 .
     ```
     ```bash 
-    pyright
-    ```
-    ```bash 
     coverage run -m pytest
     ```
     ```bash 

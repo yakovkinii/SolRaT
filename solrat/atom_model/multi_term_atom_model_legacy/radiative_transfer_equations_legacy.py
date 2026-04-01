@@ -581,7 +581,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
         stokes_component_index: int,
         atmosphere_parameters: AtmosphereParameters,
         angles: Angles,
-    ):
+    ) -> np.ndarray:
         """
         eta_s = real(eta_rho_s)
         rho_s = imag(eta_rho_s)

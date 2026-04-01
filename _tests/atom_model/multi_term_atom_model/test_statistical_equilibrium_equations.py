@@ -1,6 +1,7 @@
 import logging
 import unittest
 
+import numpy as np
 from numpy import sqrt
 from yatools import logging_config
 
@@ -50,7 +51,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
                 level_registry=level_registry,
                 transition_registry=transition_registry,
                 atomic_mass_amu=4,
-                reference_lambda_A=None,
+                reference_lambda_A=np.nan,
                 disable_r_s=True,
             )
         )
@@ -61,7 +62,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
                 level_registry=level_registry,
                 transition_registry=transition_registry,
                 atomic_mass_amu=4,
-                reference_lambda_A=None,
+                reference_lambda_A=np.nan,
                 disable_r_s=True,
             )
         )

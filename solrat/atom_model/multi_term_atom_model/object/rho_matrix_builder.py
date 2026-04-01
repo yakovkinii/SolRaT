@@ -1,8 +1,10 @@
 from typing import List
 
 import numpy as np
+import pandas as pd
 from numpy import sqrt
 
+from solrat.atom_model.base_atom_model.object.rho import BaseRho
 from solrat.atom_model.multi_term_atom_model.object.level_registry import Term
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import half_int_to_str
@@ -24,7 +26,7 @@ def construct_coherence_id_from_term_id(term_id: str, K: float, Q: float, J: flo
     return f"{term_id}_K={half_int_to_str(K)}_Q={half_int_to_str(Q)}_J={half_int_to_str(J)}_Jʹ={half_int_to_str(Jʹ)}"
 
 
-class Rho:
+class Rho(BaseRho):
     def __init__(self, terms: List[Term]):
         """
         A container for the density tensor Rho
@@ -33,13 +35,13 @@ class Rho:
         self.data = dict()
         self.terms = {term.term_id: term for term in terms}
 
-    def set_from_term_id(self, term_id: str, K: float, Q: float, J: float, Jʹ: float, value: np.ndarray):
+    def set_from_term_id(self, term_id: str, K: float, Q: float, J: float, Jʹ: float, value: complex):
         """
         Set the value
         """
         self.data[construct_coherence_id_from_term_id(term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ)] = value
 
-    def __call__(self, K: float, Q: float, J: float, Jʹ: float, term_id: str) -> float:
+    def __call__(self, K: float, Q: float, J: float, Jʹ: float, term_id: str) -> np.complex128:
         """
         Get the value
         """
@@ -79,8 +81,7 @@ class RhoMatrixBuilder:
 
         # create the matrix
         matrix_size = index
-        n_calculations = 1  # this is for future, to calculate rho simultaneously for multiple atmospheric parameters.
-        self.rho_matrix = np.zeros((n_calculations, matrix_size, matrix_size), dtype=np.complex128)
+        self.rho_matrix = np.zeros((matrix_size, matrix_size), dtype=np.complex128)
         self.selected_coherence = None
 
     @log_method
@@ -99,34 +100,28 @@ class RhoMatrixBuilder:
         coherence_id = construct_coherence_id(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)
         self.selected_coherence = coherence_id
 
-    def add_coefficient(self, term: Term, K: int, Q: int, J: float, Jʹ: float, coefficient: np.array):
+    def add_coefficient(self, term: Term, K: int, Q: int, J: float, Jʹ: float, coefficient: complex):
         r"""
         Adds a coefficient to the selected equation.
 
         The equation is of a form :math:`M_{ij} \rho_j = 0`. We have already selected i.
         Now we do :math:`M_{ij} += coefficient`, where j is defined by {term, :math:`K, Q, J, Jʹ`}.
         """
-
-        if not isinstance(coefficient, np.ndarray):
-            coefficient = np.array([coefficient] * self.rho_matrix.shape[0], dtype=np.complex128)
-
-        assert isinstance(coefficient, np.ndarray), "Coefficient must be a numpy array"
-        assert coefficient.ndim == 1, "Coefficient must be a 1D array"
-        assert coefficient.shape[0] == self.rho_matrix.shape[0]
+        coefficient = complex(coefficient)
+        assert isinstance(coefficient, complex), "Coefficient must be complex"
         coherence_id = construct_coherence_id(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)
 
-        if coefficient.__eq__(0).all():
+        if coefficient == 0:
             return
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
-        assert coherence_id in self.coherence_id_to_index.keys(), (
-            f"Trying to add coefficient to non-existing " f"coherence {coherence_id}"
-        )
+        if coherence_id not in self.coherence_id_to_index.keys():
+            raise ValueError(f"Trying to add coefficient to non-existing coherence {coherence_id}")
         index1 = self.coherence_id_to_index[coherence_id]
-        self.rho_matrix[:, index0, index1] += coefficient
+        self.rho_matrix[index0, index1] += coefficient
 
     @log_method
-    def add_coefficient_from_df(self, df):
+    def add_coefficient_from_df(self, df: pd.DataFrame):
         r"""
         Adds a coefficient to the selected equation from the dataframe of the form "index0", "index1", "coefficient".
 
@@ -134,4 +129,4 @@ class RhoMatrixBuilder:
         For each df row, we do :math:`M_{ij} += coefficient`, where i=index0 and j=index1.
         """
         df = df[["index0", "index1", "coefficient"]].groupby(["index0", "index1"]).sum().reset_index()
-        self.rho_matrix[0, df.index0, df.index1] += df.coefficient
+        self.rho_matrix[df.index0, df.index1] += df.coefficient

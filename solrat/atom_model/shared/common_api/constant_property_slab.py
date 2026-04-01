@@ -55,8 +55,20 @@ class ConstantPropertySlabAtmosphere:
         self.angles = angles
         self.atmosphere_parameters = atmosphere_parameters
         self.see = model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
-        self.rte: Union[BaseRTE, None] = None
-        self.rtc: Union[RadiativeTransferCoefficients, None] = None  # Solved RTC are saved here
+        self._rte: Union[BaseRTE, None] = None
+        self._rtc: Union[RadiativeTransferCoefficients, None] = None  # Solved RTC are saved here
+
+    @property
+    def rte(self) -> BaseRTE:
+        if self._rte is None:
+            raise RuntimeError("rte has not been initialized")
+        return self._rte
+
+    @property
+    def rtc(self) -> RadiativeTransferCoefficients:
+        if self._rtc is None:
+            raise RuntimeError("rtc has not been initialized")
+        return self._rtc
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -92,10 +104,10 @@ class ConstantPropertySlabAtmosphere:
         stokes[:, 2, 0] = initial_stokes.U
         stokes[:, 3, 0] = initial_stokes.V
 
-        self.rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
+        self._rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
 
         # Compute radiative transfer coefficients
-        self.rtc = self.rte.calculate_all_coefficients(
+        self._rtc = self.rte.calculate_all_coefficients(
             atmosphere_parameters=self.atmosphere_parameters,
             angles=self.angles,
             rho=rho,
