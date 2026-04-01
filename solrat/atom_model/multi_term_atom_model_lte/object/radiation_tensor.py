@@ -1,6 +1,9 @@
-from abc import abstractmethod
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
 
-from typing_extensions import Self
+from abc import abstractmethod
 
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor

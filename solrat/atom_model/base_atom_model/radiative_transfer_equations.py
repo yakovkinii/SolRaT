@@ -1,8 +1,12 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from abc import abstractmethod
 from typing import Generic, TypeVar
 
 import numpy as np
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import AtmosphereParametersT
 from solrat.atom_model.base_atom_model.object.config import ConfigT

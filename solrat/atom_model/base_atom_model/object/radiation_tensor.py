@@ -1,7 +1,10 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from abc import abstractmethod
 from typing import Generic, TypeVar
-
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.object.config import ConfigT
 from solrat.atom_model.shared.object.angles import Angles

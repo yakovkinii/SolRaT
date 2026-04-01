@@ -1,10 +1,14 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 from typing import List
 
 import numpy as np
 import pandas as pd
 from numpy import pi, sqrt
 from tqdm import tqdm
-from typing_extensions import Self
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
