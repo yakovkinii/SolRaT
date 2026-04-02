@@ -105,7 +105,7 @@ class Transition:
         lower_J_constraint: Union[List[float], None] = None,
         upper_J_constraint: Union[List[float], None] = None,
     ):
-        assert term_lower.S == term_lower.S
+        assert term_lower.S == term_upper.S
         self.transition_id = transition_id
         self.term_upper: Term = term_upper
         self.term_lower: Term = term_lower

@@ -28,7 +28,7 @@ class TestStatisticalEquilibriumEquationsResonanceStimulated(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
-        see_legacy.add_all_equations(
+        see_legacy.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )
