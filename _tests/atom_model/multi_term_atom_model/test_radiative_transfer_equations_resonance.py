@@ -52,7 +52,7 @@ class TestRadiativeTransferEquationsResonance(unittest.TestCase):
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor.rotate_to_magnetic_frame(angles=angles),
         )
-        rho_legacy = see.get_solution()
+        rho_legacy = see_legacy.get_solution()
         rte_legacy = model_legacy.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
         rtc = rte.calculate_all_coefficients(

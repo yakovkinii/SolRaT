@@ -79,7 +79,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
         see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
         see_legacy = model_legacy.StatisticalEquilibriumEquations.from_model_config(model_legacy.config)
 
-        see_legacy.add_all_equations(
+        see_legacy.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,
             radiation_tensor_in_magnetic_frame=radiation_tensor,
         )

@@ -59,9 +59,9 @@ class MultiTermAtomSEELegacy(BaseSEE):
             disable_r_s=config.disable_r_s,
         )
 
-    def add_all_equations(
+    def fill_all_equations(
         self, atmosphere_parameters: AtmosphereParameters, radiation_tensor_in_magnetic_frame: RadiationTensor
-    ):
+    ) -> None:
         """
         Loops through all equations.
         Reference: (7.38)
