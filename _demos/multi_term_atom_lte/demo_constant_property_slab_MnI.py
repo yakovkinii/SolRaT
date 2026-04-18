@@ -9,7 +9,7 @@ from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabA
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV_IpmV
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesNorm, StokesPlotter_IV_IpmV
 
 
 def demo_constant_property_slab_MnI():
@@ -21,7 +21,7 @@ def demo_constant_property_slab_MnI():
     model = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
     reference_lambda = model.config.reference_lambda_A
 
-    lambda_A = np.arange(reference_lambda + 1.4, reference_lambda + 1.7, 1e-3)
+    lambda_A = np.arange(reference_lambda - 0.5, reference_lambda + 0.5, 1e-3)
     nu = lambda_A_to_frequency_hz(lambda_A)
 
     # Test different magnetic field strengths
@@ -58,7 +58,8 @@ def demo_constant_property_slab_MnI():
 
     plotter.add_stokes(
         lambda_A=np.concat([lambda_A]),
-        reference_lambda_A=1.5,
+        lambda_ref_A=reference_lambda,
+        norm=StokesNorm.BY_REFERENCE,
         stokes=Stokes(
             nu=np.concat([stokes_Mn.nu]),
             I=np.concat([stokes_Mn.I]),

@@ -9,7 +9,7 @@ from solrat.atom_model.shared.common_api.constant_property_slab import ConstantP
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import get_planck_BP, lambda_A_to_frequency_hz
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesNorm, StokesPlotter
 
 
 def main():
@@ -31,7 +31,7 @@ def main():
         theta_B=20 * np.pi / 180,
     )
 
-    plotter = StokesPlotter("Comparison of DELO and Finite Difference (Euler) integration")
+    plotter = StokesPlotter("Comparison of DELO and Finite Difference (Euler) integration", vacuum_to_air=True)
 
     atmosphere_parameters = model.AtmosphereParameters(
         model_config=model.config,
@@ -58,8 +58,9 @@ def main():
 
     plotter.add_stokes(
         lambda_A=lambda_A,
-        reference_lambda_A=reference_lambda,
+        lambda_ref_A=reference_lambda,
         stokes=atmosphere.forward(initial_stokes=initial_stokes),
+        norm=StokesNorm.BY_REFERENCE,
         stokes_reference=initial_stokes,
         label="DELO",
     )
@@ -106,7 +107,7 @@ def main():
         if i % 2 == 1:
             plotter.add_stokes(
                 lambda_A=lambda_A,
-                reference_lambda_A=reference_lambda,
+                lambda_ref_A=reference_lambda,
                 stokes=Stokes(
                     nu=nu,
                     I=real(stokes[:, 0, 0]),
@@ -114,6 +115,7 @@ def main():
                     U=real(stokes[:, 2, 0]),
                     V=real(stokes[:, 3, 0]),
                 ),
+                norm=StokesNorm.BY_REFERENCE,
                 stokes_reference=initial_stokes,
                 label=f"FD (step #{i+1}/{n_steps})",
                 linewidth=0.5,

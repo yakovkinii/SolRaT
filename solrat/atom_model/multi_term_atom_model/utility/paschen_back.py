@@ -1,9 +1,10 @@
+from functools import lru_cache
 from typing import Tuple, Union
 
 import numpy as np
 from numpy import sqrt
 
-from solrat.atom_model.multi_term_atom_model.object.level_registry import Term
+from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry, Term
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, mu0_erg_gaussm1
 from solrat.engine.functions.decorators import log_function_experimental
 from solrat.engine.functions.general import half_int_to_str
@@ -86,6 +87,7 @@ def get_artificial_S_scale_from_term_g(g, J, L, S):
     return (g - 1) / alpha
 
 
+@lru_cache(maxsize=100)
 def calculate_paschen_back(
     term: Term, magnetic_field_gauss: float
 ) -> Tuple[PaschenBackEigenvalues, PaschenBackCoefficients]:
@@ -165,3 +167,20 @@ def calculate_paschen_back(
                 coefficients.set(j=J_max - j, M=M, J=J_max - j1, value=eig_vectors[j1, j])
 
     return eigenvalues, coefficients
+
+
+class PaschenBack:
+    def __init__(self, level_registry: LevelRegistry):
+        self.level_registry = level_registry
+
+    def eigenvalue(self, term_id, j, M, magnetic_field_gauss):
+        pb_eigenvalues, pb_eigenvectors = calculate_paschen_back(
+            term=self.level_registry.terms[term_id], magnetic_field_gauss=magnetic_field_gauss
+        )
+        return pb_eigenvalues(j=j, M=M)
+
+    def eigenvector(self, term_id, j, J, M, magnetic_field_gauss):
+        pb_eigenvalues, pb_eigenvectors = calculate_paschen_back(
+            term=self.level_registry.terms[term_id], magnetic_field_gauss=magnetic_field_gauss
+        )
+        return pb_eigenvectors(j=j, J=J, M=M)

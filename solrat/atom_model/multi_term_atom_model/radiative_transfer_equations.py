@@ -4,6 +4,7 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -15,10 +16,10 @@ from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelR
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.multi_term_atom_model.utility.paschen_back import calculate_paschen_back
+from solrat.atom_model.multi_term_atom_model.utility.paschen_back import PaschenBack
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
-from solrat.atom_model.shared.object.rotations import T_K_Q_double_rotation, WignerD
+from solrat.atom_model.shared.object.rotations import T_K_Q_double_rotation_all_stokes, WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt_pi
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
 from solrat.atom_model.shared.utility.voigt_profile import voigt
@@ -46,7 +47,7 @@ class MultiTermAtomRTE(BaseRTE):
     :param nu:  frequencies [Hz]
     :param custom_delta_nu_cutoff:  distance in frequency for cutting off irrelevant transitions.
         Leave None for a conservative default value.
-    :param N:  atom numeric concentration for real space (as opposed to density) modeling.
+    :param N:  atom numeric concentration for d/dz transfer modeling. Can be left equal to 1 for d/dtau modeling.
     :param j_constrained:  constrain J values to the ones specified in transition_registry.
         This parameter is useful for modeling lines like Fe5434 where fine structure components are scattered
         over a very broad spectral interval, while the user is interested only in a specific transition.
@@ -74,6 +75,15 @@ class MultiTermAtomRTE(BaseRTE):
         self.N = N
         self.j_constrained = j_constrained
 
+        # Shorter getters for Einstein coefficients
+        self.paschen_back = PaschenBack(level_registry=level_registry)
+        self.einstein_b_lu = np.vectorize(self.transition_registry.einstein_b_lu)
+        self.einstein_b_ul = np.vectorize(self.transition_registry.einstein_b_ul)
+
+        # Precomputed frames
+        self.eta_rho_a_frame: Union[Frame, None] = None
+        self.eta_rho_s_frame: Union[Frame, None] = None
+
     @classmethod
     def from_model_config(
         cls,
@@ -94,192 +104,155 @@ class MultiTermAtomRTE(BaseRTE):
         )
 
     @log_method
-    def calculate_eta_rho_a(
-        self,
-        stokes_component_index: int,
-        angles: Angles,
-        rho: Rho,
-        atmosphere_parameters: AtmosphereParameters,
-    ) -> np.ndarray:
+    def calculate_eta_rho_a(self, angles: Angles, rho: Rho, atmosphere_parameters: AtmosphereParameters) -> np.ndarray:
         r"""
-        Calculate etaA and rhoA for selected Stokes component
+        Calculate etaA and rhoA for all Stokes components simultaneously.
 
-        :param stokes_component_index:  denotes Stokes component (0=I 1=Q 2=U 3=V)
         :param angles:  Angles instance with LOS and magnetic field angles
         :param rho:  density tensor Rho
         :param atmosphere_parameters:  AtmosphereParameters instance
-        :return: complex array of :math:`\eta_A + i \rho_A` vs frequency
+        :return: complex array of :math:`\eta_A + i \rho_A` vs frequency, shape [4, len(nu)] for I, Q, U, V
 
         Reference: (LL04 7.47 ac)
         """
-        sum_limits = self.AFrameSumLimitsConstrained() if self.j_constrained else self.AFrameSumLimits()
+        magnetic_field_gauss = atmosphere_parameters.magnetic_field_gauss
 
-        frame = Frame.from_sum_limits(
-            base_frame=self.create_base_frame(),
-            sum_limits=sum_limits,
-        )
+        if self.eta_rho_a_frame is None:
+            # If no cached frame available, calculate atmosphere-independent part and save
+            frame = Frame.from_sum_limits(
+                base_frame=self.create_base_frame(),
+                sum_limits=self.AFrameSumLimitsConstrained() if self.j_constrained else self.AFrameSumLimits(),
+            )
 
-        # Preparation:
+            frame.register_multiplication(
+                a001=lambda Ll:                          n_proj(Ll),
+                a002=lambda transition_id, K, Kl:        self.einstein_b_lu(transition_id) * sqrt(n_proj(1, K, Kl)),
+                a003=lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
+                a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                w3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+                w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
+                w3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+                w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+            )  # fmt: skip
+
+            self.eta_rho_a_frame = frame.copy()
+        else:
+            frame = self.eta_rho_a_frame.copy()
+
         D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
         D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
-        precalculated_pb_eigenvalues = {}
-        precalculated_pb_eigenvectors = {}
-
-        for term in self.level_registry.terms.values():
-            pb_eigenvalues, pb_eigenvectors = calculate_paschen_back(
-                term=term, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
-            )
-            precalculated_pb_eigenvalues[term.term_id] = pb_eigenvalues
-            precalculated_pb_eigenvectors[term.term_id] = pb_eigenvectors
 
         frame.register_multiplication(
-            a001=lambda Ll:                          n_proj(Ll),
-            a002=lambda einstein_b_lu, K, Kl:        einstein_b_lu * sqrt(n_proj(1, K, Kl)),
-            a003=lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
-            a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-            w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-            w3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
-            w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
-            w3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
-            w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-            w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-        )  # fmt: skip
-
-        frame.register_multiplication(
-            tkq=lambda K, Q: T_K_Q_double_rotation(
-                K=K,
-                Q=Q,
-                stokes_component_index=stokes_component_index,
-                D_inverse_omega=D_inverse_omega,
-                D_magnetic=D_magnetic,
+            tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
+                K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
             ),
-            pb1=lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
-            pb2=lambda term_lower_id, jl, Jʹʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹʹl, M=Ml),
-            pb3=lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
-            pb4=lambda term_upper_id, ju, Jʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹu, M=Mu),
+            pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
+                term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb2=lambda term_lower_id, jl, Jʹʹl, Ml: self.paschen_back.eigenvector(
+                term_id=term_lower_id, j=jl, J=Jʹʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
+                term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb4=lambda term_upper_id, ju, Jʹu, Mu: self.paschen_back.eigenvector(
+                term_id=term_upper_id, j=ju, J=Jʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+            ),
             rho=lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho(term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
             phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
-                nui=energy_cmm1_to_frequency_hz(
-                    precalculated_pb_eigenvalues[term_upper_id](j=ju, M=Mu)
-                    - precalculated_pb_eigenvalues[term_lower_id](j=jl, M=Ml)
-                ),
-                nu=self.nu,
-                macroscopic_velocity_cm_sm1=atmosphere_parameters.macroscopic_velocity_cm_sm1,
-                delta_v_thermal_cm_sm1=atmosphere_parameters.delta_v_thermal_cm_sm1,
-                voigt_a=atmosphere_parameters.voigt_a,
+                term_upper_id=term_upper_id,
+                ju=ju,
+                Mu=Mu,
+                term_lower_id=term_lower_id,
+                jl=jl,
+                Ml=Ml,
+                atmosphere_parameters=atmosphere_parameters,
             ),
             elementwise=True,
         )
 
-        result = frame.reduce(
-            sum_limits.K,
-            sum_limits.Q,
-            sum_limits.Ju,
-            sum_limits.Jʹu,
-            sum_limits.Jl,
-            sum_limits.Kl,
-            sum_limits.Ql,
-            sum_limits.Jʹʹl,
-            sum_limits.Jʹl,
-            ...,  # Ellipsis means reduce all remaining indexes
-        )
+        result = frame.reduce("K", "Q", "Ju", "Jʹu", "Jl", "Kl", "Ql", "Jʹʹl", "Jʹl", ...)
         result = h_erg_s * self.nu / 4 / pi * self.N * result
         return result
 
     @log_method
-    def calculate_eta_rho_s(
-        self,
-        stokes_component_index: int,
-        angles: Angles,
-        rho: Rho,
-        atmosphere_parameters: AtmosphereParameters,
-    ):
+    def calculate_eta_rho_s(self, angles: Angles, rho: Rho, atmosphere_parameters: AtmosphereParameters) -> np.ndarray:
         r"""
-        Calculate etaS and rhoS for selected Stokes component
+        Calculate etaS and rhoS for all Stokes components simultaneously.
 
-        :param stokes_component_index:  denotes Stokes component (0=I 1=Q 2=U 3=V)
         :param angles:  Angles instance with LOS and magnetic field angles
         :param rho:  density tensor Rho
         :param atmosphere_parameters:  AtmosphereParameters instance
-        :return: complex array of :math:`\eta_S + i \rho_S` vs frequency
+        :return: complex array of :math:`\eta_S + i \rho_S` vs frequency, shape [4, len(nu)] for I, Q, U, V
 
         Reference: (LL04 7.47 bd)
         """
-        sum_limits = self.SFrameSumLimitsConstrained() if self.j_constrained else self.SFrameSumLimits()
+        magnetic_field_gauss = atmosphere_parameters.magnetic_field_gauss
 
-        frame = Frame.from_sum_limits(
-            base_frame=self.create_base_frame(),
-            sum_limits=sum_limits,
-        )
+        if self.eta_rho_s_frame is None:
+            # If no cached frame available, calculate atmosphere-independent part and save
 
-        # Preparation:
+            frame = Frame.from_sum_limits(
+                base_frame=self.create_base_frame(),
+                sum_limits=self.SFrameSumLimitsConstrained() if self.j_constrained else self.SFrameSumLimits(),
+            )
+
+            frame.register_multiplication(
+                a001=lambda Lu: n_proj(Lu),
+                a002=lambda transition_id, K, Ku: self.einstein_b_ul(transition_id) * sqrt(n_proj(1, K, Ku)),
+                a003=lambda Jʹu, Mu, qʹ: m1p(1 + Jʹu - Mu + qʹ),
+                a004=lambda Jl, Jʹl, Ju, Jʹu: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                w3j1=lambda Ju, Jl, Mu, Ml, q: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                w3j2=lambda Jʹu, Jʹl, Mʹu, Ml, qʹ: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
+                w3j3=lambda K, q, qʹ, Q: wigner_3j(1, 1, K, q, -qʹ, -Q),
+                w3j4=lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu: wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
+                w6j1=lambda Lu, Ll, Jl, Ju, S: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                w6j2=lambda Lu, Ll, Jʹl, Jʹu, S: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+            )  # fmt: skip
+            self.eta_rho_s_frame = frame.copy()
+        else:
+            frame = self.eta_rho_s_frame.copy()
+
         D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
         D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
-        precalculated_pb_eigenvalues = {}
-        precalculated_pb_eigenvectors = {}
-        for term in self.level_registry.terms.values():
-            pb_eigenvalues, pb_eigenvectors = calculate_paschen_back(
-                term=term, magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss
-            )
-            precalculated_pb_eigenvalues[term.term_id] = pb_eigenvalues
-            precalculated_pb_eigenvectors[term.term_id] = pb_eigenvectors
 
         frame.register_multiplication(
-            a001=lambda Lu:                          n_proj(Lu),
-            a002=lambda einstein_b_ul, K, Ku:        einstein_b_ul * sqrt(n_proj(1, K, Ku)),
-            a003=lambda Jʹu, Mu, qʹ:                 m1p(1 + Jʹu - Mu + qʹ),
-            a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-            w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-            w3j2=lambda Jʹu, Jʹl, Mʹu, Ml, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
-            w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
-            w3j4=lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu:  wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
-            w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-            w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-        )  # fmt: skip
-
-        frame.register_multiplication(
-            tkq=lambda K, Q: T_K_Q_double_rotation(
-                K=K,
-                Q=Q,
-                stokes_component_index=stokes_component_index,
-                D_inverse_omega=D_inverse_omega,
-                D_magnetic=D_magnetic,
+            tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
+                K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
             ),
-            pb1=lambda term_lower_id, jl, Jl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jl, M=Ml),
-            pb2=lambda term_lower_id, jl, Jʹl, Ml: precalculated_pb_eigenvectors[term_lower_id](j=jl, J=Jʹl, M=Ml),
-            pb3=lambda term_upper_id, ju, Ju, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Ju, M=Mu),
-            pb4=lambda term_upper_id, ju, Jʹʹu, Mu: precalculated_pb_eigenvectors[term_upper_id](j=ju, J=Jʹʹu, M=Mu),
+            pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
+                term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb2=lambda term_lower_id, jl, Jʹl, Ml: self.paschen_back.eigenvector(
+                term_id=term_lower_id, j=jl, J=Jʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
+                term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+            ),
+            pb4=lambda term_upper_id, ju, Jʹʹu, Mu: self.paschen_back.eigenvector(
+                term_id=term_upper_id, j=ju, J=Jʹʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+            ),
             rho=lambda term_upper_id, Ku, Qu, Jʹʹu, Jʹu: rho(term_id=term_upper_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
             phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
-                nui=energy_cmm1_to_frequency_hz(
-                    precalculated_pb_eigenvalues[term_upper_id](j=ju, M=Mu)
-                    - precalculated_pb_eigenvalues[term_lower_id](j=jl, M=Ml)
-                ),
-                nu=self.nu,
-                macroscopic_velocity_cm_sm1=atmosphere_parameters.macroscopic_velocity_cm_sm1,
-                delta_v_thermal_cm_sm1=atmosphere_parameters.delta_v_thermal_cm_sm1,
-                voigt_a=atmosphere_parameters.voigt_a,
+                term_upper_id=term_upper_id,
+                ju=ju,
+                Mu=Mu,
+                term_lower_id=term_lower_id,
+                jl=jl,
+                Ml=Ml,
+                atmosphere_parameters=atmosphere_parameters,
             ),
             elementwise=True,
         )
 
-        result = frame.reduce(
-            sum_limits.K,
-            sum_limits.Q,
-            sum_limits.Jl,
-            sum_limits.Jʹl,
-            sum_limits.Ju,
-            sum_limits.Ku,
-            sum_limits.Qu,
-            sum_limits.Jʹu,
-            sum_limits.Jʹʹu,
-            ...,  # Ellipsis means reduce all remaining indexes
-        )
+        result = frame.reduce("K", "Q", "Jl", "Jʹl", "Ju", "Ku", "Qu", "Jʹu", "Jʹʹu", ...)
         result = h_erg_s * self.nu / 4 / pi * self.N * result
         return result
 
     @staticmethod
-    def compute_epsilon(eta_s: np.ndarray, nu: np.ndarray) -> np.ndarray:
+    def calculate_epsilon(eta_s: np.ndarray, nu: np.ndarray) -> np.ndarray:
         r"""
         Compute :math:`\epsilon` given :math:`\eta_S`
 
@@ -309,9 +282,6 @@ class MultiTermAtomRTE(BaseRTE):
 
             row_dict = {
                 "transition_id": transition.transition_id,
-                "einstein_b_lu": transition.einstein_b_lu,
-                "einstein_b_ul": transition.einstein_b_ul,
-                "einstein_a_ul": transition.einstein_a_ul,
                 "term_upper_id": term_upper.term_id,
                 "term_lower_id": term_lower.term_id,
                 "Ll": term_lower.L,
@@ -342,78 +312,35 @@ class MultiTermAtomRTE(BaseRTE):
 
         Reference: (LL04 7.47)
         """
-        eta_rho_aI = self.calculate_eta_rho_a(
-            stokes_component_index=0,
+        eta_rho_a = self.calculate_eta_rho_a(
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_aQ = self.calculate_eta_rho_a(
-            stokes_component_index=1,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_aU = self.calculate_eta_rho_a(
-            stokes_component_index=2,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_aV = self.calculate_eta_rho_a(
-            stokes_component_index=3,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
+        )  # shape [4, len(nu)]: I, Q, U, V
 
-        eta_rho_sI = self.calculate_eta_rho_s(
-            stokes_component_index=0,
+        eta_rho_s = self.calculate_eta_rho_s(
             angles=angles,
             rho=rho,
             atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_sQ = self.calculate_eta_rho_s(
-            stokes_component_index=1,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_sU = self.calculate_eta_rho_s(
-            stokes_component_index=2,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
-        eta_rho_sV = self.calculate_eta_rho_s(
-            stokes_component_index=3,
-            angles=angles,
-            rho=rho,
-            atmosphere_parameters=atmosphere_parameters,
-        )
-
-        epsilonI = self.compute_epsilon(eta_s=eta_rho_sI, nu=self.nu)
-        epsilonQ = self.compute_epsilon(eta_s=eta_rho_sQ, nu=self.nu)
-        epsilonU = self.compute_epsilon(eta_s=eta_rho_sU, nu=self.nu)
-        epsilonV = self.compute_epsilon(eta_s=eta_rho_sV, nu=self.nu)
+        )  # shape [4, len(nu)]: I, Q, U, V
 
         return RadiativeTransferCoefficients(
-            eta_rho_aI=eta_rho_aI,
-            eta_rho_aQ=eta_rho_aQ,
-            eta_rho_aU=eta_rho_aU,
-            eta_rho_aV=eta_rho_aV,
-            eta_rho_sI=eta_rho_sI,
-            eta_rho_sQ=eta_rho_sQ,
-            eta_rho_sU=eta_rho_sU,
-            eta_rho_sV=eta_rho_sV,
-            epsilonI=epsilonI,
-            epsilonQ=epsilonQ,
-            epsilonU=epsilonU,
-            epsilonV=epsilonV,
+            eta_rho_aI=eta_rho_a[0],
+            eta_rho_aQ=eta_rho_a[1],
+            eta_rho_aU=eta_rho_a[2],
+            eta_rho_aV=eta_rho_a[3],
+            eta_rho_sI=eta_rho_s[0],
+            eta_rho_sQ=eta_rho_s[1],
+            eta_rho_sU=eta_rho_s[2],
+            eta_rho_sV=eta_rho_s[3],
+            epsilonI=self.calculate_epsilon(eta_s=eta_rho_s[0], nu=self.nu),
+            epsilonQ=self.calculate_epsilon(eta_s=eta_rho_s[1], nu=self.nu),
+            epsilonU=self.calculate_epsilon(eta_s=eta_rho_s[2], nu=self.nu),
+            epsilonV=self.calculate_epsilon(eta_s=eta_rho_s[3], nu=self.nu),
         )
 
     @staticmethod
-    def phi(
+    def _phi(
         nui: float, nu: np.ndarray, macroscopic_velocity_cm_sm1: float, delta_v_thermal_cm_sm1: float, voigt_a: float
     ) -> np.ndarray:
         """
@@ -430,6 +357,28 @@ class MultiTermAtomRTE(BaseRTE):
 
         complex_voigt = voigt(nu=nu_round - nu_round_A, a=voigt_a) / sqrt_pi / delta_nu_D
         return complex_voigt
+
+    def phi(self, term_upper_id, ju, Mu, term_lower_id, jl, Ml, atmosphere_parameters):
+        return self._phi(
+            nui=energy_cmm1_to_frequency_hz(
+                self.paschen_back.eigenvalue(
+                    term_id=term_upper_id,
+                    j=ju,
+                    M=Mu,
+                    magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
+                )
+                - self.paschen_back.eigenvalue(
+                    term_id=term_lower_id,
+                    j=jl,
+                    M=Ml,
+                    magnetic_field_gauss=atmosphere_parameters.magnetic_field_gauss,
+                )
+            ),
+            nu=self.nu,
+            macroscopic_velocity_cm_sm1=atmosphere_parameters.macroscopic_velocity_cm_sm1,
+            delta_v_thermal_cm_sm1=atmosphere_parameters.delta_v_thermal_cm_sm1,
+            voigt_a=atmosphere_parameters.voigt_a,
+        )
 
     def cutoff_condition(self, term_upper: Term, term_lower: Term, nu: np.ndarray):
         r"""
@@ -455,7 +404,6 @@ class MultiTermAtomRTE(BaseRTE):
         Ll = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         Lu = DummyOrAlreadyMerged(term_upper_id)  # Pre-merged to base_frame
         S = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
-        einstein_b_lu = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         jl = Triangular(Ll, S)
         Jl = Triangular(Ll, S)
         Jʹl = Triangular(Ll, S)
@@ -484,7 +432,6 @@ class MultiTermAtomRTE(BaseRTE):
         Ll = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         Lu = DummyOrAlreadyMerged(term_upper_id)  # Pre-merged to base_frame
         S = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
-        einstein_b_lu = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         lower_J_constraint = Constraint()  # Artificial constraint for J to model only selected transitions
         upper_J_constraint = Constraint()  # Artificial constraint for J to model only selected transitions
         jl = ApplyConstraint(Triangular(Ll, S), lower_J_constraint)
@@ -515,7 +462,6 @@ class MultiTermAtomRTE(BaseRTE):
         Ll = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         Lu = DummyOrAlreadyMerged(term_upper_id)  # Pre-merged to base_frame
         S = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
-        einstein_b_ul = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         ju = Triangular(Lu, S)
         Ju = Triangular(Lu, S)
         Jʹu = Triangular(Lu, S)
@@ -544,7 +490,6 @@ class MultiTermAtomRTE(BaseRTE):
         Ll = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         Lu = DummyOrAlreadyMerged(term_upper_id)  # Pre-merged to base_frame
         S = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
-        einstein_b_ul = DummyOrAlreadyMerged(term_lower_id)  # Pre-merged to base_frame
         lower_J_constraint = Constraint()  # Artificial constraint for J to model only selected transitions
         upper_J_constraint = Constraint()  # Artificial constraint for J to model only selected transitions
         ju = ApplyConstraint(Triangular(Lu, S), upper_J_constraint)

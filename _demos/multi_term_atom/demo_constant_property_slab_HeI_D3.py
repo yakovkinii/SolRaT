@@ -9,7 +9,7 @@ from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabA
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesNorm, StokesPlotter
 
 
 def main():
@@ -36,7 +36,7 @@ def main():
         theta_B=0,
     )
 
-    plotter = StokesPlotter("He I D3 transition for different magnetic field values")
+    plotter = StokesPlotter("He I D3 transition for different magnetic field values", vacuum_to_air=True)
 
     for Bz in [0, 3000, 5000]:
         atmosphere_parameters = model.AtmosphereParameters(
@@ -63,10 +63,10 @@ def main():
 
         plotter.add_stokes(
             lambda_A=lambda_A,
-            reference_lambda_A=reference_lambda,
+            lambda_ref_A=reference_lambda,
             stokes=atmosphere.forward(initial_stokes=initial_stokes),
+            norm=StokesNorm.MAX_I,
             label=f"B = {Bz} G",
-            normalize=True,
         )
 
     plotter.show()

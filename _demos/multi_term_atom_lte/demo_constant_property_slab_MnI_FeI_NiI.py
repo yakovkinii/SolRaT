@@ -10,7 +10,7 @@ from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabA
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV_IpmV
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesNorm, StokesPlotter_IV_IpmV
 
 
 def demo_constant_property_slab_multiline():
@@ -27,9 +27,9 @@ def demo_constant_property_slab_multiline():
     reference_lambda_Fe = model_Fe.config.reference_lambda_A
     reference_lambda_Ni = model_Ni.config.reference_lambda_A
 
-    lambda_A_Mn = np.arange(reference_lambda_Mn + 1.5 - 0.5, reference_lambda_Mn + 1.5 + 0.5, 1e-3)
-    lambda_A_Fe = np.arange(reference_lambda_Fe + 1.5 - 0.5, reference_lambda_Fe + 1.5 + 0.5, 1e-3)
-    lambda_A_Ni = np.arange(reference_lambda_Ni + 1.5 - 0.5, reference_lambda_Ni + 1.5 + 0.5, 1e-3)
+    lambda_A_Mn = np.arange(reference_lambda_Mn - 0.5, reference_lambda_Mn + 0.5, 1e-3)
+    lambda_A_Fe = np.arange(reference_lambda_Fe - 0.5, reference_lambda_Fe + 0.5, 1e-3)
+    lambda_A_Ni = np.arange(reference_lambda_Ni - 0.5, reference_lambda_Ni + 0.5, 1e-3)
 
     nu_Mn = lambda_A_to_frequency_hz(lambda_A_Mn)
     nu_Fe = lambda_A_to_frequency_hz(lambda_A_Fe)
@@ -158,7 +158,8 @@ def demo_constant_property_slab_multiline():
 
     plotter.add_stokes(
         lambda_A=np.concat([lambda_A_Mn, lambda_A_Fe, lambda_A_Ni]),
-        reference_lambda_A=1.5,
+        lambda_ref_A=reference_lambda_Mn,
+        norm=StokesNorm.BY_REFERENCE,
         stokes=Stokes(
             nu=np.concat([stokes_Mn.nu, stokes_Fe.nu, stokes_Ni.nu]),
             I=np.concat([stokes_Mn.I, stokes_Fe.I, stokes_Ni.I]),

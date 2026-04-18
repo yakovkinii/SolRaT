@@ -84,21 +84,21 @@ def main():
     )
 
     plotter.add(
-        nu,
-        0,
-        np.real(rtc.eta_rho_sI) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sQ) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sU) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sV) / np.max(np.abs(eta_sI_analytic)),
+        lambda_A=nu,
+        lambda_ref_A=0,
+        stokes_I=np.real(rtc.eta_rho_sI) / np.max(np.abs(eta_sI_analytic)),
+        stokes_Q=np.real(rtc.eta_rho_sQ) / np.max(np.abs(eta_sI_analytic)),
+        stokes_U=np.real(rtc.eta_rho_sU) / np.max(np.abs(eta_sI_analytic)),
+        stokes_V=np.real(rtc.eta_rho_sV) / np.max(np.abs(eta_sI_analytic)),
         label="SEE+RTE implementation",
     )
     plotter.add(
-        nu,
-        0,
-        eta_sI_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sQ_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sU_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sV_analytic / np.max(np.abs(eta_sI_analytic)),
+        lambda_A=nu,
+        lambda_ref_A=0,
+        stokes_I=eta_sI_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_Q=eta_sQ_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_U=eta_sU_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_V=eta_sV_analytic / np.max(np.abs(eta_sI_analytic)),
         label="Analytical solution",
         style="--",
         linewidth=2,

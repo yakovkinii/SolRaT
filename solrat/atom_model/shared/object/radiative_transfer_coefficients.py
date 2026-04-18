@@ -157,7 +157,13 @@ class RadiativeTransferCoefficients:
         """
         Line-center eta, assuming a single spectral line
         """
-        return np.max(np.abs(np.real(self.eta_rho_aI - self.eta_rho_sI)))
+        scale = np.max(np.abs(np.real(self.eta_rho_aI - self.eta_rho_sI)))
+        if scale == 0:
+            raise ValueError(
+                "eta_tau_scale is zero: the spectral line has no opacity over the supplied frequency grid. "
+                "Check that the frequency grid is centered on the actual transition wavelength."
+            )
+        return scale
 
     def epsilon_z(self) -> np.ndarray:
         """

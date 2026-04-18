@@ -14,7 +14,7 @@ def main():
     """
     This demo shows the calculation of stimulated emission eta_S profiles
     for the He I D3 transition under super-strong magnetic fields.
-    This result is closely related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
+    This result is related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
     https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
     In the mentioned paper, the Stokes profiles are shown instead,
     but they match (after normalization) eta_S for low optical depths.
@@ -88,7 +88,7 @@ def main():
             lambda_A=lambda_A,
             stokes_I=rtc.get_epsilon_I(),
             stokes_V=rtc.get_epsilon_V(),
-            reference_lambda_A=reference_lambda,
+            lambda_ref_A=reference_lambda,
             color="auto",
             label=rf"$B_z = {Bz/1000:.1f}$ kG",
             linewidth=2,

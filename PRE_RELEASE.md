@@ -1,3 +1,5 @@
+> Manual pre-release checklist. Automated quality control (formatting, linting, tests, coverage) is enforced by CI on all PRs and merges.
+
 1. Bump version.
 2. Run formatters:
     ```bash 

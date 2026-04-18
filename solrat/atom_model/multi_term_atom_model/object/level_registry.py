@@ -125,6 +125,9 @@ class Term:
         self.artificial_S_scale: Union[float, None] = None
         self.levels: List["Level"] = []
 
+    def __hash__(self):
+        return hash((self.term_id, self.beta, self.L, self.S, self.artificial_S_scale, tuple(self.levels)))
+
     @log_method_experimental
     def set_artificial_spin_scale(self, artificial_S_scale: float):
         r"""

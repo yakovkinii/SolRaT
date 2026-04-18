@@ -52,18 +52,8 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         rho = see.get_solution()
 
         # get RT coefficients. They are complex: eta = real(eta_rho), rho = imag(eta_rho)
-        eta_rho_sI = rte.calculate_eta_rho_s(
-            stokes_component_index=0, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
-        )
-        eta_rho_sQ = rte.calculate_eta_rho_s(
-            stokes_component_index=1, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
-        )
-        eta_rho_sU = rte.calculate_eta_rho_s(
-            stokes_component_index=2, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
-        )
-        eta_rho_sV = rte.calculate_eta_rho_s(
-            stokes_component_index=3, rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles
-        )
+        eta_rho_s = rte.calculate_eta_rho_s(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
+        eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = eta_rho_s[0], eta_rho_s[1], eta_rho_s[2], eta_rho_s[3]
 
         # Check that the result did not change from previous runs
         last_run_hash = 2.3137071959665785e-16

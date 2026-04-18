@@ -65,7 +65,7 @@ def get_Fe_I_5434_config() -> MultiTermAtomConfig:  # pragma: no cover
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=5434.523,
+        reference_lambda_A=1e8 / (26550.479 - 8154.714),
         atomic_mass_amu=atomic_mass_amu,
         j_constrained=True,
     )

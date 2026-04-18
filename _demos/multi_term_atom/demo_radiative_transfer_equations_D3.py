@@ -76,7 +76,7 @@ def main():
             lambda_A=lambda_A,
             stokes_I=rtc.get_epsilon_I(),
             stokes_V=rtc.get_epsilon_V(),
-            reference_lambda_A=reference_lambda,
+            lambda_ref_A=reference_lambda,
             color="auto",
             label=rf"$B_z = {Bz/1000:.0f}$ kG",
         )

@@ -66,6 +66,23 @@ def T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega: WignerD
     return result
 
 
+def T_K_Q_double_rotation_all_stokes(K, Q, D_inverse_omega: WignerD, D_magnetic: WignerD):
+    r"""
+    (5.159), (2.74), (5.122)
+    Two consecutive D rotations within T tensor.
+    """
+    result = np.array([[0], [0], [0], [0]], dtype=np.complex128)
+    for stokes_component_index in range(4):
+        for P, Qʹ in nested_loops(P=PROJECTION(K), Qʹ=PROJECTION(K)):
+            result[stokes_component_index][0] = result[stokes_component_index][0] + t_K_P(
+                K=K,
+                P=P,
+                stokes_component_index=stokes_component_index,
+            ) * D_inverse_omega(K=K, P=P, Q=Qʹ) * D_magnetic(K=K, P=Qʹ, Q=Q)
+
+    return result
+
+
 @lru_cache(maxsize=None)
 def T_K_Q(K, Q, stokes_component_index, chi, theta, gamma):
     r"""

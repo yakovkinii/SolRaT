@@ -20,6 +20,15 @@ class TransitionRegistry:
     def __init__(self):
         self.transitions: Dict[str, "Transition"] = {}
 
+    def einstein_b_lu(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_b_lu
+
+    def einstein_b_ul(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_b_ul
+
+    def einstein_a_ul(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_a_ul
+
     def register_transition(
         self,
         term_upper: Term,
