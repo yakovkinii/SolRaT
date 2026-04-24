@@ -1,11 +1,9 @@
-import logging
-
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
@@ -19,12 +17,15 @@ def main():
     Reference: (LL04 10.127)
     """
 
-    logging_config.init(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_mock()
-    reference_nu = lambda_A_to_frequency_hz(model.config.reference_lambda_A)
-
-    nu = np.arange(reference_nu - 1e11, reference_nu + 1e11, 1e8)  # Hz
+    reference_lambda_A_air = model.config.reference_lambda_A_air
+    nu = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_air - 1,
+        upper_wavelength_A=reference_lambda_A_air + 1,
+        step_A=2e-3,
+    )
 
     angles = Angles(
         chi=0,
@@ -48,7 +49,7 @@ def main():
         delta_v_turbulent_cm_sm1=50_00,
     )
 
-    plotter = StokesPlotter(r"$\eta_s$ vs Frequency", x_label=r"$\nu$ (1/s)")
+    plotter = StokesPlotter(r"$\eta_s$ vs Wavelength", reference_lambda_A_air=reference_lambda_A_air)
 
     # Construct SEE
     see.fill_all_equations(
@@ -84,22 +85,20 @@ def main():
     )
 
     plotter.add(
-        nu,
-        0,
-        np.real(rtc.eta_rho_sI) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sQ) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sU) / np.max(np.abs(eta_sI_analytic)),
-        np.real(rtc.eta_rho_sV) / np.max(np.abs(eta_sI_analytic)),
+        nu=nu,
+        stokes_I=np.real(rtc.eta_rho_sI) / np.max(np.abs(eta_sI_analytic)),
+        stokes_Q=np.real(rtc.eta_rho_sQ) / np.max(np.abs(eta_sI_analytic)),
+        stokes_U=np.real(rtc.eta_rho_sU) / np.max(np.abs(eta_sI_analytic)),
+        stokes_V=np.real(rtc.eta_rho_sV) / np.max(np.abs(eta_sI_analytic)),
         label="SEE+RTE implementation",
     )
     plotter.add(
-        nu,
-        0,
-        eta_sI_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sQ_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sU_analytic / np.max(np.abs(eta_sI_analytic)),
-        eta_sV_analytic / np.max(np.abs(eta_sI_analytic)),
-        label="Analytical solution",
+        nu=nu,
+        stokes_I=eta_sI_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_Q=eta_sQ_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_U=eta_sU_analytic / np.max(np.abs(eta_sI_analytic)),
+        stokes_V=eta_sV_analytic / np.max(np.abs(eta_sI_analytic)),
+        label="Analytic solution",
         style="--",
         linewidth=2,
     )

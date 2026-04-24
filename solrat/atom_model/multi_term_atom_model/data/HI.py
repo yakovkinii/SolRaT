@@ -1,8 +1,10 @@
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
+from solrat.engine.functions.decorators import log_function
 
 
+@log_function
 def get_H_I_alpha_config() -> MultiTermAtomConfig:  # pragma: no cover
     r"""
     H alpha line (:math:`3\to 2`)
@@ -91,11 +93,9 @@ def get_H_I_alpha_config() -> MultiTermAtomConfig:  # pragma: no cover
         einstein_a_ul_sm1=2.1046e06 + 4.2097e06,
     )
 
-    # Reference lambda
-    reference_lambda_A = 6563.3
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
         atomic_mass_amu=1,
-        reference_lambda_A=reference_lambda_A,
+        reference_lambda_A_air=6562.79,
     )

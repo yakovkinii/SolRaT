@@ -1,7 +1,4 @@
-import logging
-
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
@@ -9,7 +6,8 @@ from solrat.atom_model.shared.common_api.constant_property_slab import ConstantP
 from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV_IpmV
 
 
@@ -17,30 +15,38 @@ def demo_constant_property_slab_multiline():
     """
     Demonstrate basic usage of ConstantPropertySlab for multiple non-overlapping line synthesis.
     """
-    logging_config.init(logging.INFO)
+    setup_logging()
 
     model_Mn = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
     model_Fe = PreconfiguredModels.multi_term_atom_lte_FeI_5434()
     model_Ni = PreconfiguredModels.multi_term_atom_lte_NiI_5435()
 
-    reference_lambda_Mn = model_Mn.config.reference_lambda_A
-    reference_lambda_Fe = model_Fe.config.reference_lambda_A
-    reference_lambda_Ni = model_Ni.config.reference_lambda_A
+    reference_lambda_A_Mn = model_Mn.config.reference_lambda_A_air
+    reference_lambda_A_Fe = model_Fe.config.reference_lambda_A_air
+    reference_lambda_A_Ni = model_Ni.config.reference_lambda_A_air
 
-    lambda_A_Mn = np.arange(reference_lambda_Mn + 1.5 - 0.5, reference_lambda_Mn + 1.5 + 0.5, 1e-3)
-    lambda_A_Fe = np.arange(reference_lambda_Fe + 1.5 - 0.5, reference_lambda_Fe + 1.5 + 0.5, 1e-3)
-    lambda_A_Ni = np.arange(reference_lambda_Ni + 1.5 - 0.5, reference_lambda_Ni + 1.5 + 0.5, 1e-3)
-
-    nu_Mn = lambda_A_to_frequency_hz(lambda_A_Mn)
-    nu_Fe = lambda_A_to_frequency_hz(lambda_A_Fe)
-    nu_Ni = lambda_A_to_frequency_hz(lambda_A_Ni)
+    nu_Mn = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_Mn - 0.5,
+        upper_wavelength_A=reference_lambda_A_Mn + 0.5,
+        step_A=1e-3,
+    )
+    nu_Fe = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_Fe - 0.5,
+        upper_wavelength_A=reference_lambda_A_Fe + 0.5,
+        step_A=1e-3,
+    )
+    nu_Ni = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_Ni - 0.5,
+        upper_wavelength_A=reference_lambda_A_Ni + 0.5,
+        step_A=1e-3,
+    )
 
     radiation_tensor_Mn = model_Mn.RadiationTensor()
     radiation_tensor_Fe = model_Fe.RadiationTensor()
     radiation_tensor_Ni = model_Ni.RadiationTensor()
 
     # Test different magnetic field strengths
-    plotter = StokesPlotter_IV_IpmV("Mn, Fe, and Ni lines:")
+    plotter = StokesPlotter_IV_IpmV("Mn, Fe, and Ni lines:", reference_lambda_A_air=reference_lambda_A_Mn)
 
     angles = Angles(chi=0, theta=0, gamma=0, chi_B=0, theta_B=0)
 
@@ -157,8 +163,8 @@ def demo_constant_property_slab_multiline():
     stokes_Ni = atmosphere_Ni.forward(initial_stokes=initial_stokes_Ni)
 
     plotter.add_stokes(
-        lambda_A=np.concat([lambda_A_Mn, lambda_A_Fe, lambda_A_Ni]),
-        reference_lambda_A=1.5,
+        nu=np.concat([nu_Mn, nu_Fe, nu_Ni]),
+        norm=StokesPlotter_IV_IpmV.Norm.BY_REFERENCE,
         stokes=Stokes(
             nu=np.concat([stokes_Mn.nu, stokes_Fe.nu, stokes_Ni.nu]),
             I=np.concat([stokes_Mn.I, stokes_Fe.I, stokes_Ni.I]),

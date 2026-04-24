@@ -1,3 +1,5 @@
+import logging
+
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
@@ -21,7 +23,7 @@ from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import (
     construct_coherence_id_from_term_id,
 )
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, m1p, n_proj
@@ -82,6 +84,7 @@ class MultiTermAtomSEE(BaseSEE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomSEE instance")
 
         if config.precomputed_data is None:
             return cls(
@@ -621,7 +624,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         level = self.level_registry.get_level(term=term, J=J)
         level_prime = self.level_registry.get_level(term=term, J=Jʹ)
-        nu = energy_cmm1_to_frequency_hz(level.energy_cmm1 - level_prime.energy_cmm1)
+        nu = energy_cmm1_to_frequency_sm1(level.energy_cmm1 - level_prime.energy_cmm1)
 
         n_0 = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * nu
 
@@ -854,6 +857,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
         """
+        logging.info("Solving Statistical Equilibrium Equations")
         # sol = np.linalg.solve(
         #     self.matrix_builder.rho_matrix[:, 1:, 1:],
         #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],

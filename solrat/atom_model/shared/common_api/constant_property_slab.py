@@ -1,3 +1,4 @@
+import logging
 from typing import Union
 
 import numpy as np
@@ -87,6 +88,7 @@ class ConstantPropertySlabAtmosphere:
 
         Reference: modified (9.36)
         """
+        logging.info("Processing a single slab...")
 
         self.see.fill_all_equations(
             atmosphere_parameters=self.atmosphere_parameters,
@@ -125,7 +127,9 @@ class ConstantPropertySlabAtmosphere:
         K_tau_line[:, 1, 1] += 1 / eta_LC
         K_tau_line[:, 2, 2] += 1 / eta_LC
         K_tau_line[:, 3, 3] += 1 / eta_LC
-        epsilon_tau_line[:, 0] += get_planck_BP(nu_sm1=nu, T_K=self.atmosphere_parameters.temperature_K) / eta_LC
+        epsilon_tau_line[:, 0] += (
+            get_planck_BP(nu_sm1=nu, temperature_K=self.atmosphere_parameters.temperature_K) / eta_LC
+        )
 
         # DELO method:
         # Solve dStokes/dtau = K*(Stokes-S), where
@@ -141,6 +145,8 @@ class ConstantPropertySlabAtmosphere:
 
         expM = np.stack([expm(-K * self.line_delta_tau) for K in K_tau_line])
         stokes = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, stokes - S[:, :, np.newaxis])
+
+        logging.info("Completed processing a single slab")
 
         return Stokes(
             nu=nu,

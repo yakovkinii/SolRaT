@@ -16,7 +16,7 @@ from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config impor
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
 from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho, RhoMatrixBuilder
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, m1p, n_proj
@@ -53,12 +53,15 @@ class MultiTermAtomSEELegacy(BaseSEE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomSEELegacy instance")
+
         return cls(
             level_registry=config.level_registry,
             transition_registry=config.transition_registry,
             disable_r_s=config.disable_r_s,
         )
 
+    @log_method
     def fill_all_equations(
         self, atmosphere_parameters: AtmosphereParameters, radiation_tensor_in_magnetic_frame: RadiationTensor
     ) -> None:
@@ -454,7 +457,7 @@ class MultiTermAtomSEELegacy(BaseSEE):
 
         level = self.level_registry.get_level(term=term, J=J)
         level_prime = self.level_registry.get_level(term=term, J=Jʹ)
-        nu = energy_cmm1_to_frequency_hz(level.energy_cmm1 - level_prime.energy_cmm1)
+        nu = energy_cmm1_to_frequency_sm1(level.energy_cmm1 - level_prime.energy_cmm1)
 
         result = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * nu
 
@@ -609,6 +612,8 @@ class MultiTermAtomSEELegacy(BaseSEE):
 
         This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
         """
+        logging.info("Solving Statistical Equilibrium Equations")
+
         # sol = np.linalg.solve(
         #     self.matrix_builder.rho_matrix[:, 1:, 1:],
         #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],

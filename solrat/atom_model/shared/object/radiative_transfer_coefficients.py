@@ -2,6 +2,8 @@ from typing import Tuple
 
 import numpy as np
 
+from solrat.engine.functions.decorators import log_method
+
 
 class RadiativeTransferCoefficients:
     def __init__(
@@ -72,6 +74,7 @@ class RadiativeTransferCoefficients:
     def get_epsilon_V(self):
         return np.real(self.epsilonV)
 
+    @log_method
     def split_eta_rho(
         self,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -88,6 +91,7 @@ class RadiativeTransferCoefficients:
         rhoV = np.imag(self.eta_rho_aV - self.eta_rho_sV)
         return etaI, etaQ, etaU, etaV, rhoQ, rhoU, rhoV
 
+    @log_method
     def K_z(self) -> np.ndarray:
         r"""
         RT matrix K related to the z-propagation equation:
@@ -134,6 +138,7 @@ class RadiativeTransferCoefficients:
         K[:, 3, 3] = etaI
         return K
 
+    @log_method
     def K_tau(self) -> np.ndarray:
         r"""
         RT matrix K related to the tau-propagation equation:
@@ -157,8 +162,15 @@ class RadiativeTransferCoefficients:
         """
         Line-center eta, assuming a single spectral line
         """
-        return np.max(np.abs(np.real(self.eta_rho_aI - self.eta_rho_sI)))
+        scale = np.max(np.abs(np.real(self.eta_rho_aI - self.eta_rho_sI)))
+        if scale == 0:
+            raise ValueError(
+                "eta_tau_scale is zero: the spectral line has no opacity over the supplied frequency grid. "
+                "Check that the frequency grid is centered on the actual transition wavelength."
+            )
+        return scale
 
+    @log_method
     def epsilon_z(self) -> np.ndarray:
         """
         RT matrix emission coefficient epsilon related to the z-propagation equation: see the comments for K_z()
@@ -172,6 +184,7 @@ class RadiativeTransferCoefficients:
         epsilon[:, 3, 0] = self.epsilonV
         return epsilon
 
+    @log_method
     def epsilon_tau(self) -> np.ndarray:
         """
         RT matrix emission coefficient epsilon related to the tau-propagation equation: see the comments for K_tau()

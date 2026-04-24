@@ -5,7 +5,8 @@ from solrat.atom_model.multi_term_atom_model.utility.einstein_coefficients impor
     b_lu_from_b_ul_multi_term_atom,
     b_ul_from_a_ul_multi_term_atom,
 )
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
+from solrat.engine.functions.decorators import log_method
 
 
 class TransitionRegistry:
@@ -20,6 +21,16 @@ class TransitionRegistry:
     def __init__(self):
         self.transitions: Dict[str, "Transition"] = {}
 
+    def einstein_b_lu(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_b_lu
+
+    def einstein_b_ul(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_b_ul
+
+    def einstein_a_ul(self, transition_id: str) -> float:
+        return self.transitions[transition_id].einstein_a_ul
+
+    @log_method
     def register_transition(
         self,
         term_upper: Term,
@@ -41,7 +52,7 @@ class TransitionRegistry:
 
         transition_id = term_upper.term_id + "->" + term_lower.term_id
         assert transition_id not in self.transitions.keys()
-        nu_ul = energy_cmm1_to_frequency_hz(term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1())
+        nu_ul = energy_cmm1_to_frequency_sm1(term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1())
 
         b_ul = b_ul_from_a_ul_multi_term_atom(a_ul_sm1=einstein_a_ul_sm1, nu_ul=nu_ul)
         b_lu = b_lu_from_b_ul_multi_term_atom(b_ul=b_ul, Lu=term_upper.L, Ll=term_lower.L)
@@ -126,6 +137,6 @@ class Transition:
         A crude approximation for the 'central' frequency of the transition.
         Should be used only in non-frequency-sensitive expressions like filling out Planck's function in LTE.
         """
-        return energy_cmm1_to_frequency_hz(
+        return energy_cmm1_to_frequency_sm1(
             self.term_upper.get_mean_energy_cmm1() - self.term_lower.get_mean_energy_cmm1()
         )

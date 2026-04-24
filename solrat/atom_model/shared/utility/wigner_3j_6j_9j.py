@@ -194,17 +194,17 @@ def _w9j_doubled_argument(
 _w3j_doubled_argument_vec = np.vectorize(_w3j_doubled_argument)
 _w6j_doubled_argument_vec = np.vectorize(_w6j_doubled_argument)
 
+# Todo investigate caching vs vectorization performance.
 
-# @lru_cache(maxsize=None)
+
 def wigner_3j(j1, j2, j3, m1, m2, m3):
     return _w3j_doubled_argument_vec(j1 * 2, j2 * 2, j3 * 2, m1 * 2, m2 * 2, m3 * 2)
 
 
-# @lru_cache(maxsize=None)
 def wigner_6j(j1, j2, j3, l1, l2, l3):
     return _w6j_doubled_argument_vec(j1 * 2, j2 * 2, j3 * 2, l1 * 2, l2 * 2, l3 * 2)
 
 
-@lru_cache(maxsize=None)  # Todo investigate caching vs vectorization performance
+@lru_cache(maxsize=None)
 def wigner_9j(j1, j2, j3, j4, j5, j6, j7, j8, j9):
     return _w9j_doubled_argument(j1 * 2, j2 * 2, j3 * 2, j4 * 2, j5 * 2, j6 * 2, j7 * 2, j8 * 2, j9 * 2)

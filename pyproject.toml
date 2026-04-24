@@ -15,9 +15,9 @@ dependencies = [
     "pandas",
     "matplotlib",
     "tqdm",
-    "yatools",
     "sympy",
     "scipy",
+    "coloredlogs",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

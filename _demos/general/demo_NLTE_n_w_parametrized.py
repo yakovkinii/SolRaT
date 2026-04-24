@@ -2,10 +2,10 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     This recreates Fig. 4 in A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
     Here, we use the parametrized smooth version of the n(lambda) and w(lambda) function
     """
-    logging_config.init(logging.INFO)
+    setup_logging()
     # Load the atomic data for He I D3
     config = get_He_I_D3_config()
 
@@ -61,7 +61,7 @@ def main():
             [radiation_tensor.data[transition_id] for transition_id in transitions_to_plot],
             label=f"h_arcsec={h_arcsec}",
         )
-    radiation_tensor.fill_planck(T_K=5700)
+    radiation_tensor.fill_planck(temperature_K=5700)
     ax[2].scatter(x_axis, [0 for _ in transitions_to_plot], label="LTE")
 
     ax[2].set_xlabel(r"Transition in He I atom")

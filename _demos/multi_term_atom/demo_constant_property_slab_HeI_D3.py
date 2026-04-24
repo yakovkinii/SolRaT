@@ -1,14 +1,12 @@
-import logging
-
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
@@ -19,14 +17,15 @@ def main():
     https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
     """
 
-    logging_config.init(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_HeID3()
-    reference_lambda = model.config.reference_lambda_A
-
-    # The calculation itself needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda - 0.5, reference_lambda + 0.8, 5e-4)
-    nu = lambda_A_to_frequency_hz(lambda_A)
+    reference_lambda_A_air = model.config.reference_lambda_A_air
+    nu = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_air - 0.5,
+        upper_wavelength_A=reference_lambda_A_air + 0.8,
+        step_A=5e-4,
+    )
 
     angles = Angles(
         chi=0,
@@ -36,7 +35,9 @@ def main():
         theta_B=0,
     )
 
-    plotter = StokesPlotter("He I D3 transition for different magnetic field values")
+    plotter = StokesPlotter(
+        "He I D3 transition for different magnetic field values", reference_lambda_A_air=reference_lambda_A_air
+    )
 
     for Bz in [0, 3000, 5000]:
         atmosphere_parameters = model.AtmosphereParameters(
@@ -62,11 +63,10 @@ def main():
         )
 
         plotter.add_stokes(
-            lambda_A=lambda_A,
-            reference_lambda_A=reference_lambda,
+            nu=nu,
             stokes=atmosphere.forward(initial_stokes=initial_stokes),
+            norm=StokesPlotter.Norm.MAX_I,
             label=f"B = {Bz} G",
-            normalize=True,
         )
 
     plotter.show()

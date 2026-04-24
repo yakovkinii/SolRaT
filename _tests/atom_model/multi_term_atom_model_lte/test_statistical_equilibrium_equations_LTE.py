@@ -1,18 +1,17 @@
-import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.constants import h_erg_s, kB_erg_Km1, sqrt2
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
     def test_statistical_equilibrium_equations_lte(self):
         # (10.126)
-        logging_config.init(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_mock_nofs()
 
@@ -31,7 +30,7 @@ class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
         )
         radiation_tensor = (
             model.RadiationTensor.from_model_config(config=model.config)
-            .fill_planck(T_K=atmosphere_parameters.temperature_K)
+            .fill_planck(temperature_K=atmosphere_parameters.temperature_K)
             .rotate_to_magnetic_frame(angles=angles)
         )
 

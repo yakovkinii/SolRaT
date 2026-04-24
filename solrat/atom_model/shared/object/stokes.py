@@ -32,7 +32,7 @@ class Stokes:
         """
         return cls(
             nu=nu_sm1,
-            I=get_planck_BP(nu_sm1=nu_sm1, T_K=temperature_K),
+            I=get_planck_BP(nu_sm1=nu_sm1, temperature_K=temperature_K),
             Q=nu_sm1 * 0,
             U=nu_sm1 * 0,
             V=nu_sm1 * 0,
