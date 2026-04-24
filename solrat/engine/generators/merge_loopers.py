@@ -7,7 +7,6 @@ from typing import Set, Union
 import numpy as np
 import pandas as pd
 
-
 _max_looper_id = threading.local()
 
 
