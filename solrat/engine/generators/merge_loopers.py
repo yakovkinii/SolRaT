@@ -1,4 +1,5 @@
 import logging
+import threading
 from abc import abstractmethod
 from functools import reduce
 from typing import Set, Union
@@ -6,13 +7,24 @@ from typing import Set, Union
 import numpy as np
 import pandas as pd
 
-MAX_LOOPER_ID = 0
+from solrat.engine.functions.decorators import log_function
+
+_max_looper_id = threading.local()
 
 
+def _get_max_looper_id() -> int:
+    return getattr(_max_looper_id, "level", 0)
+
+
+def _set_max_looper_id(value: int) -> None:
+    _max_looper_id.level = value
+
+
+@log_function
 def get_unique_name() -> str:
-    global MAX_LOOPER_ID
-    name = f"__looper_unique_{MAX_LOOPER_ID}__"
-    MAX_LOOPER_ID += 1
+    new_id = _get_max_looper_id()
+    name = f"__looper_unique_{new_id}__"
+    _set_max_looper_id(new_id + 1)
     return name
 
 
@@ -317,8 +329,8 @@ class Intersection(Looper):
         if frame[name].isna().any():
             msg = (
                 f"NaN values found in intersection looper {name}. "
-                f"Check previous loopers for possible optimization (triangular conditions etc). "
-                f"If not applicable - double check the logic."
+                f"This typically means that not all triangular conditions were accounted for in SumLimits. "
+                f"This warning is expected for current implementation of LL04 multi-term atom for Q/Qu/Ql loopers."
             )
             logging.warning(msg)
         frame = frame.dropna(subset=[name])

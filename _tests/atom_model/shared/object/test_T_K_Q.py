@@ -2,16 +2,16 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.shared.object.rotations import T_K_Q, T_K_Q_double_rotation, WignerD
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops
 
 
 class TestTKQ(unittest.TestCase):
     def test_T_K_Q(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         # A couple of table values
         assert T_K_Q(0, 0, 0, 1, 1, 1) == 1

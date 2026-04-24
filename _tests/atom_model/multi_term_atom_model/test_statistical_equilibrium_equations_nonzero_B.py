@@ -2,10 +2,10 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR
 from solrat.engine.generators.nested_loops import nested_loops
 
@@ -57,7 +57,7 @@ class TestStatisticalEquilibriumEquationsNonzeroB(unittest.TestCase):
 
     def test_nonzero_B_mock(self):
         """Mock atom (with fine structure), B = 100 G, anisotropic radiation."""
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_mock()
         model_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()
@@ -81,7 +81,7 @@ class TestStatisticalEquilibriumEquationsNonzeroB(unittest.TestCase):
 
     def test_nonzero_B_mock_nofs(self):
         """Mock atom (no fine structure), B = 50 G, anisotropic radiation."""
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_mock_nofs()
         model_legacy = PreconfiguredModels.multi_term_atom_legacy_mock_nofs()

@@ -4,7 +4,10 @@ import logging
 import threading
 import time
 
-LOGGING_LEVEL = logging.INFO
+VERBOSE = 15
+logging.addLevelName(VERBOSE, "VERBOSE")
+
+LOGGING_LEVEL = VERBOSE
 _state = threading.local()
 
 

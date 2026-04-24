@@ -2,10 +2,10 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.utility.paschen_back import calculate_paschen_back
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
@@ -15,7 +15,7 @@ def main():
     and the complete Paschen-Back regime.
     """
 
-    logging_config.init(logging.INFO)
+    setup_logging(logging.INFO)
 
     level_registry = LevelRegistry()
     level_registry.register_level(

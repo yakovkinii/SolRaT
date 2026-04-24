@@ -21,10 +21,10 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from solrat.atom_model.shared.object.rotations import T_K_Q_double_rotation_all_stokes, WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt_pi
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.voigt_profile import voigt
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j
-from solrat.engine.functions.decorators import log_method
+from solrat.engine.functions.decorators import VERBOSE, log_method
 from solrat.engine.functions.general import m1p, n_proj
 from solrat.engine.generators.merge_frame import Frame, SumLimits
 from solrat.engine.generators.merge_loopers import (
@@ -93,6 +93,7 @@ class MultiTermAtomRTE(BaseRTE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomRTE instance")
 
         return cls(
             level_registry=config.level_registry,
@@ -260,6 +261,7 @@ class MultiTermAtomRTE(BaseRTE):
         """
         return 2 * h_erg_s * nu**3 / c_cm_sm1**2 * np.real(eta_s)
 
+    @log_method
     def create_base_frame(self) -> pd.DataFrame:
         r"""
         Generate a base frame, listing all transitions. This frame will be used as a starting point to determine
@@ -274,9 +276,10 @@ class MultiTermAtomRTE(BaseRTE):
 
             logging.debug(f"Processing {term_upper.term_id} -> {term_lower.term_id}")
             if self.cutoff_condition(term_upper=term_upper, term_lower=term_lower, nu=self.nu):
-                logging.info(
+                logging.log(
+                    VERBOSE,
                     f"Cutting off the transition {term_upper.term_id} -> {term_lower.term_id} "
-                    f"because it does not contribute to the specified frequency range"
+                    f"because it does not contribute to the specified frequency range",
                 )
                 continue
 
@@ -312,6 +315,8 @@ class MultiTermAtomRTE(BaseRTE):
 
         Reference: (LL04 7.47)
         """
+        logging.info("Calculating Radiative Transfer Coefficients")
+
         eta_rho_a = self.calculate_eta_rho_a(
             angles=angles,
             rho=rho,
@@ -360,7 +365,7 @@ class MultiTermAtomRTE(BaseRTE):
 
     def phi(self, term_upper_id, ju, Mu, term_lower_id, jl, Ml, atmosphere_parameters):
         return self._phi(
-            nui=energy_cmm1_to_frequency_hz(
+            nui=energy_cmm1_to_frequency_sm1(
                 self.paschen_back.eigenvalue(
                     term_id=term_upper_id,
                     j=ju,
@@ -385,11 +390,11 @@ class MultiTermAtomRTE(BaseRTE):
         Check the cut-off condition. If a transition is way outside the spectral region of interest,
         it does not contribute to RTE (due to the phi profile).
         """
-        nuimax = energy_cmm1_to_frequency_hz(term_upper.get_max_energy_cmm1() - term_lower.get_min_energy_cmm1())
-        nuimin = energy_cmm1_to_frequency_hz(term_upper.get_min_energy_cmm1() - term_lower.get_max_energy_cmm1())
+        nuimax = energy_cmm1_to_frequency_sm1(term_upper.get_max_energy_cmm1() - term_lower.get_min_energy_cmm1())
+        nuimin = energy_cmm1_to_frequency_sm1(term_upper.get_min_energy_cmm1() - term_lower.get_max_energy_cmm1())
         cutoff = self.delta_nu_cutoff
         if min(nu) > nuimax + cutoff or max(nu) < nuimin - cutoff:
-            logging.info(f"Cutoff condition: nui=[{nuimin}...{nuimax}], nu=[{min(nu)}...{max(nu)}]")
+            logging.log(VERBOSE, f"Cutoff condition: nui=[{nuimin}...{nuimax}], nu=[{min(nu)}...{max(nu)}]")
             return True
         return False
 

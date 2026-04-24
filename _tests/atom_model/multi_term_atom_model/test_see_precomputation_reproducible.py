@@ -2,12 +2,12 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.precomputed_data import PrecomputedData
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR
 from solrat.engine.generators.nested_loops import nested_loops
 
@@ -19,7 +19,7 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
     """
 
     def test_precomputation_roundtrip(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_mock()
 
@@ -39,7 +39,7 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
             level_registry=model.config.level_registry,
             transition_registry=model.config.transition_registry,
             atomic_mass_amu=model.config.atomic_mass_amu,
-            reference_lambda_A=model.config.reference_lambda_A,
+            reference_lambda_A_air=model.config.reference_lambda_A_air,
             precomputed_data=precomputed,
         )
 

@@ -2,25 +2,26 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.constants import atomic_mass_unit_g, kB_erg_Km1
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.special import pseudo_hash
 
 
 class TestRadiativeTransferEquationsD3(unittest.TestCase):
     def test_radiative_transfer_equations_d3(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_HeID3()
-        reference_lambda = model.config.reference_lambda_A
-
-        # The calculation itself needs frequency, but we will display the results in wavelength
-        lambda_A = np.arange(reference_lambda - 2, reference_lambda + 2, 5e-4)
-        nu = lambda_A_to_frequency_hz(lambda_A)
+        reference_lambda_A_air = model.config.reference_lambda_A_air
+        nu = get_frequencies_from_air_wavelength_range(
+            lower_wavelength_A=reference_lambda_A_air - 2,
+            upper_wavelength_A=reference_lambda_A_air + 2,
+            step_A=5e-4,
+        )
 
         angles = Angles(
             chi=np.pi / 5,
@@ -56,7 +57,7 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = eta_rho_s[0], eta_rho_s[1], eta_rho_s[2], eta_rho_s[3]
 
         # Check that the result did not change from previous runs
-        last_run_hash = 2.3137071959665785e-16
+        last_run_hash = 2.312804517792012e-16
         new_hash = pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV)
         logging.info(new_hash)
         logging.info(last_run_hash)

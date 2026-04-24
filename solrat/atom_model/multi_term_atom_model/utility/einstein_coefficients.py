@@ -1,6 +1,8 @@
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s
+from solrat.engine.functions.decorators import log_function
 
 
+@log_function
 def b_ul_from_a_ul_multi_term_atom(a_ul_sm1: float, nu_ul: float) -> float:
     r"""
     Transform from :math:`A_{ul}` [s^-1] to :math:`B_{ul}` [cm^2/erg/s]
@@ -11,6 +13,7 @@ def b_ul_from_a_ul_multi_term_atom(a_ul_sm1: float, nu_ul: float) -> float:
     return a_ul_sm1 / factor
 
 
+@log_function
 def b_lu_from_b_ul_multi_term_atom(b_ul: float, Lu: float, Ll: float) -> float:
     r"""
     Transform from :math:`B_{lu}` [cm^2/erg/s] to `B_{ul}` [cm^2/erg/s]

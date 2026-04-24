@@ -2,22 +2,25 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 class TestRadiativeTransferEquationsResonanceNoFS(unittest.TestCase):
     def test_radiative_transfer_equations_resonance_nofs(self):
         # (10.127)
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_mock_nofs()
-        reference_nu = lambda_A_to_frequency_hz(model.config.reference_lambda_A)
-
-        nu = np.arange(reference_nu - 1e11, reference_nu + 1e11, 1e8)  # Hz
+        reference_lambda_A_air = model.config.reference_lambda_A_air
+        nu = get_frequencies_from_air_wavelength_range(
+            lower_wavelength_A=reference_lambda_A_air - 1,
+            upper_wavelength_A=reference_lambda_A_air + 1,
+            step_A=5e-4,
+        )
 
         angles = Angles(
             chi=np.pi / 5,
@@ -30,7 +33,7 @@ class TestRadiativeTransferEquationsResonanceNoFS(unittest.TestCase):
         see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
         rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_planck(T_K=5000)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_planck(temperature_K=5000)
 
         atmosphere_parameters = model.AtmosphereParameters(
             model_config=model.config,

@@ -1,10 +1,10 @@
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.engine.functions.decorators import log_function
+from solrat.engine.functions.decorators import log_function_experimental
 
 
-@log_function
+@log_function_experimental
 def get_Mn_I_5432_config() -> MultiTermAtomConfig:  # pragma: no cover
     r"""
     Atomic model for Mn I 5432.5 A line, constrained to :math:`J=5/2 \to J=5/2` transition.
@@ -52,11 +52,10 @@ def get_Mn_I_5432_config() -> MultiTermAtomConfig:  # pragma: no cover
         einstein_a_ul_sm1=6.04e03,
     )
 
-    atomic_mass_amu = 54.9
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=1e8 / 18402.46,
-        atomic_mass_amu=atomic_mass_amu,
+        reference_lambda_A_air=5432.55,
+        atomic_mass_amu=54.9,
         j_constrained=True,
     )

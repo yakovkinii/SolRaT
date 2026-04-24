@@ -1,8 +1,10 @@
+from solrat.engine.functions.decorators import log_method
+
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
     from typing_extensions import Self  # Python <3.11
-
+import logging
 from typing import Generic, Union
 
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import AtmosphereParametersT
@@ -51,6 +53,7 @@ class Model(Generic[SEET, RTET, RadiationTensorT, AtmosphereParametersT, ConfigT
             raise RuntimeError("config has not been initialized")
         return self._config
 
+    @log_method
     def configure(self, config: ConfigT) -> Self:
         self._config = config
         return self
@@ -59,6 +62,7 @@ class Model(Generic[SEET, RTET, RadiationTensorT, AtmosphereParametersT, ConfigT
 class Models:
     @staticmethod
     def multi_term_atom():
+        logging.info("Creating Multi-Term Atom model")
         return Model[
             MultiTermAtomSEE,
             MultiTermAtomRTE,
@@ -75,6 +79,7 @@ class Models:
 
     @staticmethod
     def multi_term_atom_legacy():
+        logging.info("Creating Multi-Term Atom Legacy model")
         return Model[
             MultiTermAtomSEELegacy,
             MultiTermAtomRTELegacy,
@@ -91,6 +96,8 @@ class Models:
 
     @staticmethod
     def multi_term_atom_lte():
+        logging.info("Creating Multi-Term Atom LTE model")
+
         return Model[
             MultiTermAtomSEELTE,
             MultiTermAtomRTE,

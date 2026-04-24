@@ -137,7 +137,7 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=5877.25,
+        reference_lambda_A_air=5875.621,
         atomic_mass_amu=4.0,
         precomputed_data=precomputed_data,
     )

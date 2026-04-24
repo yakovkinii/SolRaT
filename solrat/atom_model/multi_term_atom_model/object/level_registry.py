@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Union
 
-from solrat.engine.functions.decorators import log_method, log_method_experimental
+from solrat.engine.functions.decorators import VERBOSE, log_method, log_method_experimental
 from solrat.engine.functions.general import half_int_to_str
 from solrat.engine.functions.looping import triangular
 
@@ -59,7 +59,7 @@ class LevelRegistry:
         Register a new term (if not already registered).
         """
         if term_id not in self.terms.keys():
-            logging.info(f"Level registry: Creating term {term_id}")
+            logging.log(VERBOSE, f"Level registry: Creating term {term_id}")
             term = Term(term_id=term_id, beta=beta, L=L, S=S)
             self.terms[term_id] = term
 
@@ -145,6 +145,7 @@ class Term:
         """
         self.artificial_S_scale = artificial_S_scale
 
+    @log_method
     def register_level(self, level: "Level"):
         """
         Register a level to this term.

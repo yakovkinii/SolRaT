@@ -2,10 +2,10 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.shared.object.rotations import WignerD
 from solrat.atom_model.shared.utility.constants import sqrt2
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops
 
@@ -113,7 +113,7 @@ class TestWignerD(unittest.TestCase):
         Compare T{K, Q} calculated from table 5.5 with T{K, Q} calculated from Wigner D function.
         This simultaneously tests t{K, P}, T{K, Q}, and Wigner D function.
         """
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         chi = np.pi / 5
         theta = np.pi / 3

@@ -2,10 +2,10 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import Models, PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR
 from solrat.engine.generators.nested_loops import nested_loops
 
@@ -25,7 +25,7 @@ class TestStatisticalEquilibriumEquationsDisableRs(unittest.TestCase):
                 level_registry=cfg.level_registry,
                 transition_registry=cfg.transition_registry,
                 atomic_mass_amu=cfg.atomic_mass_amu,
-                reference_lambda_A=cfg.reference_lambda_A,
+                reference_lambda_A_air=cfg.reference_lambda_A_air,
                 disable_r_s=disable_r_s,
             )
         )
@@ -34,7 +34,7 @@ class TestStatisticalEquilibriumEquationsDisableRs(unittest.TestCase):
                 level_registry=cfg.level_registry,
                 transition_registry=cfg.transition_registry,
                 atomic_mass_amu=cfg.atomic_mass_amu,
-                reference_lambda_A=cfg.reference_lambda_A,
+                reference_lambda_A_air=cfg.reference_lambda_A_air,
                 disable_r_s=disable_r_s,
             )
         )
@@ -55,7 +55,7 @@ class TestStatisticalEquilibriumEquationsDisableRs(unittest.TestCase):
         return see.get_solution(), see_legacy.get_solution()
 
     def test_disable_r_s(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         base_model = PreconfiguredModels.multi_term_atom_mock()
         base_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()

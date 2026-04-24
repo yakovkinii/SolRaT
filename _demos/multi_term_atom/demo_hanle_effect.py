@@ -2,10 +2,10 @@ import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     of magnetic field strength. Critical magnetic field is approximately
     A_ul / (Q × 2π × g_J × ν_L/G) = 4.3 G
     """
-    logging_config.init(logging.INFO)
+    setup_logging(logging.INFO)
 
     model = PreconfiguredModels.multi_term_atom_mock()
 

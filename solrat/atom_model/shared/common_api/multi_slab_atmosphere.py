@@ -1,5 +1,6 @@
 from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.object.stokes import Stokes
+from solrat.engine.functions.decorators import log_method
 
 
 class MultiSlabAtmosphere:
@@ -9,6 +10,7 @@ class MultiSlabAtmosphere:
         """
         self.slabs = slabs
 
+    @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
         r"""
         Propagate radiation through slabs sequentially (one after another).

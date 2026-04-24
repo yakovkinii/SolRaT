@@ -12,7 +12,7 @@ class MultiTermAtomConfig(BaseConfig):
         level_registry: LevelRegistry,
         transition_registry: TransitionRegistry,
         atomic_mass_amu: float,
-        reference_lambda_A: float,
+        reference_lambda_A_air: float,
         j_constrained=False,
         disable_r_s: bool = False,
         precomputed_data: Union[PrecomputedData, None] = None,
@@ -25,13 +25,14 @@ class MultiTermAtomConfig(BaseConfig):
         :param level_registry: Registry of atomic energy levels
         :param transition_registry: Registry of radiative transitions
         :param atomic_mass_amu: Atomic mass (in atomic mass units)
+        :param reference_lambda_A_air: air reference wavelength (used for plotting only)
         :param j_constrained: Enable :math:`J` constraint for selecting possible transitions in RTE
         (if constraint is specified in transition registry)
         """
 
         self.level_registry = level_registry
         self.transition_registry = transition_registry
-        self.reference_lambda_A = reference_lambda_A
+        self.reference_lambda_A_air = reference_lambda_A_air
         self.j_constrained = j_constrained
         self.atomic_mass_amu = atomic_mass_amu
         self.disable_r_s = disable_r_s

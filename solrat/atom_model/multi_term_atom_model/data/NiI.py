@@ -36,11 +36,10 @@ def get_Ni_I_5435_config() -> MultiTermAtomConfig:  # pragma: no cover
         einstein_a_ul_sm1=1.9e05 + 1.2e5 + 1.1e5 + 2.5e4 + 2.2e5,
     )
 
-    atomic_mass_amu = 58.7
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=1e8 / (34408.555 - 16017.306),
-        atomic_mass_amu=atomic_mass_amu,
+        reference_lambda_A_air=5435.87,
+        atomic_mass_amu=58.7,
         j_constrained=True,
     )

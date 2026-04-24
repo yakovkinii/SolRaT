@@ -1,9 +1,10 @@
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.shared.utility.functions import frequency_hz_to_lambda_A
+from solrat.engine.functions.decorators import log_function
 
 
+@log_function
 def get_mock_atom_config(fine_structure: bool = True) -> MultiTermAtomConfig:  # pragma: no cover
     r"""
     Ly-alpha-like structure for testing
@@ -48,6 +49,6 @@ def get_mock_atom_config(fine_structure: bool = True) -> MultiTermAtomConfig:  #
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=frequency_hz_to_lambda_A(5.996e14),
+        reference_lambda_A_air=4998.4,
         atomic_mass_amu=1.0,
     )

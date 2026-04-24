@@ -19,7 +19,7 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from solrat.atom_model.shared.object.rotations import T_K_Q_double_rotation, WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt_pi
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.voigt_profile import voigt
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j
 from solrat.engine.functions.decorators import log_method
@@ -62,6 +62,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomRTELegacy instance")
 
         return cls(
             transition_registry=config.transition_registry,
@@ -84,7 +85,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
         """
         If the transition is far away from the requested frequency range, it does not contribute to RTE.
         """
-        nui = energy_cmm1_to_frequency_hz(term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1())
+        nui = energy_cmm1_to_frequency_sm1(term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1())
         cutoff = (
             self.maximum_delta_v_thermal_units_cutoff * nui * atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         )
@@ -92,6 +93,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             return True
         return False
 
+    @log_method
     def eta_a(
         self,
         rho: Rho,
@@ -154,7 +156,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
@@ -184,6 +186,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def eta_s(
         self,
         rho: Rho,
@@ -255,7 +258,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             ),
                             lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
@@ -284,6 +287,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def rho_a(
         self,
         rho: Rho,
@@ -352,7 +356,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             ),
                             lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
@@ -382,6 +386,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def rho_s(
         self,
         rho: Rho,
@@ -447,7 +452,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                                 ),
                                 nu=self.nu,
@@ -489,6 +494,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
     Returning complex values for eta_rho gives 2x performance benefit.
     """
 
+    @log_method
     def eta_rho_a(
         self,
         rho: Rho,
@@ -550,7 +556,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                         lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                         lambda: rho(term_id=term_lower.term_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
                         lambda: self.phi(
-                            nui=energy_cmm1_to_frequency_hz(
+                            nui=energy_cmm1_to_frequency_sm1(
                                 upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                             ),
                             nu=self.nu,
@@ -579,6 +585,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def eta_rho_s(
         self,
         rho: Rho,
@@ -643,7 +650,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                         lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                         lambda: rho(term_id=term_upper.term_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
                         lambda: self.phi(
-                            nui=energy_cmm1_to_frequency_hz(
+                            nui=energy_cmm1_to_frequency_sm1(
                                 upper_pb_eigenvalues(j=ju, M=Mu) - lower_pb_eigenvalues(j=jl, M=Ml),
                             ),
                             nu=self.nu,
@@ -675,6 +682,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
     The following are some analytical expressions under further assumptions for validation.
     """
 
+    @log_method
     def eta_a_no_field_no_fine_structure(
         self,
         rho: Rho,
@@ -724,7 +732,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_lower.term_id, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
@@ -742,6 +750,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def eta_s_no_field_no_fine_structure(
         self,
         rho: Rho,
@@ -795,7 +804,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_upper.term_id, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
@@ -812,6 +821,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def rho_a_no_field_no_fine_structure(
         self,
         rho: Rho,
@@ -861,7 +871,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_lower.term_id, K=K, Q=Q, J=Jl, Jʹ=Jʹl),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
@@ -879,6 +889,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def rho_s_no_field_no_fine_structure(
         self,
         rho: Rho,
@@ -932,7 +943,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega, D_magnetic),
                             lambda: rho(term_id=term_upper.term_id, K=K, Q=Q, J=Jʹu, Jʹ=Ju),
                             lambda: self.phi(
-                                nui=energy_cmm1_to_frequency_hz(
+                                nui=energy_cmm1_to_frequency_sm1(
                                     term_upper.get_mean_energy_cmm1() - term_lower.get_mean_energy_cmm1()
                                 ),
                                 nu=self.nu,
@@ -949,6 +960,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
             )
         return result
 
+    @log_method
     def eta_s_no_field(
         self,
         rho: Rho,
@@ -999,7 +1011,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                             lambda: 0.5
                             * (
                                 self.phi(
-                                    nui=energy_cmm1_to_frequency_hz(
+                                    nui=energy_cmm1_to_frequency_sm1(
                                         term_upper.get_level(J=Ju).energy_cmm1 - term_lower.get_level(J=Jl).energy_cmm1,
                                     ),
                                     nu=self.nu,
@@ -1007,7 +1019,7 @@ class MultiTermAtomRTELegacy(BaseRTE):
                                 )
                                 + np.conjugate(
                                     self.phi(
-                                        nui=energy_cmm1_to_frequency_hz(
+                                        nui=energy_cmm1_to_frequency_sm1(
                                             term_upper.get_level(J=Jʹu).energy_cmm1
                                             - term_lower.get_level(J=Jl).energy_cmm1,
                                         ),

@@ -1,11 +1,9 @@
 import logging
 
-import numpy as np
-from yatools import logging_config
-
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV
 
 
@@ -19,14 +17,15 @@ def main():
     but they match (after normalization) eta_S for low optical depths.
     """
 
-    logging_config.init(logging.INFO)
+    setup_logging(logging.INFO)
 
     model = PreconfiguredModels.multi_term_atom_HeID3()
-    reference_lambda = model.config.reference_lambda_A
-
-    # The calculation itself needs frequency, but we will display the results in wavelength
-    lambda_A = np.arange(reference_lambda - 2, reference_lambda + 2, 5e-4)
-    nu = lambda_A_to_frequency_hz(lambda_A)
+    reference_lambda_A_air = model.config.reference_lambda_A_air
+    nu = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_air - 2,
+        upper_wavelength_A=reference_lambda_A_air + 2,
+        step_A=5e-4,
+    )
 
     angles = Angles(
         chi=0,
@@ -45,7 +44,9 @@ def main():
     )
 
     # Set up the plotter
-    plotter = StokesPlotter_IV(title="He I D3: Emission coefficient vs wavelength")
+    plotter = StokesPlotter_IV(
+        title="He I D3: Emission coefficient vs wavelength", reference_lambda_A_air=reference_lambda_A_air
+    )
 
     # loop through the magnetic field values
     for Bz in [20000, 40000, 60000, 80000, 100000]:
@@ -73,10 +74,9 @@ def main():
 
         # Plot emission coefficient
         plotter.add(
-            lambda_A=lambda_A,
+            nu=nu,
             stokes_I=rtc.get_epsilon_I(),
             stokes_V=rtc.get_epsilon_V(),
-            lambda_ref_A=reference_lambda,
             color="auto",
             label=rf"$B_z = {Bz/1000:.0f}$ kG",
         )

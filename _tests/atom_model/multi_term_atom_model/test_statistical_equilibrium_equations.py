@@ -3,17 +3,17 @@ import unittest
 
 import numpy as np
 from numpy import sqrt
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import Models
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
     def test_statistical_equilibrium_equations_resonance(self):
         # (10.126)
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         level_registry = LevelRegistry()
         level_registry.register_level(
@@ -51,7 +51,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
                 level_registry=level_registry,
                 transition_registry=transition_registry,
                 atomic_mass_amu=4,
-                reference_lambda_A=np.nan,
+                reference_lambda_A_air=np.nan,
                 disable_r_s=True,
             )
         )
@@ -62,7 +62,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
                 level_registry=level_registry,
                 transition_registry=transition_registry,
                 atomic_mass_amu=4,
-                reference_lambda_A=np.nan,
+                reference_lambda_A_air=np.nan,
                 disable_r_s=True,
             )
         )

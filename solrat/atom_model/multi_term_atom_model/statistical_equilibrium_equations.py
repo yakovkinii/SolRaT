@@ -1,3 +1,5 @@
+import logging
+
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
@@ -21,7 +23,7 @@ from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import (
     construct_coherence_id_from_term_id,
 )
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, m1p, n_proj
@@ -82,6 +84,7 @@ class MultiTermAtomSEE(BaseSEE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomSEE instance")
 
         if config.precomputed_data is None:
             return cls(
@@ -177,6 +180,7 @@ class MultiTermAtomSEE(BaseSEE):
             radiation_tensor=radiation_tensor_in_magnetic_frame,
         )
 
+    @log_method
     def precompute_coherence_decay(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all coherence decay :math:`N` kernel parameters :math:`n_0` and :math:`n_1`:
@@ -213,6 +217,7 @@ class MultiTermAtomSEE(BaseSEE):
         df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * atmosphere_parameters.nu_larmor)
         self.matrix_builder.add_coefficient_from_df(df)
 
+    @log_method
     def precompute_absorption(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all Absorption parameters :math:`t_{a1}`:
@@ -264,6 +269,7 @@ class MultiTermAtomSEE(BaseSEE):
         df["coefficient"] = df.t_a_1 * df.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df)
 
+    @log_method
     def precompute_emission(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all Emission parameters coefficient, :math:`t_{s1}`:
@@ -331,6 +337,7 @@ class MultiTermAtomSEE(BaseSEE):
         df_s["coefficient"] = df_s.t_s_1 * df_s.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df_s)
 
+    @log_method
     def precompute_relaxation(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all relaxation parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
@@ -411,6 +418,7 @@ class MultiTermAtomSEE(BaseSEE):
         df_s["coefficient"] = -df_s.r_s_1 * df_s.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df_s)
 
+    @log_method
     def precompute_r_a(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -483,6 +491,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         return dfs
 
+    @log_method
     def precompute_r_e(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -517,6 +526,7 @@ class MultiTermAtomSEE(BaseSEE):
             )
         return dfs
 
+    @log_method
     def precompute_r_s(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -608,6 +618,7 @@ class MultiTermAtomSEE(BaseSEE):
         )
         return result
 
+    @log_method
     def precompute_n(self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
         r"""
         Precompute coherence relaxation parameters :math:`n_0, n_1`:
@@ -621,7 +632,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         level = self.level_registry.get_level(term=term, J=J)
         level_prime = self.level_registry.get_level(term=term, J=Jʹ)
-        nu = energy_cmm1_to_frequency_hz(level.energy_cmm1 - level_prime.energy_cmm1)
+        nu = energy_cmm1_to_frequency_sm1(level.energy_cmm1 - level_prime.energy_cmm1)
 
         n_0 = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * nu
 
@@ -653,6 +664,7 @@ class MultiTermAtomSEE(BaseSEE):
         )
         return df
 
+    @log_method
     def precompute_t_a(
         self,
         term: Term,
@@ -713,6 +725,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         return dfs
 
+    @log_method
     def precompute_t_e(
         self,
         term: Term,
@@ -769,6 +782,7 @@ class MultiTermAtomSEE(BaseSEE):
             )
         ]
 
+    @log_method
     def precompute_t_s(
         self,
         term: Term,
@@ -854,6 +868,7 @@ class MultiTermAtomSEE(BaseSEE):
 
         This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
         """
+        logging.info("Solving Statistical Equilibrium Equations")
         # sol = np.linalg.solve(
         #     self.matrix_builder.rho_matrix[:, 1:, 1:],
         #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],

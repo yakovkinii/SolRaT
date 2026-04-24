@@ -1,3 +1,5 @@
+import logging
+
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
@@ -45,6 +47,7 @@ class MultiTermAtomSEELTE(BaseSEE):
         r"""
         Constructor from the model config.
         """
+        logging.info("Constructing MultiTermAtomSEELTE instance")
         return cls(
             level_registry=config.level_registry,
         )
@@ -80,6 +83,7 @@ class MultiTermAtomSEELTE(BaseSEE):
 
         Reference: (LL04 3.108) (LL04 10.118)
         """
+        logging.info("Applying LTE Statistical Equilibrium Equations solution")
 
         T = self.atmosphere_parameters.temperature_K
 

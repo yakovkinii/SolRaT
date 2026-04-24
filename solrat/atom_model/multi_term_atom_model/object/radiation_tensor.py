@@ -1,3 +1,5 @@
+from solrat.engine.functions.decorators import log_method
+
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
@@ -14,7 +16,7 @@ from solrat.atom_model.multi_term_atom_model.object.transition_registry import T
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt2
-from solrat.atom_model.shared.utility.functions import frequency_hz_to_lambda_A, get_planck_BP
+from solrat.atom_model.shared.utility.functions import frequency_sm1_to_lambda_A, get_planck_BP
 from solrat.engine.functions.general import delta, half_int_to_str
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops
@@ -57,17 +59,18 @@ class RadiationTensor(BaseRadiationTensor):
     def get_key(transition_id: str, K: int, Q: int) -> str:
         return f"{transition_id}_{half_int_to_str(K)}_{half_int_to_str(Q)}"
 
-    def fill_planck(self, T_K: float) -> "RadiationTensor":
+    @log_method
+    def fill_planck(self, temperature_K: float) -> "RadiationTensor":
         r"""
         Flat-spectrum approximation, i.e. :math:`J^K_Q` needs to be defined for each transition,
         not for each frequency.
 
-        :param T_K: Temperature in Kelvin
+        :param temperature_K: Temperature in Kelvin
         :return: :any:`RadiationTensor` instance
         """
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
-            planck = get_planck_BP(nu_sm1=nu_ul, T_K=T_K)
+            planck = get_planck_BP(nu_sm1=nu_ul, temperature_K=temperature_K)
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = planck * delta(K, 0) * delta(Q, 0)
@@ -99,6 +102,7 @@ class RadiationTensor(BaseRadiationTensor):
         assert h_arcsec <= 50, "w_fit is not tested for h_arcsec>50"
         return 0.02 + h_arcsec**0.6 * 0.0175 + 4e2 / (lambda_A - 1600 + h_arcsec * 20)
 
+    @log_method
     def fill_NLTE_n_w_parametrized(self, h_arcsec) -> "RadiationTensor":
         r"""
         Fill the radiation tensor with an anisotropic parametrization from A. Asensio Ramos et al (2008)
@@ -112,7 +116,7 @@ class RadiationTensor(BaseRadiationTensor):
         """
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
-            lambda_ul_A = frequency_hz_to_lambda_A(nu_ul)
+            lambda_ul_A = frequency_sm1_to_lambda_A(nu_ul)
 
             J00 = self.n_fit(lambda_ul_A) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
             J20 = J00 * self.w_fit(lambda_ul_A, h_arcsec) / sqrt2
@@ -123,6 +127,7 @@ class RadiationTensor(BaseRadiationTensor):
         self._df = None
         return self
 
+    @log_method
     def get_NLTE_n_w_parametrized_stokes_I(self, h_arcsec, theta, nu):
         r"""
         Get Stokes I that is consistent with the anisotropic {n, w} :math:`J^K_Q` tensor.
@@ -138,7 +143,7 @@ class RadiationTensor(BaseRadiationTensor):
         """
         stokesI = np.zeros_like(nu)
         for i, nui in enumerate(nu):
-            lambdai = frequency_hz_to_lambda_A(nui)
+            lambdai = frequency_sm1_to_lambda_A(nui)
             J00 = self.n_fit(lambdai) * 2 * h_erg_s * nui**3 / c_cm_sm1**2
             J20 = J00 * self.w_fit(lambdai, h_arcsec) / sqrt2
             stokesI[i] = J00 + 5 * J20 * (3 * np.cos(theta) ** 2 - 1) / 2
@@ -181,6 +186,7 @@ class RadiationTensor(BaseRadiationTensor):
                 )
         self._df = pd.concat(dfs, ignore_index=True)
 
+    @log_method
     def rotate(self, D: WignerD) -> "RadiationTensor":
         r"""
         Rotate the :math:`J^K_Q` tensor according to the :math:`D` rotation.
@@ -204,6 +210,7 @@ class RadiationTensor(BaseRadiationTensor):
                 )
         return new_J
 
+    @log_method
     def rotate_to_magnetic_frame(self, angles: Angles) -> "RadiationTensor":
         r"""
         Rotate :math:`J^K_Q` to the magnetic reference frame.

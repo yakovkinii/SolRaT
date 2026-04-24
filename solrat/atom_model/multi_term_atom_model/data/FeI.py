@@ -2,10 +2,10 @@ from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelR
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 from solrat.atom_model.multi_term_atom_model.utility.paschen_back import get_artificial_S_scale_from_term_g
-from solrat.engine.functions.decorators import log_function
+from solrat.engine.functions.decorators import log_function_experimental
 
 
-@log_function
+@log_function_experimental
 def get_Fe_I_5434_config() -> MultiTermAtomConfig:  # pragma: no cover
     r"""
     Atomic model for Fe I 5434.523 A line, constrained to :math:`J=0 \to J=1` transition.
@@ -60,12 +60,10 @@ def get_Fe_I_5434_config() -> MultiTermAtomConfig:  # pragma: no cover
         + 6.25e04,
     )
 
-    atomic_mass_amu = 55.8
-
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,
-        reference_lambda_A=1e8 / (26550.479 - 8154.714),
-        atomic_mass_amu=atomic_mass_amu,
+        reference_lambda_A_air=5434.523,
+        atomic_mass_amu=55.8,
         j_constrained=True,
     )

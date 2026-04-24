@@ -1,18 +1,19 @@
-import logging
 from typing import TypeVar
 
 import numpy as np
+
+from solrat.engine.functions.decorators import log_function
 
 FloatOrNDArrayT = TypeVar("FloatOrNDArrayT", float, np.ndarray)
 IntOrFloatT = TypeVar("IntOrFloatT", int, float)
 NumericT = TypeVar("NumericT", int, float, complex, np.ndarray)
 
 
+@log_function
 def pseudo_hash(stokesI, stokesQ, stokesU, stokesV):
     """
     Construct a pseudo-unique, likely non-trivial real float hash from 4 complex arrays
     """
-    logging.info(stokesQ.shape)
     if stokesI.shape[0] % 2 == 1:
         stokesI = stokesI[:-1] + stokesI[-1]
         stokesQ = stokesQ[:-1] + stokesQ[-1]

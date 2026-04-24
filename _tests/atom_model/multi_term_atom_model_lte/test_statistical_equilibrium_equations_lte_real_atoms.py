@@ -3,11 +3,11 @@ import unittest
 
 import numpy as np
 from numpy import sqrt
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.utility.constants import kB_erg_Km1
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_erg
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 class TestStatisticalEquilibriumEquationsLTERealAtoms(unittest.TestCase):
@@ -94,7 +94,7 @@ class TestStatisticalEquilibriumEquationsLTERealAtoms(unittest.TestCase):
         return excited_pop
 
     def test_lte_FeI_5434(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
         model = PreconfiguredModels.multi_term_atom_lte_FeI_5434()
         self._run_checks(model)
 
@@ -103,7 +103,7 @@ class TestStatisticalEquilibriumEquationsLTERealAtoms(unittest.TestCase):
         assert frac_high > frac_low, "Excited fraction should increase with temperature"
 
     def test_lte_NiI_5435(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
         model = PreconfiguredModels.multi_term_atom_lte_NiI_5435()
         self._run_checks(model)
 

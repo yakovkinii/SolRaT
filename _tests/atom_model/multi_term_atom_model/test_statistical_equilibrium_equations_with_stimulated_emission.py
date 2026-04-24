@@ -2,16 +2,16 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR
 from solrat.engine.generators.nested_loops import nested_loops
 
 
 class TestStatisticalEquilibriumEquationsResonanceStimulated(unittest.TestCase):
     def test_statistical_equilibrium_equations_resonance_stimulated(self):
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_mock()
         model_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()

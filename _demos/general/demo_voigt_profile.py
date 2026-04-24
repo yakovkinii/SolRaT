@@ -2,9 +2,9 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, sqrt_pi
+from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.voigt_profile import voigt
 
 
@@ -13,7 +13,7 @@ def main():
     Reference: (LL04 5.43)
     This corresponds to Fig. 5.3.
     """
-    logging_config.init(logging.INFO)
+    setup_logging(logging.INFO)
 
     nu0 = 5.996e14  # Hz
 

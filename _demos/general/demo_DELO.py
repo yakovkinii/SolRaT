@@ -1,27 +1,28 @@
-import logging
-
 import numpy as np
 from numpy import real
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import get_planck_BP, lambda_A_to_frequency_hz
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesNorm, StokesPlotter
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range, get_planck_BP
+from solrat.atom_model.shared.utility.log_setup import setup_logging
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
     """
-    This demo shows how the DELO solver works against the different more primitive finite difference methods.
+    This demo shows how the DELO solver works against the different more primitive finite difference method.
     """
-    logging_config.init(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_HeID3()
-    reference_lambda = model.config.reference_lambda_A
-    lambda_A = np.arange(reference_lambda - 1, reference_lambda + 1, 1e-3)
-    nu = lambda_A_to_frequency_hz(lambda_A)
+    reference_lambda_A_air = model.config.reference_lambda_A_air
+    nu = get_frequencies_from_air_wavelength_range(
+        lower_wavelength_A=reference_lambda_A_air - 1,
+        upper_wavelength_A=reference_lambda_A_air + 1,
+        step_A=1e-3,
+    )
 
     angles = Angles(
         chi=30 * np.pi / 180,
@@ -31,7 +32,9 @@ def main():
         theta_B=20 * np.pi / 180,
     )
 
-    plotter = StokesPlotter("Comparison of DELO and Finite Difference (Euler) integration", vacuum_to_air=True)
+    plotter = StokesPlotter(
+        "Comparison of DELO and Finite Difference integration", reference_lambda_A_air=reference_lambda_A_air
+    )
 
     atmosphere_parameters = model.AtmosphereParameters(
         model_config=model.config,
@@ -57,10 +60,9 @@ def main():
     )
 
     plotter.add_stokes(
-        lambda_A=lambda_A,
-        lambda_ref_A=reference_lambda,
+        nu=nu,
         stokes=atmosphere.forward(initial_stokes=initial_stokes),
-        norm=StokesNorm.BY_REFERENCE,
+        norm=StokesPlotter.Norm.BY_REFERENCE,
         stokes_reference=initial_stokes,
         label="DELO",
     )
@@ -80,7 +82,7 @@ def main():
     K_tau_line[:, 1, 1] += 1 / eta_LC
     K_tau_line[:, 2, 2] += 1 / eta_LC
     K_tau_line[:, 3, 3] += 1 / eta_LC
-    epsilon_tau_line[:, 0] += get_planck_BP(nu_sm1=nu, T_K=atmosphere_parameters.temperature_K) / eta_LC
+    epsilon_tau_line[:, 0] += get_planck_BP(nu_sm1=nu, temperature_K=atmosphere_parameters.temperature_K) / eta_LC
 
     # Rename to be explicit
     K_tau = K_tau_line
@@ -106,8 +108,7 @@ def main():
 
         if i % 2 == 1:
             plotter.add_stokes(
-                lambda_A=lambda_A,
-                lambda_ref_A=reference_lambda,
+                nu=nu,
                 stokes=Stokes(
                     nu=nu,
                     I=real(stokes[:, 0, 0]),
@@ -115,7 +116,7 @@ def main():
                     U=real(stokes[:, 2, 0]),
                     V=real(stokes[:, 3, 0]),
                 ),
-                norm=StokesNorm.BY_REFERENCE,
+                norm=StokesPlotter.Norm.BY_REFERENCE,
                 stokes_reference=initial_stokes,
                 label=f"FD (step #{i+1}/{n_steps})",
                 linewidth=0.5,

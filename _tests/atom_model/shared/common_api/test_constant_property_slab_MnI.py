@@ -2,14 +2,15 @@ import logging
 import unittest
 
 import numpy as np
-from yatools import logging_config
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabAtmosphere
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import lambda_A_to_frequency_hz
+from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
+from solrat.atom_model.shared.utility.log_setup import setup_logging
+from solrat.engine.functions.special import pseudo_hash
 
 
 class TestConstantPropertySlab(unittest.TestCase):
@@ -17,13 +18,15 @@ class TestConstantPropertySlab(unittest.TestCase):
         """
         Sanity checks for ConstantPropertySlab with Mn I LTE synthesis.
         """
-        logging_config.init(logging.INFO)
+        setup_logging(logging.INFO)
 
         model = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
-        reference_lambda = model.config.reference_lambda_A
-
-        lambda_A = np.arange(reference_lambda - 0.5, reference_lambda + 0.5, 1e-3)
-        nu = lambda_A_to_frequency_hz(lambda_A)
+        reference_lambda_A_air = model.config.reference_lambda_A_air
+        nu = get_frequencies_from_air_wavelength_range(
+            lower_wavelength_A=reference_lambda_A_air - 0.5,
+            upper_wavelength_A=reference_lambda_A_air + 0.5,
+            step_A=1e-3,
+        )
 
         angles = Angles(chi=0, theta=0, gamma=0, chi_B=0, theta_B=0)
 
@@ -53,12 +56,9 @@ class TestConstantPropertySlab(unittest.TestCase):
 
         stokes_Mn = atmosphere_Mn.forward(initial_stokes=initial_stokes)
 
-        assert np.all(np.isfinite(stokes_Mn.I))
-        assert np.all(np.isfinite(stokes_Mn.V))
-        # Absorption line: emergent I must dip below the background continuum
-        assert np.min(stokes_Mn.I) < np.min(initial_stokes.I)
-        # theta=0 (along B): no linear polarisation
-        assert np.allclose(stokes_Mn.Q, 0, atol=1e-20)
-        assert np.allclose(stokes_Mn.U, 0, atol=1e-20)
-        # B=1000 G along LOS: circular polarisation must be present
-        assert np.max(np.abs(stokes_Mn.V)) > 0
+        # Check that the result did not change from previous runs
+        last_run_hash = 4.016455999176536e-05
+        new_hash = pseudo_hash(stokes_Mn.I, stokes_Mn.Q, stokes_Mn.U, stokes_Mn.V)
+        logging.info(new_hash)
+        logging.info(last_run_hash)
+        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-8
