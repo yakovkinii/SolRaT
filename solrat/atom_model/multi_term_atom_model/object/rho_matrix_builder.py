@@ -27,11 +27,12 @@ def construct_coherence_id_from_term_id(term_id: str, K: float, Q: float, J: flo
 
 
 class Rho(BaseRho):
+    """
+    A container for the density tensor Rho
+    :param terms: list of all terms.
+    """
+
     def __init__(self, terms: List[Term]):
-        """
-        A container for the density tensor Rho
-        :param terms: list of all terms.
-        """
         self.data = dict()
         self.terms = {term.term_id: term for term in terms}
 
@@ -50,14 +51,14 @@ class Rho(BaseRho):
 
 
 class RhoMatrixBuilder:
+    """
+    This class helps to build the matrix for rhos.
+    All possible rhos are defined by terms.
+
+    :param terms: list of all terms.
+    """
+
     def __init__(self, terms: List[Term]):
-        """
-        This class helps to build the matrix for rhos.
-        All possible rhos are defined by terms.
-
-        :param terms: list of all terms.
-        """
-
         # Create mapping [term_id, K, Q, J, Jʹ] <-> matrix index
         self.index_to_parameters = dict()
         self.coherence_id_to_index = dict()
