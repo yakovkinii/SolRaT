@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
@@ -8,7 +7,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 class TestTransitionRegistry(unittest.TestCase):
     def test_transition_registry(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         level_registry = LevelRegistry()
         level_registry.register_level(

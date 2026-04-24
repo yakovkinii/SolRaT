@@ -1,5 +1,3 @@
-import logging
-
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
 from solrat.atom_model.shared.common_api.multi_slab_atmosphere import MultiSlabAtmosphere
@@ -14,7 +12,7 @@ def main():
     """
     Zeeman effect in the Mn I 5432 A line (LTE) for a range of magnetic field strengths.
     """
-    setup_logging(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
     reference_lambda_A_air = model.config.reference_lambda_A_air

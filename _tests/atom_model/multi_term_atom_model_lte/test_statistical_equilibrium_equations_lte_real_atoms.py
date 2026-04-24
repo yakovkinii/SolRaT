@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -94,7 +93,7 @@ class TestStatisticalEquilibriumEquationsLTERealAtoms(unittest.TestCase):
         return excited_pop
 
     def test_lte_FeI_5434(self):
-        setup_logging(logging.INFO)
+        setup_logging()
         model = PreconfiguredModels.multi_term_atom_lte_FeI_5434()
         self._run_checks(model)
 
@@ -103,7 +102,7 @@ class TestStatisticalEquilibriumEquationsLTERealAtoms(unittest.TestCase):
         assert frac_high > frac_low, "Excited fraction should increase with temperature"
 
     def test_lte_NiI_5435(self):
-        setup_logging(logging.INFO)
+        setup_logging()
         model = PreconfiguredModels.multi_term_atom_lte_NiI_5435()
         self._run_checks(model)
 

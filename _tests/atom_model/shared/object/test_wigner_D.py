@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -113,7 +112,7 @@ class TestWignerD(unittest.TestCase):
         Compare T{K, Q} calculated from table 5.5 with T{K, Q} calculated from Wigner D function.
         This simultaneously tests t{K, P}, T{K, Q}, and Wigner D function.
         """
-        setup_logging(logging.INFO)
+        setup_logging()
 
         chi = np.pi / 5
         theta = np.pi / 3

@@ -1,5 +1,3 @@
-import logging
-
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
@@ -17,7 +15,7 @@ def main():
     but they match (after normalization) eta_S for low optical depths.
     """
 
-    setup_logging(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_HeID3()
     reference_lambda_A_air = model.config.reference_lambda_A_air

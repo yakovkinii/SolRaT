@@ -1,5 +1,3 @@
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -16,7 +14,7 @@ def main():
     This demo shows the calculation of the Zeeman splitting for the Fe I 5434 A line.
     """
 
-    setup_logging(logging.INFO)
+    setup_logging()
 
     level_registry = LevelRegistry()
     level_registry.register_level(

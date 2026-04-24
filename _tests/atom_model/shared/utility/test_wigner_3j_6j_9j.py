@@ -13,7 +13,7 @@ from solrat.atom_model.shared.utility.wigner_3j_6j_9j import (
 
 class TestMathUtils(unittest.TestCase):
     def test_w3j(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         assert _w3j_doubled_argument(0, 0, 0, 0, 0, 0) == 1
         assert _w3j_doubled_argument(2, 2, 4, 0, 0, 0) == np.sqrt(2 / 15)

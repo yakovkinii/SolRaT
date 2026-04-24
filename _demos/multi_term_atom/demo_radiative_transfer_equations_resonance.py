@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 
 from solrat.atom_model.model_registry import PreconfiguredModels
@@ -19,7 +17,7 @@ def main():
     Reference: (LL04 10.127)
     """
 
-    setup_logging(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_mock()
     reference_lambda_A_air = model.config.reference_lambda_A_air

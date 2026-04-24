@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 
 from solrat.atom_model.model_registry import PreconfiguredModels
@@ -17,7 +15,7 @@ def demo_constant_property_slab_multiline():
     """
     Demonstrate basic usage of ConstantPropertySlab for multiple non-overlapping line synthesis.
     """
-    setup_logging(logging.INFO)
+    setup_logging()
 
     model_Mn = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
     model_Fe = PreconfiguredModels.multi_term_atom_lte_FeI_5434()

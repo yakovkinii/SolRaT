@@ -11,7 +11,7 @@ from solrat.engine.generators.nested_loops import nested_loops
 
 class TestStatisticalEquilibriumEquationsResonanceStimulated(unittest.TestCase):
     def test_statistical_equilibrium_equations_resonance_stimulated(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_mock()
         model_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()

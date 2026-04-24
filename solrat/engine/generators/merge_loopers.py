@@ -7,7 +7,6 @@ from typing import Set, Union
 import numpy as np
 import pandas as pd
 
-from solrat.engine.functions.decorators import log_function
 
 _max_looper_id = threading.local()
 
@@ -20,7 +19,6 @@ def _set_max_looper_id(value: int) -> None:
     _max_looper_id.level = value
 
 
-@log_function
 def get_unique_name() -> str:
     new_id = _get_max_looper_id()
     name = f"__looper_unique_{new_id}__"

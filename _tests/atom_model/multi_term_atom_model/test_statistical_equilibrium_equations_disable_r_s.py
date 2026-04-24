@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -55,7 +54,7 @@ class TestStatisticalEquilibriumEquationsDisableRs(unittest.TestCase):
         return see.get_solution(), see_legacy.get_solution()
 
     def test_disable_r_s(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         base_model = PreconfiguredModels.multi_term_atom_mock()
         base_legacy = PreconfiguredModels.multi_term_atom_legacy_mock()

@@ -134,7 +134,6 @@ class Frame(Generic[SumLimitsT]):
         new_frame.frame = self.frame.copy()
         new_frame.factors = {k: factor.copy() for k, factor in self.factors.items()}
         new_frame._n_factors = self._n_factors
-        logging.log(VERBOSE, f"new frame: {new_frame}")
         return new_frame
 
     def __repr__(self):  # pragma: no cover
@@ -153,7 +152,6 @@ class Frame(Generic[SumLimitsT]):
 
         return result
 
-    @log_method
     def construct_sub_frame(self, columns: List[str]) -> pd.DataFrame:
         """
         This is used to reduce the evaluations of loopers/factors to minimum:

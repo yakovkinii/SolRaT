@@ -180,7 +180,6 @@ class MultiTermAtomSEE(BaseSEE):
             radiation_tensor=radiation_tensor_in_magnetic_frame,
         )
 
-    @log_method
     def precompute_coherence_decay(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all coherence decay :math:`N` kernel parameters :math:`n_0` and :math:`n_1`:
@@ -217,7 +216,6 @@ class MultiTermAtomSEE(BaseSEE):
         df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * atmosphere_parameters.nu_larmor)
         self.matrix_builder.add_coefficient_from_df(df)
 
-    @log_method
     def precompute_absorption(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all Absorption parameters :math:`t_{a1}`:
@@ -269,7 +267,6 @@ class MultiTermAtomSEE(BaseSEE):
         df["coefficient"] = df.t_a_1 * df.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df)
 
-    @log_method
     def precompute_emission(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all Emission parameters coefficient, :math:`t_{s1}`:
@@ -337,7 +334,6 @@ class MultiTermAtomSEE(BaseSEE):
         df_s["coefficient"] = df_s.t_s_1 * df_s.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df_s)
 
-    @log_method
     def precompute_relaxation(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
         r"""
         Precompute all relaxation parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
@@ -418,7 +414,6 @@ class MultiTermAtomSEE(BaseSEE):
         df_s["coefficient"] = -df_s.r_s_1 * df_s.radiation_tensor
         self.matrix_builder.add_coefficient_from_df(df_s)
 
-    @log_method
     def precompute_r_a(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -491,7 +486,6 @@ class MultiTermAtomSEE(BaseSEE):
 
         return dfs
 
-    @log_method
     def precompute_r_e(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -526,7 +520,6 @@ class MultiTermAtomSEE(BaseSEE):
             )
         return dfs
 
-    @log_method
     def precompute_r_s(
         self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
     ):
@@ -618,7 +611,6 @@ class MultiTermAtomSEE(BaseSEE):
         )
         return result
 
-    @log_method
     def precompute_n(self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
         r"""
         Precompute coherence relaxation parameters :math:`n_0, n_1`:
@@ -664,7 +656,6 @@ class MultiTermAtomSEE(BaseSEE):
         )
         return df
 
-    @log_method
     def precompute_t_a(
         self,
         term: Term,
@@ -725,7 +716,6 @@ class MultiTermAtomSEE(BaseSEE):
 
         return dfs
 
-    @log_method
     def precompute_t_e(
         self,
         term: Term,
@@ -782,7 +772,6 @@ class MultiTermAtomSEE(BaseSEE):
             )
         ]
 
-    @log_method
     def precompute_t_s(
         self,
         term: Term,

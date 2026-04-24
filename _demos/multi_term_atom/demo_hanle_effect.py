@@ -1,5 +1,3 @@
-import logging
-
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -14,7 +12,7 @@ def main():
     of magnetic field strength. Critical magnetic field is approximately
     A_ul / (Q × 2π × g_J × ν_L/G) = 4.3 G
     """
-    setup_logging(logging.INFO)
+    setup_logging()
 
     model = PreconfiguredModels.multi_term_atom_mock()
 

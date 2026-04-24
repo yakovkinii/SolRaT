@@ -1,5 +1,3 @@
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -15,7 +13,7 @@ def main():
     and the complete Paschen-Back regime.
     """
 
-    setup_logging(logging.INFO)
+    setup_logging()
 
     level_registry = LevelRegistry()
     level_registry.register_level(

@@ -13,7 +13,7 @@ def main():
     This recreates Fig. 4 in A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
     Here, we use the parametrized smooth version of the n(lambda) and w(lambda) function
     """
-    setup_logging(logging.INFO)
+    setup_logging()
     # Load the atomic data for He I D3
     config = get_He_I_D3_config()
 

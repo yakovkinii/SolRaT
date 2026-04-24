@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -12,7 +11,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 class TestRadiativeTransferEquationsResonanceNoFS(unittest.TestCase):
     def test_radiative_transfer_equations_resonance_nofs(self):
         # (10.127)
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_mock_nofs()
         reference_lambda_A_air = model.config.reference_lambda_A_air

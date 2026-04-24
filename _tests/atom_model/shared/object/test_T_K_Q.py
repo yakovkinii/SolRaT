@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -11,7 +10,7 @@ from solrat.engine.generators.nested_loops import nested_loops
 
 class TestTKQ(unittest.TestCase):
     def test_T_K_Q(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         # A couple of table values
         assert T_K_Q(0, 0, 0, 1, 1, 1) == 1

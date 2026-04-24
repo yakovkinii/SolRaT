@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -19,7 +18,7 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
     """
 
     def test_precomputation_roundtrip(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_mock()
 

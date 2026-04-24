@@ -18,7 +18,7 @@ class TestConstantPropertySlab(unittest.TestCase):
         """
         Sanity checks for ConstantPropertySlab with Mn I LTE synthesis.
         """
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_lte_MnI_5432()
         reference_lambda_A_air = model.config.reference_lambda_A_air

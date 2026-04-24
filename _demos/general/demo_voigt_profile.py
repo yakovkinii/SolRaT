@@ -1,5 +1,3 @@
-import logging
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -13,7 +11,7 @@ def main():
     Reference: (LL04 5.43)
     This corresponds to Fig. 5.3.
     """
-    setup_logging(logging.INFO)
+    setup_logging()
 
     nu0 = 5.996e14  # Hz
 

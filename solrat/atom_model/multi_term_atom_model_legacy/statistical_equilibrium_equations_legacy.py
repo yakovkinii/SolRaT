@@ -112,7 +112,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
                     radiation_tensor=radiation_tensor_in_magnetic_frame,
                 )
 
-    @log_method
     def add_coherence_decay(
         self,
         term: Term,
@@ -145,7 +144,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
             )
             self.matrix_builder.add_coefficient(term=term, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-2 * pi * 1j * n)
 
-    @log_method
     def add_absorption(
         self,
         term: Term,
@@ -184,7 +182,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 )
                 self.matrix_builder.add_coefficient(term=term_lower, K=Kl, Q=Ql, J=Jl, Jʹ=Jʹl, coefficient=t_a)
 
-    @log_method
     def add_emission(
         self,
         term: Term,
@@ -235,7 +232,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 )
                 self.matrix_builder.add_coefficient(term=term_upper, K=Ku, Q=Qu, J=Ju, Jʹ=Jʹu, coefficient=t_e + t_s)
 
-    @log_method
     def add_relaxation(
         self,
         term: Term,
@@ -295,7 +291,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
                 )
             self.matrix_builder.add_coefficient(term=term, K=Kʹ, Q=Qʹ, J=Jʹʹ, Jʹ=Jʹʹʹ, coefficient=-(r_a + r_e + r_s))
 
-    @log_method
     def r_a(
         self,
         term: Term,
@@ -350,7 +345,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
             )
         return result
 
-    @log_method
     def r_e(
         self,
         term: Term,
@@ -371,7 +365,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
             result += delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * transition.einstein_a_ul
         return result
 
-    @log_method
     def r_s(
         self,
         term: Term,
@@ -443,7 +436,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
         )
         return result
 
-    @log_method
     def n(
         self,
         term: Term,
@@ -482,7 +474,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
         )
         return result
 
-    @log_method
     def t_a(
         self,
         term: Term,
@@ -522,7 +513,6 @@ class MultiTermAtomSEELegacy(BaseSEE):
             Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q)),
         )
 
-    @log_method
     def t_e(
         self,
         term: Term,

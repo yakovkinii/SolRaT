@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -9,7 +8,7 @@ from solrat.atom_model.shared.utility.voigt_profile import voigt
 
 class TestVoigt(unittest.TestCase):
     def test_voigt(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         frequencies = np.linspace(-10, 10, 200)
         for a in [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 2, 5]:

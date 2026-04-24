@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -12,7 +11,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
     def test_statistical_equilibrium_equations_lte(self):
         # (10.126)
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_mock_nofs()
 

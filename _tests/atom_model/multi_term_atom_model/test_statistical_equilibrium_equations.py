@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -13,7 +12,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
     def test_statistical_equilibrium_equations_resonance(self):
         # (10.126)
-        setup_logging(logging.INFO)
+        setup_logging()
 
         level_registry = LevelRegistry()
         level_registry.register_level(

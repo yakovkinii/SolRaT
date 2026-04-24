@@ -13,7 +13,7 @@ from solrat.engine.functions.special import pseudo_hash
 
 class TestRadiativeTransferEquationsD3(unittest.TestCase):
     def test_radiative_transfer_equations_d3(self):
-        setup_logging(logging.INFO)
+        setup_logging()
 
         model = PreconfiguredModels.multi_term_atom_HeID3()
         reference_lambda_A_air = model.config.reference_lambda_A_air
