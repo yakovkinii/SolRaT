@@ -1,9 +1,8 @@
-from solrat.engine.functions.decorators import log_method
-
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
     from typing_extensions import Self  # Python <3.11
+
 import logging
 from typing import Generic, Union
 
@@ -28,6 +27,7 @@ from solrat.atom_model.multi_term_atom_model_legacy.statistical_equilibrium_equa
 )
 from solrat.atom_model.multi_term_atom_model_lte.object.radiation_tensor import RadiationTensorLTE
 from solrat.atom_model.multi_term_atom_model_lte.statistical_equilibrium_equations import MultiTermAtomSEELTE
+from solrat.engine.functions.decorators import log_method
 
 
 class Model(Generic[SEET, RTET, RadiationTensorT, AtmosphereParametersT, ConfigT]):
