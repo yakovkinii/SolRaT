@@ -1,10 +1,9 @@
-import logging
-
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
     from typing_extensions import Self  # Python <3.11
 
+import logging
 from typing import Union
 
 import numpy as np

@@ -7,6 +7,17 @@ from solrat.atom_model.multi_term_atom_model.object.transition_registry import T
 
 
 class MultiTermAtomConfig(BaseConfig):
+    r"""
+    Configuration class that specifies the atomic structure for the Multi-Term Atom model.
+
+    :param level_registry: Registry of atomic energy levels
+    :param transition_registry: Registry of radiative transitions
+    :param atomic_mass_amu: Atomic mass (in atomic mass units)
+    :param reference_lambda_A_air: air reference wavelength (used for plotting only)
+    :param j_constrained: Enable :math:`J` constraint for selecting possible transitions in RTE
+    (if constraint is specified in transition registry)
+    """
+
     def __init__(
         self,
         level_registry: LevelRegistry,
@@ -19,17 +30,6 @@ class MultiTermAtomConfig(BaseConfig):
         custom_delta_nu_cutoff: Union[float, None] = None,
         N: float = 1.0,
     ):
-        r"""
-        Configuration class that specifies the atomic structure for the Multi-Term Atom model.
-
-        :param level_registry: Registry of atomic energy levels
-        :param transition_registry: Registry of radiative transitions
-        :param atomic_mass_amu: Atomic mass (in atomic mass units)
-        :param reference_lambda_A_air: air reference wavelength (used for plotting only)
-        :param j_constrained: Enable :math:`J` constraint for selecting possible transitions in RTE
-        (if constraint is specified in transition registry)
-        """
-
         self.level_registry = level_registry
         self.transition_registry = transition_registry
         self.reference_lambda_A_air = reference_lambda_A_air

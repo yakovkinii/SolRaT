@@ -6,6 +6,10 @@ from solrat.engine.functions.decorators import log_method
 
 
 class RadiativeTransferCoefficients:
+    """
+    This is a container class for all radiative transfer coefficients.
+    """
+
     def __init__(
         self,
         eta_rho_aI,
@@ -21,9 +25,6 @@ class RadiativeTransferCoefficients:
         epsilonU,
         epsilonV,
     ):
-        """
-        This is a container class for all radiative transfer coefficients.
-        """
         self.eta_rho_aI = eta_rho_aI
         self.eta_rho_aQ = eta_rho_aQ
         self.eta_rho_aU = eta_rho_aU

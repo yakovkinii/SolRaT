@@ -4,10 +4,11 @@ from solrat.engine.functions.decorators import log_method
 
 
 class MultiSlabAtmosphere:
+    r"""
+    Container that consecutively combines multiple slabs to create a stratified atmosphere.
+    """
+
     def __init__(self, *slabs: ConstantPropertySlabAtmosphere):
-        r"""
-        Container that consecutively combines multiple slabs to create a stratified atmosphere.
-        """
         self.slabs = slabs
 
     @log_method

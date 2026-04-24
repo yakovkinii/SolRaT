@@ -1,5 +1,3 @@
-from solrat.engine.functions.decorators import log_method
-
 try:
     from typing import Self  # Python 3.11+
 except ImportError:
@@ -17,6 +15,7 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import WignerD
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt2
 from solrat.atom_model.shared.utility.functions import frequency_sm1_to_lambda_A, get_planck_BP
+from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, half_int_to_str
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops
@@ -24,18 +23,19 @@ from solrat.engine.generators.summate import summate
 
 
 class RadiationTensor(BaseRadiationTensor):
+    r"""
+    Radiation tensor :math:`J^K_Q(nu_ul)`.
+    Here we assume that transitions are spread apart in frequency, so that we can assign a bijection of
+    transition <-> :math:`\nu_{ul}`, and store :math:`J` for each transition instead for clarity.
+    :math:`K` is always :math:`\le 2` by construction (see eg. 5.157) for electric-dipole transitions
+    due to :math:`T` tensor.
+
+    :param transition_registry: :any:`TransitionRegistry` instance
+
+    Reference: (LL04 5.157)
+    """
+
     def __init__(self, transition_registry: TransitionRegistry):
-        r"""
-        Radiation tensor :math:`J^K_Q(nu_ul)`.
-        Here we assume that transitions are spread apart in frequency, so that we can assign a bijection of
-        transition <-> :math:`\nu_{ul}`, and store :math:`J` for each transition instead for clarity.
-        :math:`K` is always :math:`\le 2` by construction (see eg. 5.157) for electric-dipole transitions
-        due to :math:`T` tensor.
-
-        :param transition_registry: :any:`TransitionRegistry` instance
-
-        Reference: (LL04 5.157)
-        """
         super().__init__()
         self.transition_registry = transition_registry
         self._df: Union[pd.DataFrame, None] = None

@@ -17,6 +17,28 @@ from solrat.engine.functions.decorators import log_method
 
 
 class ConstantPropertySlabAtmosphere:
+    r"""
+    A slab with constant atmospheric properties throughout its depth.
+    Solves the radiative transfer equation using DELO method.
+
+    .. math::
+
+        dStokes/dtau_line = K_tau_line * Stokes - epsilon_tau_line + Stokes / eta_LC - BP(T) eI / eta_LC
+
+        eta_LC = tau_line / tau_continuum
+
+        Stokes[tau->+inf] -> BP(T0)
+
+    :param model: Model instance
+    :param radiation_tensor: RadiationTensor instance (not used if SEE is MultiTermAtomSEELTE)
+    :param line_delta_tau:  Optical thickness in line core. Avoid tiny/huge values for stability.
+    :param continuum_delta_tau:  Optical thickness of continuum. Avoid tiny/huge values for stability.
+    :param angles:  Angles instance
+    :param atmosphere_parameters:  AtmosphereParameters instance
+
+    Reference: modified (9.35-9.37)
+    """
+
     def __init__(
         self,
         model: Model,
@@ -26,27 +48,6 @@ class ConstantPropertySlabAtmosphere:
         line_delta_tau: float,
         continuum_delta_tau: float,
     ):
-        r"""
-        A slab with constant atmospheric properties throughout its depth.
-        Solves the radiative transfer equation using DELO method.
-
-        .. math::
-
-            dStokes/dtau_line = K_tau_line * Stokes - epsilon_tau_line + Stokes / eta_LC - BP(T) eI / eta_LC
-
-            eta_LC = tau_line / tau_continuum
-
-            Stokes[tau->+inf] -> BP(T0)
-
-        :param model: Model instance
-        :param radiation_tensor: RadiationTensor instance (not used if SEE is MultiTermAtomSEELTE)
-        :param line_delta_tau:  Optical thickness in line core. Avoid tiny/huge values for stability.
-        :param continuum_delta_tau:  Optical thickness of continuum. Avoid tiny/huge values for stability.
-        :param angles:  Angles instance
-        :param atmosphere_parameters:  AtmosphereParameters instance
-
-        Reference: modified (9.35-9.37)
-        """
         assert line_delta_tau > 0, "Zero line_delta_tau is not supported within this formulation"
         assert continuum_delta_tau > 0, "Zero continuum_delta_tau is not supported within this formulation"
         self.model = model
