@@ -1,12 +1,12 @@
 from pathlib import Path
 
-import pandas as pd
-
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.precomputed_data import PrecomputedData
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 from solrat.engine.functions.decorators import log_function
+
+_PRECOMPUTED_DIR = Path(__file__).parent / "HeI_precomputed"
 
 
 @log_function
@@ -122,18 +122,11 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
         einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,
     )
-    root = Path(__file__).resolve().parent.as_posix()
-    directory = root + "/HeI_precomputed/"
-    precomputed_data = PrecomputedData(
-        coherence_decay_df=pd.read_csv(directory + "coherence_decay_df.csv"),
-        absorption_df=pd.read_csv(directory + "absorption_df.csv"),
-        emission_df_e=pd.read_csv(directory + "emission_df_e.csv"),
-        emission_df_s=pd.read_csv(directory + "emission_df_s.csv"),
-        relaxation_df_a=pd.read_csv(directory + "relaxation_df_a.csv"),
-        relaxation_df_e=pd.read_csv(directory + "relaxation_df_e.csv"),
-        relaxation_df_s=pd.read_csv(directory + "relaxation_df_s.csv"),
+    precomputed_data = (
+        PrecomputedData.load_from_directory(str(_PRECOMPUTED_DIR))
+        if _PRECOMPUTED_DIR.exists()
+        else None
     )
-
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,

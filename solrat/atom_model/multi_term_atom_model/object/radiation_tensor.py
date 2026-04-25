@@ -150,11 +150,17 @@ class RadiationTensor(BaseRadiationTensor):
 
         return stokesI
 
-    def get(self, transition: Transition, K: int, Q: int) -> float:
+    def get(self, transition: Transition, K: int, Q: int) -> float:  # Todo deprecate
         r"""
         Get the component of the :math:`J^K_Q` radiation tensor for the specified transition.
         """
         return self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
+
+    def get_from_transition_id(self, transition_id:str, K: int, Q: int) -> float:
+        r"""
+        Get the component of the :math:`J^K_Q` radiation tensor for the specified transition.
+        """
+        return self.data[self.get_key(transition_id=transition_id, K=K, Q=Q)]
 
     def set(self, transition: Transition, K: int, Q: int, value):
         r"""

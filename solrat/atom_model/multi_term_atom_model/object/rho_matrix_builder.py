@@ -121,6 +121,7 @@ class RhoMatrixBuilder:
         index1 = self.coherence_id_to_index[coherence_id]
         self.rho_matrix[index0, index1] += coefficient
 
+
     @log_method
     def add_coefficient_from_df(self, df: pd.DataFrame):
         r"""
