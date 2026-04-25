@@ -11,6 +11,15 @@ from solrat.atom_model.base_atom_model.object.config import ConfigT
 from solrat.atom_model.base_atom_model.object.radiation_tensor import RadiationTensorT
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import RTET
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import SEET
+from solrat.atom_model.multi_level_atom_model.object.atmosphere_parameters import (
+    AtmosphereParameters as MultiLevelAtmosphereParameters,
+)
+from solrat.atom_model.multi_level_atom_model.object.multi_level_atom_config import MultiLevelAtomConfig
+from solrat.atom_model.multi_level_atom_model.object.radiation_tensor import (
+    RadiationTensor as MultiLevelRadiationTensor,
+)
+from solrat.atom_model.multi_level_atom_model.radiative_transfer_equations import MultiLevelAtomRTE
+from solrat.atom_model.multi_level_atom_model.statistical_equilibrium_equations import MultiLevelAtomSEE
 from solrat.atom_model.multi_term_atom_model.data.FeI import get_Fe_I_5434_config
 from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
 from solrat.atom_model.multi_term_atom_model.data.MnI import get_Mn_I_5432_config
@@ -92,6 +101,23 @@ class Models:
             RadiationTensor=RadiationTensor,
             AtmosphereParameters=AtmosphereParameters,
             Config=MultiTermAtomConfig,
+        )
+
+    @staticmethod
+    def multi_level_atom():
+        logging.info("Creating Multi-Level Atom model")
+        return Model[
+            MultiLevelAtomSEE,
+            MultiLevelAtomRTE,
+            MultiLevelRadiationTensor,
+            MultiLevelAtmosphereParameters,
+            MultiLevelAtomConfig,
+        ](
+            StatisticalEquilibriumEquations=MultiLevelAtomSEE,
+            RadiativeTransferEquations=MultiLevelAtomRTE,
+            RadiationTensor=MultiLevelRadiationTensor,
+            AtmosphereParameters=MultiLevelAtmosphereParameters,
+            Config=MultiLevelAtomConfig,
         )
 
     @staticmethod
