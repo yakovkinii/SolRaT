@@ -95,7 +95,7 @@ class PrecomputedData:
             relaxation_e_frame=_load(_FILE_MAP["relaxation_e_frame"]),
             relaxation_a_frame=_load(_FILE_MAP["relaxation_a_frame"]),
             relaxation_s_frame=_load(_FILE_MAP["relaxation_s_frame"]),
-            coherence_decay_frame_n_1=_load(_FILE_MAP["coherence_decay_frame_n_1"])
-            if os.path.exists(n1_path)
-            else None,
+            coherence_decay_frame_n_1=(
+                _load(_FILE_MAP["coherence_decay_frame_n_1"]) if os.path.exists(n1_path) else None
+            ),
         )

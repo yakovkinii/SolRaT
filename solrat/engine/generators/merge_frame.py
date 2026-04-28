@@ -213,7 +213,7 @@ class Frame(Generic[SumLimitsT]):
         factor.merged = True
 
     @log_method
-    def combine_all_merged_factors(self)->str:
+    def combine_all_merged_factors(self) -> str:
         """
         Multiply all merged factors so that the frame has a single combined merged factor.
         """
@@ -343,7 +343,7 @@ class Frame(Generic[SumLimitsT]):
                 self.merge_factor(factor_name)
         combined_name = self.combine_all_merged_factors()
 
-        new_factor_name = 'coefficient'
+        new_factor_name = "coefficient"
         self.frame = self.frame.rename(columns={combined_name: new_factor_name})
         dependencies = self.factors[combined_name].dependencies
         self.factors[new_factor_name] = FrameFactor(new_factor_name, dependencies=dependencies, merged=True)

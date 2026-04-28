@@ -122,11 +122,7 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
         einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,
     )
-    precomputed_data = (
-        PrecomputedData.load_from_directory(str(_PRECOMPUTED_DIR))
-        if _PRECOMPUTED_DIR.exists()
-        else None
-    )
+    precomputed_data = PrecomputedData.load_from_directory(str(_PRECOMPUTED_DIR)) if _PRECOMPUTED_DIR.exists() else None
     return MultiTermAtomConfig(
         level_registry=level_registry,
         transition_registry=transition_registry,

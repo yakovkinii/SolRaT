@@ -156,7 +156,7 @@ class RadiationTensor(BaseRadiationTensor):
         """
         return self.data[self.get_key(transition_id=transition.transition_id, K=K, Q=Q)]
 
-    def get_from_transition_id(self, transition_id:str, K: int, Q: int) -> float:
+    def get_from_transition_id(self, transition_id: str, K: int, Q: int) -> float:
         r"""
         Get the component of the :math:`J^K_Q` radiation tensor for the specified transition.
         """

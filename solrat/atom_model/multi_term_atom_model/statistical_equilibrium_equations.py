@@ -344,24 +344,21 @@ class MultiTermAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Ql - Q)
 
         if self.absorption_frame is None:
-            self.absorption_frame = (
-                Frame.from_sum_limits(
-                    self._base_frame_transitions_lower(),
-                    AbsorptionSumLimits(),
-                )
-                .register_multiplication(
-                    lambda transition_id, J, Jʹ, Jl, Jʹl, K, Kl, Kr, Q, Ql, Qr, L, Ll, S: (
-                        n_proj(Ll)
-                        * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
-                        * sqrt(n_proj(1, J, Jʹ, Jl, Jʹl, K, Kl, Kr))
-                        * m1p(Kl + Ql + Jʹl - Jl)
-                        * wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, Kr)
-                        * wigner_6j(L, Ll, 1, Jl, J, S)
-                        * wigner_6j(L, Ll, 1, Jʹl, Jʹ, S)
-                        * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
-                    ),
-                    elementwise=True,
-                )
+            self.absorption_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_lower(),
+                AbsorptionSumLimits(),
+            ).register_multiplication(
+                lambda transition_id, J, Jʹ, Jl, Jʹl, K, Kl, Kr, Q, Ql, Qr, L, Ll, S: (
+                    n_proj(Ll)
+                    * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
+                    * sqrt(n_proj(1, J, Jʹ, Jl, Jʹl, K, Kl, Kr))
+                    * m1p(Kl + Ql + Jʹl - Jl)
+                    * wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, Kr)
+                    * wigner_6j(L, Ll, 1, Jl, J, S)
+                    * wigner_6j(L, Ll, 1, Jʹl, Jʹ, S)
+                    * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
+                ),
+                elementwise=True,
             )
 
         absorption_frame = self.absorption_frame.copy()
@@ -472,24 +469,21 @@ class MultiTermAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Qu - Q)
 
         if self.emission_s_frame is None:
-            self.emission_s_frame = (
-                Frame.from_sum_limits(
-                    self._base_frame_transitions_upper(),
-                    EmissionSSumLimits(),
-                )
-                .register_multiplication(
-                    lambda transition_id, J, Jʹ, Ju, Jʹu, K, Ku, Kr, Q, Qu, Qr, Lu, L, S: (
-                        n_proj(Lu)
-                        * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
-                        * sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr))
-                        * m1p(Kr + Ku + Qu + Jʹu - Ju)
-                        * wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr)
-                        * wigner_6j(Lu, L, 1, J, Ju, S)
-                        * wigner_6j(Lu, L, 1, Jʹ, Jʹu, S)
-                        * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
-                    ),
-                    elementwise=True,
-                )
+            self.emission_s_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_upper(),
+                EmissionSSumLimits(),
+            ).register_multiplication(
+                lambda transition_id, J, Jʹ, Ju, Jʹu, K, Ku, Kr, Q, Qu, Qr, Lu, L, S: (
+                    n_proj(Lu)
+                    * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
+                    * sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr))
+                    * m1p(Kr + Ku + Qu + Jʹu - Ju)
+                    * wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr)
+                    * wigner_6j(Lu, L, 1, J, Ju, S)
+                    * wigner_6j(Lu, L, 1, Jʹ, Jʹu, S)
+                    * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
+                ),
+                elementwise=True,
             )
 
         emission_s_frame = self.emission_s_frame.copy()
@@ -545,9 +539,7 @@ class MultiTermAtomSEE(BaseSEE):
                     RelaxationESumLimits(),
                 )
                 .register_multiplication(
-                    lambda transition_id: (
-                        self.transition_registry.transitions[str(transition_id)].einstein_a_ul
-                    ),
+                    lambda transition_id: (self.transition_registry.transitions[str(transition_id)].einstein_a_ul),
                     elementwise=True,
                 )
                 .reduce_partially("Ll", "term_lower_id", "transition_id", "Jʹʹ", "Jʹʹʹ", "Kʹ", "Qʹ")
@@ -621,13 +613,10 @@ class MultiTermAtomSEE(BaseSEE):
                 )
                 return common * (term1 + term2)
 
-            self.relaxation_a_frame = (
-                Frame.from_sum_limits(
-                    self._base_frame_transitions_upper(),
-                    RelaxationASumLimits(),
-                )
-                .register_multiplication(_r_a_1, elementwise=True)
-            )
+            self.relaxation_a_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_upper(),
+                RelaxationASumLimits(),
+            ).register_multiplication(_r_a_1, elementwise=True)
 
         relaxation_a_frame = self.relaxation_a_frame.copy()
         relaxation_a_frame.register_multiplication(
@@ -708,13 +697,10 @@ class MultiTermAtomSEE(BaseSEE):
                 )
                 return common * (term1 + term2)
 
-            self.relaxation_s_frame = (
-                Frame.from_sum_limits(
-                    self._base_frame_transitions_lower(),
-                    RelaxationSSumLimits(),
-                )
-                .register_multiplication(_r_s_1, elementwise=True)
-            )
+            self.relaxation_s_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_lower(),
+                RelaxationSSumLimits(),
+            ).register_multiplication(_r_s_1, elementwise=True)
 
         relaxation_s_frame = self.relaxation_s_frame.copy()
         relaxation_s_frame.register_multiplication(

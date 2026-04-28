@@ -52,9 +52,9 @@ def main():
     # Disk-precomputed model
     # ------------------------------------------------------------------
     model_disk = PreconfiguredModels.multi_term_atom_HeID3()
-    assert model_disk.config.precomputed_data is not None, (
-        "Expected precomputed CSV data to be present in HeI_precomputed/."
-    )
+    assert (
+        model_disk.config.precomputed_data is not None
+    ), "Expected precomputed CSV data to be present in HeI_precomputed/."
 
     # ------------------------------------------------------------------
     # Shared inputs
