@@ -315,8 +315,7 @@ class Frame(Generic[SumLimitsT]):
             return result
 
         if Ellipsis not in args:
-            self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
-            return None
+            return self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
 
         if args.count(Ellipsis) > 1:
             raise ValueError("Only one Ellipsis (...) is allowed in reduce() arguments.")

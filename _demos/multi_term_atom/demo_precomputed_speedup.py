@@ -59,7 +59,7 @@ def main():
     # ------------------------------------------------------------------
     # Shared inputs
     # ------------------------------------------------------------------
-    N_CALLS = 3  # repeat fill_all_equations to get a stable timing
+    N_CALLS = 2  # repeat fill_all_equations to get a stable timing
 
     def _make_inputs(model):
         atm = model.AtmosphereParameters(

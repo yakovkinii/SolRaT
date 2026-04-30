@@ -35,7 +35,7 @@ def main():
     upper_term = model.config.level_registry.get_term(beta="2p", L=1, S=0.5)
     J_align = 1.5
 
-    B_values = np.linspace(0, 20, 100)
+    B_values = np.linspace(0, 20, 40)
     alignments = []
 
     for B in B_values:

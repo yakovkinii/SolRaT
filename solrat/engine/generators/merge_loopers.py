@@ -7,6 +7,8 @@ from typing import Set, Union
 import numpy as np
 import pandas as pd
 
+from solrat.engine.functions.decorators import VERBOSE
+
 _max_looper_id = threading.local()
 
 
@@ -327,9 +329,9 @@ class Intersection(Looper):
             msg = (
                 f"NaN values found in intersection looper {name}. "
                 f"This typically means that not all triangular conditions were accounted for in SumLimits. "
-                f"This warning is expected for current implementation of LL04 multi-term atom for Q/Qu/Ql loopers."
+                f"This warning is expected for current implementation of LL04 multi-term atom."
             )
-            logging.warning(msg)
+            logging.log(VERBOSE, msg)
         frame = frame.dropna(subset=[name])
         frame = frame.astype({name: float})
 
