@@ -4,16 +4,15 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
-from typing import List
+from typing import Union
 
 import numpy as np
 import pandas as pd
 from numpy import pi, sqrt
-from tqdm import tqdm
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
-from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry, Term
+from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
 from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import (
@@ -26,9 +25,8 @@ from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import delta, m1p, n_proj
-from solrat.engine.functions.looping import FROMTO, INTERSECTION, PROJECTION, TRIANGULAR, VALUE
-from solrat.engine.generators.multiply import multiply
-from solrat.engine.generators.nested_loops import nested_loops
+from solrat.engine.generators.merge_frame import Frame, SumLimits
+from solrat.engine.generators.merge_loopers import DummyOrAlreadyMerged, FromTo, Intersection, Projection, Triangular
 
 
 class MultiTermAtomSEE(BaseSEE):
@@ -37,19 +35,17 @@ class MultiTermAtomSEE(BaseSEE):
 
     :param level_registry:  LevelRegistry instance for the multi-term atom under study.
     :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
-    :param disable_r_s:  Whether to disable stimulated emission :math:`R_S` (7.46c). Has to be False if
-      precomputed frames are loaded.
-    :param precompute:  Whether to precompute some SEE frames. Set to False when loading precomputed frames from file.
+    :param disable_r_s:  Whether to disable stimulated emission :math:`R_S` (7.46c).
 
     Reference: (LL04 7.38)
 
     Note on precomputing:
-    Some parameters are atom-specific, and some are atmosphere-specific.
-    E.g. levels, their :math:`J` values, etc., are atom-specific, while magnetic field is atmosphere-specific.
-    So the idea is to precompute everything atom-specific, so that we can quickly iterate over
-    atmosphere-specific parameters later.
-    Also, this means that atom-specific precomputing can be saved to disk, and does not need to be performed
-    on each launch.
+    All frames are built lazily on first use and cached as instance attributes.
+    Atom-specific frames (no radiation tensor) are built once and reused across calls.
+    Frames that depend on the radiation tensor are partially precomputed; the radiation-tensor
+    factor is applied per :meth:`fill_all_equations` call.
+    Precomputed frames can be extracted after the first :meth:`fill_all_equations` call and
+    injected into a new instance via :class:`PrecomputedData` to skip the build step.
     """
 
     def __init__(
@@ -57,7 +53,6 @@ class MultiTermAtomSEE(BaseSEE):
         level_registry: LevelRegistry,
         transition_registry: TransitionRegistry,
         disable_r_s: bool = False,
-        precompute: bool = True,
     ):
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
@@ -66,17 +61,14 @@ class MultiTermAtomSEE(BaseSEE):
         self.disable_r_s = disable_r_s
 
         # Precomputed frames:
-        self.coherence_decay_df = None
-        self.absorption_df = None
-        self.emission_df_e = None
-        self.emission_df_s = None
-        self.relaxation_df_a = None
-        self.relaxation_df_e = None
-        self.relaxation_df_s = None
-        if precompute:
-            self.precompute_all_equations()
-        else:
-            assert not disable_r_s
+        self.coherence_decay_frame_n_0: Union[Frame, None] = None
+        self.coherence_decay_frame_n_1: Union[Frame, None] = None
+        self.absorption_frame: Union[Frame, None] = None
+        self.emission_e_frame: Union[Frame, None] = None
+        self.emission_s_frame: Union[Frame, None] = None
+        self.relaxation_e_frame: Union[Frame, None] = None
+        self.relaxation_a_frame: Union[Frame, None] = None
+        self.relaxation_s_frame: Union[Frame, None] = None
 
     @classmethod
     def from_model_config(cls, config: MultiTermAtomConfig) -> Self:
@@ -90,65 +82,124 @@ class MultiTermAtomSEE(BaseSEE):
                 level_registry=config.level_registry,
                 transition_registry=config.transition_registry,
                 disable_r_s=config.disable_r_s,
-                precompute=True,
             )
 
         see = cls(
             level_registry=config.level_registry,
             transition_registry=config.transition_registry,
             disable_r_s=config.disable_r_s,
-            precompute=False,
         )
-        see.coherence_decay_df = config.precomputed_data.coherence_decay_df
-        see.absorption_df = config.precomputed_data.absorption_df
-        see.emission_df_e = config.precomputed_data.emission_df_e
-        see.emission_df_s = config.precomputed_data.emission_df_s
-        see.relaxation_df_a = config.precomputed_data.relaxation_df_a
-        see.relaxation_df_e = config.precomputed_data.relaxation_df_e
-        see.relaxation_df_s = config.precomputed_data.relaxation_df_s
+        see.coherence_decay_frame_n_0 = config.precomputed_data.coherence_decay_frame
+        see.coherence_decay_frame_n_1 = config.precomputed_data.coherence_decay_frame_n_1
+        see.absorption_frame = config.precomputed_data.absorption_frame
+        see.emission_e_frame = config.precomputed_data.emission_e_frame
+        see.emission_s_frame = config.precomputed_data.emission_s_frame
+        see.relaxation_e_frame = config.precomputed_data.relaxation_e_frame
+        see.relaxation_a_frame = config.precomputed_data.relaxation_a_frame
+        see.relaxation_s_frame = config.precomputed_data.relaxation_s_frame
         return see
 
-    @log_method
-    def precompute_all_equations(self):
-        r"""
-        Precompute all frames (instead of loading from a file).
-        """
-        coherence_decay_dfs = []
-        absorption_dfs = []
-        emission_dfs_e = []
-        emission_dfs_s = []
-        relaxation_dfs_a = []
-        relaxation_dfs_e = []
-        relaxation_dfs_s = []
-        for term in tqdm(self.level_registry.terms.values(), leave=False):
-            for J, Jʹ, K, Q in nested_loops(
-                J=TRIANGULAR(term.L, term.S),
-                Jʹ=TRIANGULAR(term.L, term.S),
-                K=TRIANGULAR("J", "Jʹ"),
-                Q=PROJECTION("K"),
-            ):
-                coherence_decay_dfs.extend(self.precompute_coherence_decay(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ))
-                absorption_dfs.extend(self.precompute_absorption(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ))
-                emission_dfs_e_, emission_dfs_s_ = self.precompute_emission(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ)
-                emission_dfs_e.extend(emission_dfs_e_)
-                emission_dfs_s.extend(emission_dfs_s_)
-                relaxation_dfs_a_, relaxation_dfs_e_, relaxation_dfs_s_ = self.precompute_relaxation(
-                    term=term, K=K, Q=Q, J=J, Jʹ=Jʹ
+    def _base_frame_terms(self) -> pd.DataFrame:
+        """One row per term with columns term_id, L, S, expanded over J, Jʹ, K, Q."""
+
+        class BaseSumLimits(SumLimits):
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            J = Triangular(L, S)
+            Jʹ = Triangular(L, S)
+            K = Triangular(J, Jʹ)
+            Q = Projection(K)
+
+        frame = Frame.from_sum_limits(
+            base_frame=pd.DataFrame(
+                [{"term_id": term.term_id, "L": term.L, "S": term.S} for term in self.level_registry.terms.values()]
+            ),
+            sum_limits=BaseSumLimits(),
+        )
+
+        return frame.frame
+
+    def _base_frame_transitions_lower(self) -> pd.DataFrame:
+        """One row per transition; term_id/L/S are for the *upper* term (equation side),
+        expanded over J, Jʹ, K, Q of the upper term."""
+
+        class BaseLowerSumLimits(SumLimits):
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_lower_id = DummyOrAlreadyMerged()
+            Ll = DummyOrAlreadyMerged(term_lower_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = Triangular(L, S)
+            Jʹ = Triangular(L, S)
+            K = Triangular(J, Jʹ)
+            Q = Projection(K)
+
+        rows = []
+        for t_upper in self.level_registry.terms.values():
+            for t_lower in self.level_registry.terms.values():
+                if not self.transition_registry.is_transition_registered(term_upper=t_upper, term_lower=t_lower):
+                    continue
+                tr = self.transition_registry.get_transition(term_upper=t_upper, term_lower=t_lower)
+                rows.append(
+                    {
+                        "term_id": t_upper.term_id,
+                        "L": t_upper.L,
+                        "S": t_upper.S,
+                        "term_lower_id": t_lower.term_id,
+                        "Ll": t_lower.L,
+                        "transition_id": tr.transition_id,
+                    }
                 )
-                relaxation_dfs_a.extend(relaxation_dfs_a_)
-                relaxation_dfs_e.extend(relaxation_dfs_e_)
-                relaxation_dfs_s.extend(relaxation_dfs_s_)
+        frame = Frame.from_sum_limits(
+            base_frame=pd.DataFrame(rows),
+            sum_limits=BaseLowerSumLimits(),
+        )
 
-        self.coherence_decay_df = self.concat_and_finalize_precomputed_dfs(coherence_decay_dfs)
-        self.absorption_df = self.concat_and_finalize_precomputed_dfs(absorption_dfs)
-        self.emission_df_e = self.concat_and_finalize_precomputed_dfs(emission_dfs_e)
-        self.emission_df_s = self.concat_and_finalize_precomputed_dfs(emission_dfs_s)
-        self.relaxation_df_a = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_a)
-        self.relaxation_df_e = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_e)
-        self.relaxation_df_s = self.concat_and_finalize_precomputed_dfs(relaxation_dfs_s)
+        return frame.frame
+
+    def _base_frame_transitions_upper(self) -> pd.DataFrame:
+        """One row per transition; term_id/L/S are for the *lower* term (equation side),
+        expanded over J, Jʹ, K, Q of the lower term."""
+
+        class BaseUpperSumLimits(SumLimits):
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_upper_id = DummyOrAlreadyMerged()
+            Lu = DummyOrAlreadyMerged(term_upper_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = Triangular(L, S)
+            Jʹ = Triangular(L, S)
+            K = Triangular(J, Jʹ)
+            Q = Projection(K)
+
+        rows = []
+        for t_upper in self.level_registry.terms.values():
+            for t_lower in self.level_registry.terms.values():
+                if not self.transition_registry.is_transition_registered(term_upper=t_upper, term_lower=t_lower):
+                    continue
+                tr = self.transition_registry.get_transition(term_upper=t_upper, term_lower=t_lower)
+                rows.append(
+                    {
+                        "term_id": t_lower.term_id,
+                        "L": t_lower.L,
+                        "S": t_lower.S,
+                        "term_upper_id": t_upper.term_id,
+                        "Lu": t_upper.L,
+                        "transition_id": tr.transition_id,
+                    }
+                )
+        frame = Frame.from_sum_limits(
+            base_frame=pd.DataFrame(rows),
+            sum_limits=BaseUpperSumLimits(),
+        )
+
+        return frame.frame
 
     @log_method
-    def fill_all_equations(
+    def fill_all_equations(  # Main entry point
         self,
         atmosphere_parameters: AtmosphereParameters,
         radiation_tensor_in_magnetic_frame: RadiationTensor,
@@ -165,673 +216,510 @@ class MultiTermAtomSEE(BaseSEE):
         Calling this function multiple times with different atmosphere_parameters of :math:`J` tensors is safe,
         it will build the system of equations from scratch each time.
         """
-
         self.matrix_builder.reset_matrix()
-        self.add_precomputed_coherence_decay(self.coherence_decay_df, atmosphere_parameters=atmosphere_parameters)
-        self.add_precomputed_absorption(self.absorption_df, radiation_tensor=radiation_tensor_in_magnetic_frame)
-        self.add_precomputed_emission(
-            self.emission_df_e, self.emission_df_s, radiation_tensor=radiation_tensor_in_magnetic_frame
-        )
-        self.add_precomputed_relaxation(
-            self.relaxation_df_a,
-            self.relaxation_df_e,
-            self.relaxation_df_s,
-            radiation_tensor=radiation_tensor_in_magnetic_frame,
-        )
-
-    def precompute_coherence_decay(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        r"""
-        Precompute all coherence decay :math:`N` kernel parameters :math:`n_0` and :math:`n_1`:
-
-        .. math::
-
-            N = n_0 + n_1 * \nu_{larmor}
-
-        Reference: (LL04 7.38)
-        """
-        dfs = []
-        for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
-            Jʹʹ=INTERSECTION(TRIANGULAR(term.L, term.S)),
-            Jʹʹʹ=INTERSECTION(TRIANGULAR(term.L, term.S)),
-            Kʹ=INTERSECTION(TRIANGULAR(K, 1), TRIANGULAR("Jʹʹ", "Jʹʹʹ")),
-            Qʹ=INTERSECTION(PROJECTION("Kʹ"), VALUE(Q)),
-        ):
-            df = self.precompute_n(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
-            df = self.add_equation_index1(df, term_id="term_id", K="Kʹ", Q="Qʹ", J="Jʹʹ", Jʹ="Jʹʹʹ")
-            dfs.append(df)
-        return dfs
+        self.add_coherence_decay(atmosphere_parameters=atmosphere_parameters)
+        self.add_absorption(radiation_tensor=radiation_tensor_in_magnetic_frame)
+        self.add_emission_e()
+        self.add_emission_s(radiation_tensor=radiation_tensor_in_magnetic_frame)
+        self.add_relaxation_e()
+        self.add_relaxation_a(radiation_tensor=radiation_tensor_in_magnetic_frame)
+        self.add_relaxation_s(radiation_tensor=radiation_tensor_in_magnetic_frame)
 
     @log_method
-    def add_precomputed_coherence_decay(self, df, atmosphere_parameters: AtmosphereParameters):
+    def add_coherence_decay(self, atmosphere_parameters: AtmosphereParameters):
         r"""
-        Add the coherence decay :math:`N` kernel using precomputed :math:`n_0` and :math:`n_1`:
+        Add the coherence decay :math:`N = n_0 + n_1 \nu_L`
 
-        .. math::
-
-            N = n_0 + n_1 * \nu_{larmor}
-
-        Reference: (LL04 7.38)
+        Reference: (LL04 7.38, 7.41)
         """
-        df["coefficient"] = -2 * pi * 1j * (df.n_0 + df.n_1 * atmosphere_parameters.nu_larmor)
-        self.matrix_builder.add_coefficient_from_df(df)
 
-    def precompute_absorption(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        r"""
-        Precompute all Absorption parameters :math:`t_{a1}`:
+        class CoherenceDecaySumLimits(SumLimits):
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged()
+            S = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
 
-        .. math::
+            Jʹʹ = Triangular(L, S)
+            Jʹʹʹ = Triangular(L, S)
+            Kʹ = Intersection(Triangular(K, 1), Triangular(Jʹʹ, Jʹʹʹ))
+            Qʹ = Intersection(Projection(Kʹ), Q)
 
-            T_a = t_{a1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
-
-        Reference: (LL04 7.38)
-        """
-        dfs = []
-        for term_lower in self.level_registry.terms.values():
-            if not self.transition_registry.is_transition_registered(term_upper=term, term_lower=term_lower):
-                continue
-            for Jl, Jʹl, Kl, Ql in nested_loops(
-                Jl=INTERSECTION(TRIANGULAR(term_lower.L, term_lower.S), TRIANGULAR(J, 1)),
-                Jʹl=INTERSECTION(TRIANGULAR(term_lower.L, term_lower.S), TRIANGULAR(Jʹ, 1)),
-                Kl=TRIANGULAR("Jl", "Jʹl"),
-                Ql=PROJECTION("Kl"),
-            ):
-                t_a_dfs = self.precompute_t_a(
-                    term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, term_lower=term_lower, Kl=Kl, Ql=Ql, Jl=Jl, Jʹl=Jʹl
+        if self.coherence_decay_frame_n_0 is None:
+            self.coherence_decay_frame_n_0 = (
+                Frame.from_sum_limits(
+                    self._base_frame_terms(),
+                    CoherenceDecaySumLimits(),
                 )
-                t_a_dfs = [
-                    self.add_equation_index1(df, term_id="term_lower_id", K="Kl", Q="Ql", J="Jl", Jʹ="Jʹl")
-                    for df in t_a_dfs
-                ]
-                dfs.extend(t_a_dfs)
-        return dfs
+                .register_multiplication(
+                    lambda K, Kʹ, J, Jʹ, Jʹʹ, Jʹʹʹ: delta(K, Kʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ),
+                    lambda term_id, J, Jʹ: energy_cmm1_to_frequency_sm1(
+                        self.level_registry.terms[term_id].get_level(J).energy_cmm1
+                        - self.level_registry.terms[term_id].get_level(Jʹ).energy_cmm1
+                    ),
+                    elementwise=True,
+                )
+                .reduce_partially("Jʹʹ", "Jʹʹʹ", "Kʹ", "Qʹ")
+            )
+
+        self.add_coefficient_for_rho(
+            frame=self.coherence_decay_frame_n_0,
+            multiply_by=-2 * pi * 1j,
+            term_id="term_id",
+            K="K",
+            Q="Q",
+            J="J",
+            Jʹ="Jʹ",
+        )
+
+        if self.coherence_decay_frame_n_1 is None:
+
+            def _gamma(L, S, J, Jʹ):
+                return delta(J, Jʹ) * sqrt(J * (J + 1) * (2 * J + 1)) + (
+                    m1p(1 + L + S + J)
+                    * sqrt((2 * J + 1) * (2 * Jʹ + 1) * S * (S + 1) * (2 * S + 1))
+                    * wigner_6j(J, Jʹ, 1, S, S, L)
+                )
+
+            self.coherence_decay_frame_n_1 = (
+                Frame.from_sum_limits(
+                    self._base_frame_terms(),
+                    CoherenceDecaySumLimits(),
+                )
+                .register_multiplication(
+                    lambda K, Kʹ, Q, J, Jʹ, Jʹʹ, Jʹʹʹ, L, S: (
+                        m1p(J + Jʹ - Q)
+                        * sqrt((2 * K + 1) * (2 * Kʹ + 1))
+                        * wigner_3j(K, Kʹ, 1, -Q, Q, 0)
+                        * (
+                            delta(Jʹ, Jʹʹʹ) * _gamma(L, S, J, Jʹʹ) * wigner_6j(K, Kʹ, 1, Jʹʹ, J, Jʹ)
+                            + delta(J, Jʹʹ) * m1p(K - Kʹ) * _gamma(L, S, Jʹʹʹ, Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
+                        )
+                    ),
+                    elementwise=True,
+                )
+                .to_coefficient()
+            )
+
+        self.add_coefficient_for_rho(
+            frame=self.coherence_decay_frame_n_1,
+            multiply_by=-2 * pi * 1j * atmosphere_parameters.nu_larmor,
+            term_id="term_id",
+            K="Kʹ",
+            Q="Qʹ",
+            J="Jʹʹ",
+            Jʹ="Jʹʹʹ",
+        )
 
     @log_method
-    def add_precomputed_absorption(self, df, radiation_tensor: RadiationTensor):
+    def add_absorption(self, radiation_tensor: RadiationTensor):
         r"""
-        Add the Absorption using precomputed parameter :math:`t_{a1}`:
+        Add absorption :math:`T_a = t_{a1} \cdot J^{K_r}_{Q_r}`.
 
-        .. math::
-
-            T_a = t_{a1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
-
-        Reference: (LL04 7.38)
+        Reference: (LL04 7.38, 7.45a)
         """
-        df = df.merge(
-            radiation_tensor.df.rename(
-                columns={"K": "Kr", "Q": "Qr"},
+
+        class AbsorptionSumLimits(SumLimits):
+            r"""
+            Summation limits for absorption :math:`T_a = t_{a1} \cdot J^{K_r}_{Q_r}`.
+            """
+
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_lower_id = DummyOrAlreadyMerged()
+            Ll = DummyOrAlreadyMerged()
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Jl = Intersection(Triangular(Ll, S), Triangular(J, 1))
+            Jʹl = Intersection(Triangular(Ll, S), Triangular(Jʹ, 1))
+            Kl = Triangular(Jl, Jʹl)
+            Ql = Projection(Kl)
+            Kr = Intersection(FromTo(0, 2), Triangular(K, Kl))
+            Qr = Intersection(Projection(Kr), Ql - Q)
+
+        if self.absorption_frame is None:
+            self.absorption_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_lower(),
+                AbsorptionSumLimits(),
+            ).register_multiplication(
+                lambda transition_id, J, Jʹ, Jl, Jʹl, K, Kl, Kr, Q, Ql, Qr, L, Ll, S: (
+                    n_proj(Ll)
+                    * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
+                    * sqrt(n_proj(1, J, Jʹ, Jl, Jʹl, K, Kl, Kr))
+                    * m1p(Kl + Ql + Jʹl - Jl)
+                    * wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, Kr)
+                    * wigner_6j(L, Ll, 1, Jl, J, S)
+                    * wigner_6j(L, Ll, 1, Jʹl, Jʹ, S)
+                    * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
+                ),
+                elementwise=True,
+            )
+
+        absorption_frame = self.absorption_frame.copy()
+        absorption_frame.register_multiplication(
+            lambda transition_id, Kr, Qr: radiation_tensor.get_from_transition_id(
+                transition_id=transition_id, K=Kr, Q=Qr
             ),
-            how="inner",
+            elementwise=True,
         )
+        absorption_frame.reduce_partially("transition_id", "Kr", "Qr")
 
-        df["coefficient"] = df.t_a_1 * df.radiation_tensor
-        self.matrix_builder.add_coefficient_from_df(df)
-
-    def precompute_emission(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        r"""
-        Precompute all Emission parameters coefficient, :math:`t_{s1}`:
-
-        .. math::
-
-            T_e &= \text{coefficient}
-
-            T_s &= t_{s1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
-
-        Reference: (LL04 7.38)
-        """
-        dfs_e = []
-        dfs_s = []
-        for term_upper in self.level_registry.terms.values():
-            if not self.transition_registry.is_transition_registered(term_upper=term_upper, term_lower=term):
-                continue
-
-            for Ju, Jʹu, Ku, Qu in nested_loops(
-                Ju=INTERSECTION(TRIANGULAR(term_upper.L, term_upper.S), TRIANGULAR(J, 1)),
-                Jʹu=INTERSECTION(TRIANGULAR(term_upper.L, term_upper.S), TRIANGULAR(Jʹ, 1)),
-                Ku=TRIANGULAR("Ju", "Jʹu"),
-                Qu=PROJECTION("Ku"),
-            ):
-                t_e_dfs = self.precompute_t_e(
-                    term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, term_upper=term_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu
-                )
-                t_s_dfs = self.precompute_t_s(
-                    term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, term_upper=term_upper, Ku=Ku, Qu=Qu, Ju=Ju, Jʹu=Jʹu
-                )
-
-                t_e_dfs = [
-                    self.add_equation_index1(df, term_id="term_upper_id", K="Ku", Q="Qu", J="Ju", Jʹ="Jʹu")
-                    for df in t_e_dfs
-                ]
-                t_s_dfs = [
-                    self.add_equation_index1(df, term_id="term_upper_id", K="Ku", Q="Qu", J="Ju", Jʹ="Jʹu")
-                    for df in t_s_dfs
-                ]
-                dfs_e.extend(t_e_dfs)
-                dfs_s.extend(t_s_dfs)
-        return dfs_e, dfs_s
+        self.add_coefficient_for_rho(
+            frame=absorption_frame,
+            term_id="term_lower_id",
+            K="Kl",
+            Q="Ql",
+            J="Jl",
+            Jʹ="Jʹl",
+        )
 
     @log_method
-    def add_precomputed_emission(self, df_e, df_s, radiation_tensor: RadiationTensor):
+    def add_emission_e(self):
         r"""
-        Add the Emission using precomputed parameter :math:`t_{a1}`:
+        Add spontaneous emission :math:`T_e`.
 
-        .. math::
-
-            T_e &= \text{coefficient}
-
-            T_s &= t_{s1} * \text{self.radiation_tensor(transition=transition, K=Kr, Q=Qr)}
-
-        Reference: (LL04 7.38)
+        Reference: (LL04 7.38, 7.45b)
         """
-        self.matrix_builder.add_coefficient_from_df(df_e)
 
-        df_s = df_s.merge(
-            radiation_tensor.df.rename(
-                columns={"K": "Kr", "Q": "Qr"},
-            ),
-            how="inner",
+        class EmissionESumLimits(SumLimits):
+            r"""
+            Summation limits for spontaneous emission :math:`T_e`.
+            Diagonal in K, Q (Ku = K, Qu = Q).
+            """
+
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_upper_id = DummyOrAlreadyMerged()
+            Lu = DummyOrAlreadyMerged(term_upper_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Ju = Intersection(Triangular(Lu, S), Triangular(J, 1))
+            Jʹu = Intersection(Triangular(Lu, S), Triangular(Jʹ, 1))
+            Ku = Intersection(Triangular(Ju, Jʹu), K)
+            Qu = Intersection(Projection(Ku), Q)
+
+        if self.emission_e_frame is None:
+            self.emission_e_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_upper(),
+                    EmissionESumLimits(),
+                )
+                .register_multiplication(
+                    lambda transition_id, J, Jʹ, Ju, Jʹu, K, Lu, L, S: (
+                        (2 * Lu + 1)
+                        * self.transition_registry.transitions[str(transition_id)].einstein_a_ul
+                        * sqrt(n_proj(J, Jʹ, Ju, Jʹu))
+                        * m1p(1 + K + Jʹ + Jʹu)
+                        * wigner_6j(J, Jʹ, K, Jʹu, Ju, 1)
+                        * wigner_6j(Lu, L, 1, J, Ju, S)
+                        * wigner_6j(Lu, L, 1, Jʹ, Jʹu, S)
+                    ),
+                    elementwise=True,
+                )
+                .reduce_partially("transition_id")
+            )
+
+        self.add_coefficient_for_rho(
+            frame=self.emission_e_frame,
+            term_id="term_upper_id",
+            K="Ku",
+            Q="Qu",
+            J="Ju",
+            Jʹ="Jʹu",
         )
-        df_s["coefficient"] = df_s.t_s_1 * df_s.radiation_tensor
-        self.matrix_builder.add_coefficient_from_df(df_s)
-
-    def precompute_relaxation(self, term: Term, K: int, Q: int, J: float, Jʹ: float):
-        r"""
-        Precompute all relaxation parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
-
-        .. math::
-
-            R_A &= - r_{a1} * \text{radiation_tensor}
-
-            R_E &= - r_{e0}
-
-            R_S &= - r_{s1} * \text{radiation_tensor}
-
-        Reference: (LL04 7.38)
-        """
-        dfs_a = []
-        dfs_e = []
-        dfs_s = []
-
-        # Relaxation from selected coherence
-        for Jʹʹ, Jʹʹʹ, Kʹ, Qʹ in nested_loops(
-            Jʹʹ=TRIANGULAR(term.L, term.S),
-            Jʹʹʹ=TRIANGULAR(term.L, term.S),
-            Kʹ=INTERSECTION(TRIANGULAR(J, Jʹ), TRIANGULAR("Jʹʹ", "Jʹʹʹ")),
-            Qʹ=PROJECTION("Kʹ"),
-        ):
-            r_a_dfs = self.precompute_r_a(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
-            r_e_dfs = self.precompute_r_e(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
-            r_s_dfs = self.precompute_r_s(term=term, K=K, Q=Q, J=J, Jʹ=Jʹ, Kʹ=Kʹ, Qʹ=Qʹ, Jʹʹ=Jʹʹ, Jʹʹʹ=Jʹʹʹ)
-
-            r_a_dfs = [
-                self.add_equation_index1(df, term_id="term_id", K="Kʹ", Q="Qʹ", J="Jʹʹ", Jʹ="Jʹʹʹ") for df in r_a_dfs
-            ]
-            r_e_dfs = [
-                self.add_equation_index1(df, term_id="term_id", K="Kʹ", Q="Qʹ", J="Jʹʹ", Jʹ="Jʹʹʹ") for df in r_e_dfs
-            ]
-            r_s_dfs = [
-                self.add_equation_index1(df, term_id="term_id", K="Kʹ", Q="Qʹ", J="Jʹʹ", Jʹ="Jʹʹʹ") for df in r_s_dfs
-            ]
-            dfs_a.extend(r_a_dfs)
-            dfs_e.extend(r_e_dfs)
-            dfs_s.extend(r_s_dfs)
-
-        return dfs_a, dfs_e, dfs_s
 
     @log_method
-    def add_precomputed_relaxation(self, df_a, df_e, df_s, radiation_tensor):
+    def add_emission_s(self, radiation_tensor: RadiationTensor):
         r"""
-        Add all relaxation rates using precomputed parameters :math:`r_{a1}, r_{e0}, r_{s1}`:
+        Add stimulated emission :math:`T_s = t_{s1} \cdot J^{K_r}_{Q_r}`.
 
-        .. math::
-
-            R_A &= - r_{a1} * \text{radiation_tensor}
-
-            R_E &= - r_{e0}
-
-            R_S &= - r_{s1} * \text{radiation_tensor}
-
-        Reference: (LL04 7.38)
+        Reference: (LL04 7.38, 7.45c)
         """
-        df_a = df_a.merge(
-            radiation_tensor.df.rename(
-                columns={"K": "Kr", "Q": "Qr"},
+
+        class EmissionSSumLimits(SumLimits):
+            r"""
+            Summation limits for stimulated emission :math:`T_s = t_{s1} \cdot J^{K_r}_{Q_r}`.
+            """
+
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_upper_id = DummyOrAlreadyMerged()
+            Lu = DummyOrAlreadyMerged(term_upper_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Ju = Intersection(Triangular(Lu, S), Triangular(J, 1))
+            Jʹu = Intersection(Triangular(Lu, S), Triangular(Jʹ, 1))
+            Ku = Triangular(Ju, Jʹu)
+            Qu = Projection(Ku)
+            Kr = Intersection(FromTo(0, 2), Triangular(Ku, K))
+            Qr = Intersection(Projection(Kr), Qu - Q)
+
+        if self.emission_s_frame is None:
+            self.emission_s_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_upper(),
+                EmissionSSumLimits(),
+            ).register_multiplication(
+                lambda transition_id, J, Jʹ, Ju, Jʹu, K, Ku, Kr, Q, Qu, Qr, Lu, L, S: (
+                    n_proj(Lu)
+                    * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
+                    * sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr))
+                    * m1p(Kr + Ku + Qu + Jʹu - Ju)
+                    * wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr)
+                    * wigner_6j(Lu, L, 1, J, Ju, S)
+                    * wigner_6j(Lu, L, 1, Jʹ, Jʹu, S)
+                    * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
+                ),
+                elementwise=True,
+            )
+
+        emission_s_frame = self.emission_s_frame.copy()
+        emission_s_frame.register_multiplication(
+            lambda transition_id, Kr, Qr: radiation_tensor.get_from_transition_id(
+                transition_id=transition_id, K=Kr, Q=Qr
             ),
-            how="inner",
+            elementwise=True,
         )
-        df_a["coefficient"] = -df_a.r_a_1 * df_a.radiation_tensor
-        self.matrix_builder.add_coefficient_from_df(df_a)
+        emission_s_frame.reduce_partially("transition_id", "Kr", "Qr")
 
-        df_e["coefficient"] = -df_e.r_e_0
-        self.matrix_builder.add_coefficient_from_df(df_e)
-
-        df_s = df_s.merge(
-            radiation_tensor.df.rename(
-                columns={"K": "Kr", "Q": "Qr"},
-            ),
-            how="inner",
+        self.add_coefficient_for_rho(
+            frame=emission_s_frame,
+            term_id="term_upper_id",
+            K="Ku",
+            Q="Qu",
+            J="Ju",
+            Jʹ="Jʹu",
         )
-        df_s["coefficient"] = -df_s.r_s_1 * df_s.radiation_tensor
-        self.matrix_builder.add_coefficient_from_df(df_s)
 
-    def precompute_r_a(
-        self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
-    ):
+    @log_method
+    def add_relaxation_e(self):
         r"""
-        Compute :math:`r_{a1}`
+        Add spontaneous emission relaxation :math:`R_E = -r_{e0}`.
 
-        Reference: (LL04 7.46a)
+        Reference: (LL04 7.38, 7.46b)
         """
-        L = term.L
-        S = term.S
 
-        dfs = []
-        for term_upper in self.level_registry.terms.values():
-            if not self.transition_registry.is_transition_registered(term_upper=term_upper, term_lower=term):
-                continue
+        class RelaxationESumLimits(SumLimits):
+            r"""
+            Summation limits for spontaneous emission relaxation :math:`R_E = -r_{e0}`.
+            Diagonal: Kʹ = K, Qʹ = Q, Jʹʹ = J, Jʹʹʹ = Jʹ.
+            """
 
-            transition = self.transition_registry.get_transition(term_upper=term_upper, term_lower=term)
-            Lu = term_upper.L
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_lower_id = DummyOrAlreadyMerged()
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Jʹʹ = Intersection(Triangular(L, S), J)
+            Jʹʹʹ = Intersection(Triangular(L, S), Jʹ)
+            Kʹ = Intersection(Triangular(J, Jʹ), K)
+            Qʹ = Intersection(Projection(Kʹ), Q)
 
-            for Kr, Qr in nested_loops(
-                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ), TRIANGULAR(L, L)),
-                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
-            ):
-                r_a_1 = multiply(
-                    lambda: n_proj(L) * transition.einstein_b_lu,
-                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
-                    lambda: m1p(1 + Lu - S + J + Qʹ),
-                    lambda: wigner_6j(L, L, Kr, 1, 1, Lu) * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5,
-                    lambda: delta(J, Jʹʹ),
-                    lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
-                    lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
-                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
-                    is_scalar=True,
+        if self.relaxation_e_frame is None:
+            self.relaxation_e_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_lower(),
+                    RelaxationESumLimits(),
                 )
-                r_a_1 += (
+                .register_multiplication(
+                    lambda transition_id: (self.transition_registry.transitions[str(transition_id)].einstein_a_ul),
+                    elementwise=True,
+                )
+                .reduce_partially("Ll", "term_lower_id", "transition_id", "Jʹʹ", "Jʹʹʹ", "Kʹ", "Qʹ")
+            )
+
+        self.add_coefficient_for_rho(
+            frame=self.relaxation_e_frame,
+            multiply_by=-1,
+            term_id="term_id",
+            K="K",
+            Q="Q",
+            J="J",
+            Jʹ="Jʹ",
+        )
+
+    @log_method
+    def add_relaxation_a(self, radiation_tensor: RadiationTensor):
+        r"""
+        Add absorption relaxation :math:`R_A = -r_{a1} \cdot J^{K_r}_{Q_r}`.
+
+        Reference: (LL04 7.38, 7.46a)
+        """
+
+        class RelaxationASumLimits(SumLimits):
+            r"""
+            Summation limits for absorption relaxation :math:`R_A = -r_{a1} \cdot J^{K_r}_{Q_r}`.
+            """
+
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_upper_id = DummyOrAlreadyMerged()
+            Lu = DummyOrAlreadyMerged(term_upper_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Jʹʹ = Triangular(L, S)
+            Jʹʹʹ = Triangular(L, S)
+            Kʹ = Intersection(Triangular(J, Jʹ), Triangular(Jʹʹ, Jʹʹʹ))
+            Qʹ = Projection(Kʹ)
+            Kr = Intersection(FromTo(0, 2), Triangular(K, Kʹ), Triangular(L, L))
+            Qr = Intersection(Projection(Kr), Qʹ - Q)
+
+        if self.relaxation_a_frame is None:
+
+            def _r_a_1(transition_id, J, Jʹ, Jʹʹ, Jʹʹʹ, K, Kʹ, Kr, Q, Qʹ, Qr, L, Lu, S):
+                tr = self.transition_registry.transitions[str(transition_id)]
+                common = (
                     n_proj(L)
-                    * transition.einstein_b_lu
+                    * tr.einstein_b_lu
                     * sqrt(n_proj(1, K, Kʹ, Kr))
                     * m1p(1 + Lu - S + J + Qʹ)
                     * wigner_6j(L, L, Kr, 1, 1, Lu)
                     * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
                     * 0.5
-                    * delta(Jʹ, Jʹʹʹ)
+                )
+                term1 = (
+                    delta(J, Jʹʹ)
+                    * sqrt(n_proj(Jʹ, Jʹʹʹ))
+                    * wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S)
+                    * wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J)
+                )
+                term2 = (
+                    delta(Jʹ, Jʹʹʹ)
                     * sqrt(n_proj(J, Jʹʹ))
                     * m1p(Jʹʹ - Jʹ + K + Kʹ + Kr)
                     * wigner_6j(L, L, Kr, Jʹʹ, J, S)
                     * wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ)
                 )
-                dfs.append(
-                    pd.DataFrame(
-                        {
-                            "term_id": [term.term_id],
-                            "K": [K],
-                            "Q": [Q],
-                            "J": [J],
-                            "Jʹ": [Jʹ],
-                            "term_upper_id": [term_upper.term_id],
-                            "transition_id": [transition.transition_id],
-                            "Kʹ": [Kʹ],
-                            "Qʹ": [Qʹ],
-                            "Jʹʹ": [Jʹʹ],
-                            "Jʹʹʹ": [Jʹʹʹ],
-                            "Kr": [Kr],
-                            "Qr": [Qr],
-                            "r_a_1": [r_a_1],
-                        }
-                    )
-                )
+                return common * (term1 + term2)
 
-        return dfs
+            self.relaxation_a_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_upper(),
+                RelaxationASumLimits(),
+            ).register_multiplication(_r_a_1, elementwise=True)
 
-    def precompute_r_e(
-        self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
-    ):
-        r"""
-        Compute :math:`r_{e0}`
-
-        Reference: (LL04 7.46b)
-        """
-        dfs = []
-        for term_lower in self.level_registry.terms.values():
-            if not self.transition_registry.is_transition_registered(term_upper=term, term_lower=term_lower):
-                continue
-            transition = self.transition_registry.get_transition(term_upper=term, term_lower=term_lower)
-            r_e_0 = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * transition.einstein_a_ul
-            dfs.append(
-                pd.DataFrame(
-                    {
-                        "term_id": [term.term_id],
-                        "K": [K],
-                        "Q": [Q],
-                        "J": [J],
-                        "Jʹ": [Jʹ],
-                        "term_lower_id": [term_lower.term_id],
-                        "transition_id": [transition.transition_id],
-                        "Kʹ": [Kʹ],
-                        "Qʹ": [Qʹ],
-                        "Jʹʹ": [Jʹʹ],
-                        "Jʹʹʹ": [Jʹʹʹ],
-                        "r_e_0": [r_e_0],
-                    }
-                )
-            )
-        return dfs
-
-    def precompute_r_s(
-        self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float
-    ):
-        r"""
-        Compute :math:`r_{s1}`
-
-        Reference: (LL04 7.46c)
-        """
-        L = term.L
-        S = term.S
-        dfs = []
-        for term_lower in self.level_registry.terms.values():
-            if not self.transition_registry.is_transition_registered(term_upper=term, term_lower=term_lower):
-                continue
-            transition = self.transition_registry.get_transition(term_upper=term, term_lower=term_lower)
-            Ll = term_lower.L
-            for Kr, Qr in nested_loops(
-                Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kʹ), TRIANGULAR(L, L)),
-                Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qʹ - Q)),
-            ):
-                r_s_1 = multiply(
-                    lambda: n_proj(L) * transition.einstein_b_ul,
-                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
-                    lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
-                    lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
-                    lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5,
-                    lambda: delta(J, Jʹʹ),
-                    lambda: sqrt(n_proj(Jʹ, Jʹʹʹ)),
-                    lambda: wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S),
-                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J),
-                    is_scalar=True,
-                )
-
-                r_s_1 += multiply(
-                    lambda: n_proj(L) * transition.einstein_b_ul,
-                    lambda: sqrt(n_proj(1, K, Kʹ, Kr)),
-                    lambda: m1p(1 + Ll - S + J + Kr + Qʹ),
-                    lambda: wigner_6j(L, L, Kr, 1, 1, Ll),
-                    lambda: wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr),
-                    lambda: 0.5,
-                    lambda: delta(Jʹ, Jʹʹʹ) * sqrt(n_proj(J, Jʹʹ)),
-                    lambda: m1p(Jʹʹ - Jʹ + K + Kʹ + Kr),
-                    lambda: wigner_6j(L, L, Kr, Jʹʹ, J, S),
-                    lambda: wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ),
-                    is_scalar=True,
-                )
-                if self.disable_r_s:
-                    r_s_1 = r_s_1 * 0
-
-                dfs.append(
-                    pd.DataFrame(
-                        {
-                            "term_id": [term.term_id],
-                            "K": [K],
-                            "Q": [Q],
-                            "J": [J],
-                            "Jʹ": [Jʹ],
-                            "term_lower_id": [term_lower.term_id],
-                            "transition_id": [transition.transition_id],
-                            "Kʹ": [Kʹ],
-                            "Qʹ": [Qʹ],
-                            "Jʹʹ": [Jʹʹ],
-                            "Jʹʹʹ": [Jʹʹʹ],
-                            "Kr": [Kr],
-                            "Qr": [Qr],
-                            "r_s_1": [r_s_1],
-                        }
-                    )
-                )
-
-        return dfs
-
-    @staticmethod
-    def gamma(term: Term, J: float, Jʹ: float):
-        r"""
-        Compute :math:`\Gamma` which is in the coherence relaxation kernel :math:`N`.
-
-        Reference: (LL04 7.42)
-        """
-
-        S = term.S
-        L = term.L
-        result = delta(J, Jʹ) * sqrt(J * (J + 1) * (2 * J + 1))
-        result += (
-            m1p(1 + L + S + J)
-            * sqrt((2 * J + 1) * (2 * Jʹ + 1) * S * (S + 1) * (2 * S + 1))
-            * wigner_6j(J, Jʹ, 1, S, S, L)
+        relaxation_a_frame = self.relaxation_a_frame.copy()
+        relaxation_a_frame.register_multiplication(
+            lambda transition_id, Kr, Qr: radiation_tensor.get_from_transition_id(
+                transition_id=transition_id, K=Kr, Q=Qr
+            ),
+            elementwise=True,
         )
-        return result
+        relaxation_a_frame.reduce_partially("term_upper_id", "Lu", "transition_id", "Kr", "Qr")
 
-    def precompute_n(self, term: Term, K: int, Q: int, J: float, Jʹ: float, Kʹ: int, Qʹ: int, Jʹʹ: float, Jʹʹʹ: float):
-        r"""
-        Precompute coherence relaxation parameters :math:`n_0, n_1`:
-
-        .. math::
-
-            N = n_0 + n_1 * \nu_{larmor}
-
-        Reference: (LL04 7.41)
-        """
-
-        level = self.level_registry.get_level(term=term, J=J)
-        level_prime = self.level_registry.get_level(term=term, J=Jʹ)
-        nu = energy_cmm1_to_frequency_sm1(level.energy_cmm1 - level_prime.energy_cmm1)
-
-        n_0 = delta(K, Kʹ) * delta(Q, Qʹ) * delta(J, Jʹʹ) * delta(Jʹ, Jʹʹʹ) * nu
-
-        n_1 = (
-            delta(Q, Qʹ)
-            * m1p(J + Jʹ - Q)
-            * sqrt((2 * K + 1) * (2 * Kʹ + 1))
-            * wigner_3j(K, Kʹ, 1, -Q, Q, 0)
-            * (
-                delta(Jʹ, Jʹʹʹ) * self.gamma(term=term, J=J, Jʹ=Jʹʹ) * wigner_6j(K, Kʹ, 1, Jʹʹ, J, Jʹ)
-                + delta(J, Jʹʹ) * m1p(K - Kʹ) * self.gamma(term=term, J=Jʹʹʹ, Jʹ=Jʹ) * wigner_6j(K, Kʹ, 1, Jʹʹʹ, Jʹ, J)
-            )
+        self.add_coefficient_for_rho(
+            frame=relaxation_a_frame,
+            multiply_by=-1,
+            term_id="term_id",
+            K="Kʹ",
+            Q="Qʹ",
+            J="Jʹʹ",
+            Jʹ="Jʹʹʹ",
         )
 
-        df = pd.DataFrame(
-            {
-                "term_id": [term.term_id],
-                "K": [K],
-                "Q": [Q],
-                "J": [J],
-                "Jʹ": [Jʹ],
-                "Kʹ": [Kʹ],
-                "Qʹ": [Qʹ],
-                "Jʹʹ": [Jʹʹ],
-                "Jʹʹʹ": [Jʹʹʹ],
-                "n_0": [n_0],
-                "n_1": [n_1],
-            }
-        )
-        return df
-
-    def precompute_t_a(
-        self,
-        term: Term,
-        K: int,
-        Q: int,
-        J: float,
-        Jʹ: float,
-        term_lower: Term,
-        Kl: int,
-        Ql: int,
-        Jl: float,
-        Jʹl: float,
-    ):
+    @log_method
+    def add_relaxation_s(self, radiation_tensor: RadiationTensor):
         r"""
-        Precompute :math:`t_{a1}`
+        Add stimulated emission relaxation :math:`R_S = -r_{s1} \cdot J^{K_r}_{Q_r}`.
 
-        Reference: (LL04 7.45a)
+        Reference: (LL04 7.38, 7.46c)
         """
-        S = term.S
-        L = term.L
-        Ll = term_lower.L
+        if self.disable_r_s:
+            return
 
-        transition = self.transition_registry.get_transition(term_upper=term, term_lower=term_lower)
-        dfs = []
-        for Kr, Qr in nested_loops(
-            Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(K, Kl)), Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Ql - Q))
-        ):
-            t_a_1 = multiply(
-                lambda: n_proj(Ll) * transition.einstein_b_lu,
-                lambda: sqrt(n_proj(1, J, Jʹ, Jl, Jʹl, K, Kl, Kr)),
-                lambda: m1p(Kl + Ql + Jʹl - Jl),
-                lambda: wigner_9j(J, Jl, 1, Jʹ, Jʹl, 1, K, Kl, Kr),
-                lambda: wigner_6j(L, Ll, 1, Jl, J, S),
-                lambda: wigner_6j(L, Ll, 1, Jʹl, Jʹ, S),
-                lambda: wigner_3j(K, Kl, Kr, -Q, Ql, -Qr),
-                is_scalar=True,
-            )
-            dfs.append(
-                pd.DataFrame(
-                    {
-                        "term_id": [term.term_id],
-                        "K": [K],
-                        "Q": [Q],
-                        "J": [J],
-                        "Jʹ": [Jʹ],
-                        "term_lower_id": [term_lower.term_id],
-                        "transition_id": [transition.transition_id],
-                        "Kl": [Kl],
-                        "Ql": [Ql],
-                        "Jl": [Jl],
-                        "Jʹl": [Jʹl],
-                        "Kr": [Kr],
-                        "Qr": [Qr],
-                        "t_a_1": [t_a_1],
-                    }
+        class RelaxationSSumLimits(SumLimits):
+            r"""
+            Summation limits for stimulated emission relaxation :math:`R_S = -r_{s1} \cdot J^{K_r}_{Q_r}`.
+            """
+
+            term_id = DummyOrAlreadyMerged()
+            L = DummyOrAlreadyMerged(term_id)
+            S = DummyOrAlreadyMerged(term_id)
+            term_lower_id = DummyOrAlreadyMerged()
+            Ll = DummyOrAlreadyMerged(term_lower_id)
+            transition_id = DummyOrAlreadyMerged()
+            J = DummyOrAlreadyMerged()
+            Jʹ = DummyOrAlreadyMerged()
+            K = DummyOrAlreadyMerged()
+            Q = DummyOrAlreadyMerged()
+            Jʹʹ = Triangular(L, S)
+            Jʹʹʹ = Triangular(L, S)
+            Kʹ = Intersection(Triangular(J, Jʹ), Triangular(Jʹʹ, Jʹʹʹ))
+            Qʹ = Projection(Kʹ)
+            Kr = Intersection(FromTo(0, 2), Triangular(K, Kʹ), Triangular(L, L))
+            Qr = Intersection(Projection(Kr), Qʹ - Q)
+
+        if self.relaxation_s_frame is None:
+
+            def _r_s_1(transition_id, J, Jʹ, Jʹʹ, Jʹʹʹ, K, Kʹ, Kr, Q, Qʹ, Qr, L, Ll, S):
+                tr = self.transition_registry.transitions[str(transition_id)]
+                common = (
+                    n_proj(L)
+                    * tr.einstein_b_ul
+                    * sqrt(n_proj(1, K, Kʹ, Kr))
+                    * m1p(1 + Ll - S + J + Kr + Qʹ)
+                    * wigner_6j(L, L, Kr, 1, 1, Ll)
+                    * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
+                    * 0.5
                 )
-            )
-
-        return dfs
-
-    def precompute_t_e(
-        self,
-        term: Term,
-        K: int,
-        Q: int,
-        J: float,
-        Jʹ: float,
-        term_upper: Term,
-        Ku: int,
-        Qu: int,
-        Ju: float,
-        Jʹu: float,
-    ):
-        r"""
-        Precompute :math:`T_e` coefficient
-
-        Reference: (LL04 7.45b)
-        """
-
-        S = term.S
-        L = term.L
-        Lu = term_upper.L
-
-        transition = self.transition_registry.get_transition(term_upper=term_upper, term_lower=term)
-        assert S == term_upper.S
-
-        coefficient = multiply(
-            lambda: delta(S, term_upper.S) * delta(K, Ku) * delta(Q, Qu),
-            lambda: (2 * Lu + 1) * transition.einstein_a_ul,
-            lambda: sqrt(n_proj(J, Jʹ, Ju, Jʹu)),
-            lambda: m1p(1 + K + Jʹ + Jʹu),
-            lambda: wigner_6j(J, Jʹ, K, Jʹu, Ju, 1),
-            lambda: wigner_6j(Lu, L, 1, J, Ju, S),
-            lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
-            is_scalar=True,
-        )
-
-        return [
-            pd.DataFrame(
-                {
-                    "term_id": [term.term_id],
-                    "K": [K],
-                    "Q": [Q],
-                    "J": [J],
-                    "Jʹ": [Jʹ],
-                    "term_upper_id": [term_upper.term_id],
-                    "transition_id": [transition.transition_id],
-                    "Ku": [Ku],
-                    "Qu": [Qu],
-                    "Ju": [Ju],
-                    "Jʹu": [Jʹu],
-                    "coefficient": [coefficient],
-                }
-            )
-        ]
-
-    def precompute_t_s(
-        self,
-        term: Term,
-        K: int,
-        Q: int,
-        J: float,
-        Jʹ: float,
-        term_upper: Term,
-        Ku: int,
-        Qu: int,
-        Ju: float,
-        Jʹu: float,
-    ):
-        r"""
-        Precompute :math:`t_{s1}`
-
-        Reference: (LL04 7.45c)
-        """
-        S = term.S
-        L = term.L
-        Lu = term_upper.L
-
-        transition = self.transition_registry.get_transition(term_upper=term_upper, term_lower=term)
-        dfs = []
-        for Kr, Qr in nested_loops(
-            Kr=INTERSECTION(FROMTO(0, 2), TRIANGULAR(Ku, K)),
-            Qr=INTERSECTION(PROJECTION("Kr"), VALUE(Qu - Q)),
-        ):
-            t_s_1 = multiply(
-                lambda: n_proj(Lu) * transition.einstein_b_ul,
-                lambda: sqrt(n_proj(1, J, Jʹ, Ju, Jʹu, K, Ku, Kr)),
-                lambda: m1p(Kr + Ku + Qu + Jʹu - Ju),
-                lambda: wigner_9j(J, Ju, 1, Jʹ, Jʹu, 1, K, Ku, Kr),
-                lambda: wigner_6j(Lu, L, 1, J, Ju, S),
-                lambda: wigner_6j(Lu, L, 1, Jʹ, Jʹu, S),
-                lambda: wigner_3j(K, Ku, Kr, -Q, Qu, -Qr),
-                is_scalar=True,
-            )
-
-            dfs.append(
-                pd.DataFrame(
-                    {
-                        "term_id": [term.term_id],
-                        "K": [K],
-                        "Q": [Q],
-                        "J": [J],
-                        "Jʹ": [Jʹ],
-                        "term_upper_id": [term_upper.term_id],
-                        "transition_id": [transition.transition_id],
-                        "Ku": [Ku],
-                        "Qu": [Qu],
-                        "Ju": [Ju],
-                        "Jʹu": [Jʹu],
-                        "t_s_1": [t_s_1],
-                        "Kr": [Kr],
-                        "Qr": [Qr],
-                    }
+                term1 = (
+                    delta(J, Jʹʹ)
+                    * sqrt(n_proj(Jʹ, Jʹʹʹ))
+                    * wigner_6j(L, L, Kr, Jʹʹʹ, Jʹ, S)
+                    * wigner_6j(K, Kʹ, Kr, Jʹʹʹ, Jʹ, J)
                 )
-            )
+                term2 = (
+                    delta(Jʹ, Jʹʹʹ)
+                    * sqrt(n_proj(J, Jʹʹ))
+                    * m1p(Jʹʹ - Jʹ + K + Kʹ + Kr)
+                    * wigner_6j(L, L, Kr, Jʹʹ, J, S)
+                    * wigner_6j(K, Kʹ, Kr, Jʹʹ, J, Jʹ)
+                )
+                return common * (term1 + term2)
 
-        return dfs
+            self.relaxation_s_frame = Frame.from_sum_limits(
+                self._base_frame_transitions_lower(),
+                RelaxationSSumLimits(),
+            ).register_multiplication(_r_s_1, elementwise=True)
+
+        relaxation_s_frame = self.relaxation_s_frame.copy()
+        relaxation_s_frame.register_multiplication(
+            lambda transition_id, Kr, Qr: radiation_tensor.get_from_transition_id(
+                transition_id=transition_id, K=Kr, Q=Qr
+            ),
+            elementwise=True,
+        )
+        relaxation_s_frame.reduce_partially("term_lower_id", "Ll", "transition_id", "Kr", "Qr")
+
+        self.add_coefficient_for_rho(
+            frame=relaxation_s_frame,
+            multiply_by=-1,
+            term_id="term_id",
+            K="Kʹ",
+            Q="Qʹ",
+            J="Jʹʹ",
+            Jʹ="Jʹʹʹ",
+        )
 
     @log_method
     def get_solution(self) -> Rho:
@@ -857,16 +745,11 @@ class MultiTermAtomSEE(BaseSEE):
         This system generally behaves well enough for linalg.solve to succeed, but pinv is more robust.
         """
         logging.info("Solving Statistical Equilibrium Equations")
-        # sol = np.linalg.solve(
-        #     self.matrix_builder.rho_matrix[:, 1:, 1:],
-        #     -self.matrix_builder.rho_matrix[:, 1:, 0:1],
-        # )
         sol = -np.linalg.pinv(self.matrix_builder.rho_matrix[1:, 1:]) @ self.matrix_builder.rho_matrix[1:, 0:1]
         sol = np.insert(sol, 0, 1.0, 0)
         sol = sol[:, 0]
 
-        # Normalize the solution:
-        # Sum sqrt(2J+1) rho00(J, J) = 1
+        # Normalize: Sum sqrt(2J+1) rho00(J, J) = 1
         weights = np.zeros_like(sol)
         for index, weight in zip(self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights):
             weights[index] = weight
@@ -874,40 +757,30 @@ class MultiTermAtomSEE(BaseSEE):
 
         rho_vector = sol / trace
 
-        # Fill out the Rho instance
         rho = Rho(terms=list(self.level_registry.terms.values()))
         for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
             rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=rho_vector[index])
 
         return rho
 
-    def concat_and_finalize_precomputed_dfs(self, dfs: List[pd.DataFrame]) -> pd.DataFrame:
-        """
-        A helper function to finalize the precomputed frames.
+    def add_coefficient_for_rho(
+        self,
+        frame: Frame,
+        term_id: str,
+        K: str,
+        Q: str,
+        J: str,
+        Jʹ: str,
+        multiply_by: Union[complex, float, None] = None,
+    ):
+        df = frame.frame.copy()
+        df = self.add_equation_index(df, term_id="term_id", K="K", Q="Q", J="J", Jʹ="Jʹ", index="index0")
+        df = self.add_equation_index(df, term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ, index="index1")
+        if multiply_by is not None:
+            df["coefficient"] = df["coefficient"] * multiply_by
+        self.matrix_builder.add_coefficient_from_df(df)
 
-        :param dfs: list of dataframes.
-        :return: finalized precomputed frame.
-        """
-        assert len(dfs) > 0, "Empty precomputed of dataframe"
-        df = pd.concat(dfs, ignore_index=True)
-        df = self.add_equation_index0(df=df, term_id="term_id", K="K", Q="Q", J="J", Jʹ="Jʹ")
-        return df
-
-    def add_equation_index0(self, df: pd.DataFrame, term_id: str, K: str, Q: str, J: str, Jʹ: str):
-        """
-        A helper function to keep track of which matrix row/column each term in SEE corresponds to.
-        Set index0 (row).
-        """
-        return self._add_equation_index(df=df, term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ, index="index0")
-
-    def add_equation_index1(self, df: pd.DataFrame, term_id: str, K: str, Q: str, J: str, Jʹ: str):
-        """
-        A helper function to keep track of which matrix row/column each term in SEE corresponds to.
-        Set index1 (column).
-        """
-        return self._add_equation_index(df=df, term_id=term_id, K=K, Q=Q, J=J, Jʹ=Jʹ, index="index1")
-
-    def _add_equation_index(self, df: pd.DataFrame, term_id: str, K: str, Q: str, J: str, Jʹ: str, index: str):
+    def add_equation_index(self, df: pd.DataFrame, term_id: str, K: str, Q: str, J: str, Jʹ: str, index: str):
         """
         A helper function to keep track of which matrix row/column each term in SEE corresponds to.
         Set either index0 or index1 using the provided :math:`K, Q,` ....

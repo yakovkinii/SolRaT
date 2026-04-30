@@ -1,3 +1,8 @@
+try:
+    from typing import Self  # Python 3.11+
+except ImportError:
+    from typing_extensions import Self  # Python <3.11
+
 import inspect
 import logging
 from typing import Callable, Dict, Generic, List, TypeVar, Union
@@ -177,6 +182,8 @@ class Frame(Generic[SumLimitsT]):
             self.factors[name] = FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
+        return self
+
     def get_dependent_factors(self, column: str) -> List[str]:
         return [name for name, factor in self.factors.items() if column in factor.dependencies]
 
@@ -206,7 +213,7 @@ class Frame(Generic[SumLimitsT]):
         factor.merged = True
 
     @log_method
-    def combine_all_merged_factors(self):
+    def combine_all_merged_factors(self) -> str:
         """
         Multiply all merged factors so that the frame has a single combined merged factor.
         """
@@ -257,7 +264,7 @@ class Frame(Generic[SumLimitsT]):
             logging.log(VERBOSE, f"No dependent factors for column {column}, dropping it directly.")
             self.remove_dependency(column)
             self.frame = self.frame.drop(columns=column)
-            return self.frame
+            return self
 
         for factor_name in dependent_factors:
             logging.log(VERBOSE, f"Ensuring factor {factor_name} is merged for reduction.")
@@ -282,10 +289,10 @@ class Frame(Generic[SumLimitsT]):
 
         self.frame = self.frame.groupby(group_columns)[factor_name].sum().reset_index()
         logging.log(VERBOSE, f"  Reduced frame shape: {self.frame.shape}")
-        return None
+        return self
 
     @log_method
-    def _reduce(self, columns) -> Union[np.ndarray, float, complex, None]:
+    def _reduce(self, columns) -> Union[np.ndarray, float, complex, Self]:
         result = None
         for col in columns:
             assert col not in self.factors, f"Reduction is to be performed on loopers, not factors: {col}"
@@ -294,7 +301,7 @@ class Frame(Generic[SumLimitsT]):
         return result
 
     @log_method
-    def reduce(self, *args: Union[Looper, str]) -> Union[np.ndarray, float, complex, None]:
+    def reduce(self, *args: Union[Looper, str]) -> Union[np.ndarray, float, complex, Self]:
         r"""usage:
         frame.reduce() to reduce all,
         frame.reduce(col1, col2, ..., col5, col6) to specify first and last columns to reduce
@@ -308,13 +315,7 @@ class Frame(Generic[SumLimitsT]):
             return result
 
         if Ellipsis not in args:
-            result = self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
-            if result is None:
-                logging.warning(
-                    "The frame is not fully reduced. Consider using Ellipsis (...) "
-                    "to reduce all remaining columns: frame.reduce(col1, col2, ...)."
-                )
-            return result
+            return self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
 
         if args.count(Ellipsis) > 1:
             raise ValueError("Only one Ellipsis (...) is allowed in reduce() arguments.")
@@ -329,6 +330,31 @@ class Frame(Generic[SumLimitsT]):
         ellipsis_columns = [col for col in frame_columns if col not in columns_before + columns_after]
         frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
+
+    @log_method
+    def to_coefficient(self) -> Self:
+        """
+        Merge all registered factors into a single 'coefficient' column without reducing any loop columns.
+        Use this when you want the coefficient but still need all loop columns for index lookup.
+        """
+        for factor_name in list(self.factors.keys()):
+            if not self.factors[factor_name].merged:
+                self.merge_factor(factor_name)
+        combined_name = self.combine_all_merged_factors()
+
+        new_factor_name = "coefficient"
+        self.frame = self.frame.rename(columns={combined_name: new_factor_name})
+        dependencies = self.factors[combined_name].dependencies
+        self.factors[new_factor_name] = FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
+        del self.factors[combined_name]
+
+        return self
+
+    @log_method
+    def reduce_partially(self, *args: Union[Looper, str]) -> Self:
+        """Reduce the given loop columns (groupby-sum) then merge all factors to 'coefficient'."""
+        self.reduce(*args)
+        return self.to_coefficient()
 
     @log_method
     def debug_reduce_legacy(self):  # pragma: no cover

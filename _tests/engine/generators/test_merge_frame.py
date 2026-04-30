@@ -59,8 +59,7 @@ class TestMergeFrame(unittest.TestCase):
         result_frame2 = frame.copy().reduce("L", "Jʹ", ...)  # first reduce L and Jʹ
         result_frame3 = frame.copy().reduce(..., "J", "Jʹ")  # or reduce J and Jʹ last
         result_frame4 = frame.copy().reduce(..., limits.J, limits.Jʹ)  # can use object fields
-        intermediate_result = frame.reduce("J")  # reduce only J
-        assert intermediate_result is None
+        frame.reduce("J")  # reduce only J
         result_frame5 = frame.reduce()  # reduce the rest
 
         # ======================================================
