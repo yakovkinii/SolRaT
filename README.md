@@ -1,4 +1,4 @@
-<H1>SolRaT</H1>
+# SolRaT 
 
 [![Documentation](https://img.shields.io/badge/read-TheDocs-eee?logoColor=black)](https://solrat.readthedocs.io/latest/)
 [![Homepage](https://img.shields.io/badge/homepage-solrat-000000?logoColor=white)](https://www.yakovkinii.com/solrat/)
@@ -9,29 +9,27 @@
 [![Coverage Status](https://coveralls.io/repos/github/yakovkinii/SolRaT/badge.svg?branch=master)](https://coveralls.io/github/yakovkinii/SolRaT?branch=master)
 
 SolRaT (Solar Radiative Transfer) is a flexible forward modeling code for non-LTE transfer of 
-radiation in stellar atmospheres.
+radiation in stellar atmospheres. SolRaT is specifically designed for prototyping and adjustments of the radiative transfer 
+models for specific contexts.
 
-The code provides a three-level framework for modeling radiative transfer:
-1. **Public API** allows to run built-in RT models. Currently, SolRaT ships the non-LTE multi-term atom model ([LL04](#References)) with multiple constant-slab atmosphere stratification.  
-2. **Modeling API** allows to extend existing models or create completely new ones.    
-3. **SolRaT Engine** introduces a meta-language that allows the user to write a human-readable code that directly 
-resembles the underlying mathematical equations. The user does not need to focus on code optimization, 
-as it is handled under the hood. 
+#### Features available out-of-the-box:
+- **RTE frameworks**: Multi-Term Atom; Multi-Level Atom; Multi-Term semi-LTE Atom [[LL04](#References)].
+- **Magnetic Fields**: Zeeman &ndash; Hanle &ndash; Paschen-Back for Multi-Term Atom; 
+Zeeman &ndash; Hanle for Multi-Level atom.
+- **Atomic Level Polarization**: Fully supported.
+- **Radiation Tensor $J_Q^K$**: Tabulated from [[ATL08](#References)] (for coronal/chromospheric lines) or NLTE self-consistent.
+- **Atmospheres**: Multiple constant-property slabs.
+- **Pre-configured lines**: He I D3, Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, Fe I 5434.523 &Aring;.
 
-#### Key Features:
-- **Physics**: Solves non-LTE radiative transfer for multi-term atoms.
-- **Magnetic Fields**: Handles arbitrary magnetic field strengths (Zeeman, Hanle, Paschen-Back effects).
-- **Atmosphere**: Supports multi-slab atmospheres for height stratification under anisotropic illumination ([ATL08](#References), [HAZEL2](#References)).
-- **Flexibility**: Provides a high-level meta-language allowing for writing code that directly resembles the underlying mathematical equations.
-- **Accessibility**: SolRaT is free, open-source, and platform-independent.
-- **Performance**: SolRaT uses high-performance libraries that leverage SIMD instruction sets.
-- **Extensibility**: A clear Modeling API allows for quick prototyping and model adjustments for specific contexts.
+#### Installation:
 
+Install SolRaT directly from PyPi by running ```pip install solrat```.
 
-#### How to run:
-1. Install SolRaT from PyPi: ```pip install solrat```
-2. Explore the [demos](https://github.com/yakovkinii/SolRaT/tree/master/_demos) and [tests](https://github.com/yakovkinii/SolRaT/tree/master/_tests) for usage examples.
-3. Explore the [documentation](https://solrat.readthedocs.io/latest/).
+#### Documentation:
+
+Detailed documentation is available at [https://solrat.readthedocs.io/](https://solrat.readthedocs.io/latest/). 
+Quick start example is available at [https://solrat.readthedocs.io/latest/quickstart.html](https://solrat.readthedocs.io/latest/quickstart.html).
+Additional demos and validation against [[LL04](#References)] and [[HAZEL2](#References)] are available in [demos](https://github.com/yakovkinii/SolRaT/tree/master/_demos). 
 
 #### Citing:
 Journal article is pending. In the meantime, if SolRaT has found use in your research, please cite it as 
@@ -48,7 +46,7 @@ Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yak
 
 <h4>Keywords:</h4>
 Non-LTE, Stokes Profiles, Inversion, Synthesis, Paschen-Back, Hanle, Zeeman, 
-Magnetic Fields, Sun, Solar Atmosphere, Radiative Transfer, Polarization, 
-Spectral Lines, Two-Term Atom Model
+Magnetic Fields, Sun, Solar Atmosphere, Radiative Transfer, Spectral Line Polarization, 
+Spectral Lines, Multi-Term Atom Model, Multi-Level Atom Model, Atomic Polarization. 
 
 Copyright (2023) Ivan I. Yakovkin
