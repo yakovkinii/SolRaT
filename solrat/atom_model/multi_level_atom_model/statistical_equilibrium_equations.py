@@ -148,7 +148,7 @@ class MultiLevelAtomSEE(BaseSEE):
         return Frame.from_sum_limits(base_frame=pd.DataFrame(rows), sum_limits=BaseUpperSumLimits()).frame
 
     @log_method
-    def fill_all_equations(  # Main entry point
+    def fill_all_equations(
         self,
         atmosphere_parameters: AtmosphereParameters,
         radiation_tensor_in_magnetic_frame: RadiationTensor,
@@ -192,7 +192,6 @@ class MultiLevelAtomSEE(BaseSEE):
                 .to_coefficient()
             )
 
-        # Diagonal: index0 == index1 == (level_id, K, Q)
         self.add_coefficient_for_rho(
             frame=self.coherence_decay_frame,
             multiply_by=-2 * pi * 1j * atmosphere_parameters.nu_larmor,
@@ -233,7 +232,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     (2 * Jl + 1)
                     * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
                     * sqrt(3 * n_proj(K, Kl, Kr))
-                    * m1p(K + Ql)
+                    * m1p(Kl + Ql)
                     * wigner_9j(J, Jl, 1, J, Jl, 1, K, Kl, Kr)
                     * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
                 ),
@@ -249,7 +248,6 @@ class MultiLevelAtomSEE(BaseSEE):
         )
         absorption_frame.reduce_partially("transition_id", "Kr", "Qr")
 
-        # index1 = (level_lower_id, Kl, Ql)
         self.add_coefficient_for_rho(
             frame=absorption_frame,
             level_id="level_lower_id",
@@ -298,7 +296,6 @@ class MultiLevelAtomSEE(BaseSEE):
                 .reduce_partially("transition_id")
             )
 
-        # index1 = (level_upper_id, Ku=K, Qu=Q)
         self.add_coefficient_for_rho(
             frame=self.emission_e_frame,
             level_id="level_upper_id",
@@ -338,7 +335,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     (2 * Ju + 1)
                     * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
                     * sqrt(3 * n_proj(K, Ku, Kr))
-                    * m1p(K + Ku + Qu)
+                    * m1p(Kr + Ku + Qu)
                     * wigner_9j(J, Ju, 1, J, Ju, 1, K, Ku, Kr)
                     * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
                 ),
@@ -354,7 +351,6 @@ class MultiLevelAtomSEE(BaseSEE):
         )
         emission_s_frame.reduce_partially("transition_id", "Kr", "Qr")
 
-        # index1 = (level_upper_id, Ku, Qu)
         self.add_coefficient_for_rho(
             frame=emission_s_frame,
             level_id="level_upper_id",
@@ -367,7 +363,7 @@ class MultiLevelAtomSEE(BaseSEE):
         r"""
         Add spontaneous emission relaxation :math:`R_E = -\sum_{\alpha_l J_l} A(\alpha J \to \alpha_l J_l)`.
 
-        Diagonal in :math:`K, Q`.
+        Diagonal in :math:`K, Q` (here we explicitly resolve summation over :math:`Kʹ, Qʹ`.
 
         Reference: (LL04 7.11, 7.14e)
         """
@@ -396,7 +392,6 @@ class MultiLevelAtomSEE(BaseSEE):
                 .reduce_partially("level_lower_id", "Jl", "gl", "transition_id")
             )
 
-        # Diagonal: index0 == index1 == (level_id, K, Q); the rate is added with -1
         self.add_coefficient_for_rho(
             frame=self.relaxation_e_frame,
             multiply_by=-1,
@@ -456,7 +451,6 @@ class MultiLevelAtomSEE(BaseSEE):
         )
         relaxation_a_frame.reduce_partially("level_upper_id", "Ju", "gu", "transition_id", "Kr", "Qr")
 
-        # index1 = (level_id, Kʹ, Qʹ); both at the same level_id
         self.add_coefficient_for_rho(
             frame=relaxation_a_frame,
             multiply_by=-1,
@@ -518,7 +512,6 @@ class MultiLevelAtomSEE(BaseSEE):
         )
         relaxation_s_frame.reduce_partially("level_lower_id", "Jl", "gl", "transition_id", "Kr", "Qr")
 
-        # index1 = (level_id, Kʹ, Qʹ); both at the same level_id
         self.add_coefficient_for_rho(
             frame=relaxation_s_frame,
             multiply_by=-1,

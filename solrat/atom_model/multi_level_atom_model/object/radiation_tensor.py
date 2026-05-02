@@ -25,8 +25,7 @@ class RadiationTensor(BaseRadiationTensor):
     r"""
     Radiation tensor :math:`J^K_Q(\nu_{ul})` for the Multi-Level atom model.
 
-    Stored per transition, mirroring the multi-term implementation. :math:`K \le 2`
-    by construction for E1 transitions.
+    Stored per transition. :math:`K \le 2` by construction for E1 transitions.
 
     :param transition_registry:  :class:`TransitionRegistry` instance.
 

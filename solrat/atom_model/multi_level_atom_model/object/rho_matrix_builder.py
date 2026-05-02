@@ -14,14 +14,14 @@ from solrat.engine.generators.nested_loops import nested_loops
 
 def construct_coherence_id(level: Level, K: float, Q: float) -> str:
     """
-    Construct a unique ID for a coherence in the Multi-Level model.
+    Construct a unique ID for a coherence in the Multi-Level model. Note that level holds the J value inside.
     """
     return construct_coherence_id_from_level_id(level_id=level.level_id, K=K, Q=Q)
 
 
 def construct_coherence_id_from_level_id(level_id: str, K: float, Q: float) -> str:
     """
-    Construct a unique ID for a coherence in the Multi-Level model.
+    Construct a unique ID for a coherence in the Multi-Level model. Note that level holds the J value inside.
     """
     return f"{level_id}_K={half_int_to_str(K)}_Q={half_int_to_str(Q)}"
 
@@ -55,8 +55,8 @@ class RhoMatrixBuilder:
     r"""
     Builder for the linear-system matrix that represents the Multi-Level SEE.
 
-    Coherences are :math:`\rho^K_Q(\alpha J)` with :math:`K = 0 \ldots 2J` and
-    :math:`Q = -K \ldots K`.
+    Coherences are :math:`\rho^K_Q(\alpha J)` with :math:`K = 0 ... 2J` and
+    :math:`Q = -K ... K`.
 
     :param levels:  list of all levels.
     """

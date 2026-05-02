@@ -10,9 +10,11 @@ class LevelRegistry:
     Registry for atomic levels in the Multi-Level atom model.
 
     A level is identified by :math:`(\alpha, J)`, where :math:`\alpha` is a label that
-    encapsulates all inner quantum numbers (everything that is not :math:`J`), and
+    encapsulates all inner quantum numbers, and
     :math:`J` is the total angular momentum.  Each level carries a Lande factor
     :math:`g_{\alpha J}` that is supplied directly by the user.
+
+    Alternatively, :math:`g_{\alpha J}` can be calculated using the LS coupling.
     """
 
     def __init__(self):
@@ -33,6 +35,23 @@ class LevelRegistry:
         level = Level(level_id=level_id, alpha=alpha, J=J, energy_cmm1=energy_cmm1, g=g)
         self.levels[level_id] = level
         logging.debug(f"Level registry: registered {level_id}")
+
+    def register_level_LS_coupling(self, alpha: str, L: float, S: float, J: float, energy_cmm1: float):
+        r"""
+        Register a new level with :math:`g_{\alpha J}` calculated using LS coupling.
+
+        :param alpha:  string label denoting all quantum numbers other than :math:`J`.
+        :param L:  half-int orbital momentum.
+        :param S:  half-int spin.
+        :param J:  half-int total angular momentum.
+        :param energy_cmm1:  level energy in :math:`[1/\mathrm{cm}]`.
+        """
+        level_id = self.construct_level_id(alpha=alpha, J=J)
+        assert level_id not in self.levels.keys(), f"Level {level_id} is already registered."
+        g = 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
+        level = Level(level_id=level_id, alpha=alpha, J=J, energy_cmm1=energy_cmm1, g=g)
+        self.levels[level_id] = level
+        logging.debug(f"Level registry: registered {level_id} (LS coupling)")
 
     @staticmethod
     def construct_level_id(alpha: str, J: float) -> str:
