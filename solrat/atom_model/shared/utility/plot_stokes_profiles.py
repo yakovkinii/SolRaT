@@ -49,6 +49,8 @@ class PlotterBase:  # pragma: no cover
         self.vacuum_to_air = use_air_wavelengths
         self.reference_lambda_A_air = reference_lambda_A_air
         self.fig, self.axs = plt.subplots(n_axes, 1, sharex=True, constrained_layout=True, figsize=figsize, num=title)
+        if n_axes == 1:
+            self.axs = [self.axs]
         self.fig.suptitle(title)
         for ax, label in zip(self.axs, y_labels):
             ax.set_ylabel(label)
@@ -194,6 +196,60 @@ class StokesPlotter_IV_IpmV(PlotterBase):  # pragma: no cover
 
         self.axs[2].plot(wavelength, IpV, "-", label=label + " $I+V$", color=color, linewidth=linewidth)
         self.axs[2].plot(wavelength, ImV, "--", label=label + " $I-V$", color=color, linewidth=linewidth)
+
+
+class StokesPlotter_IpmV(PlotterBase):  # pragma: no cover
+    r"""
+    Stokes plotter class for Stokes :math:`I\pm V` profiles.
+    """
+
+    def __init__(self, title="", use_air_wavelengths=False, reference_lambda_A_air=None, figsize=(8, 6)):
+        super().__init__(
+            title=title,
+            use_air_wavelengths=use_air_wavelengths,
+            reference_lambda_A_air=reference_lambda_A_air,
+            n_axes=1,
+            y_labels=[r"Stokes $(I\pm V)$"],
+            figsize=figsize,
+        )
+
+    @log_method
+    def add_stokes(
+        self,
+        stokes: Stokes,
+        stokes_reference: Stokes = None,
+        norm: StokesNorm = StokesNorm.NONE,
+        label="",
+        linewidth=1.5,
+        alpha=1,
+    ):
+        wavelength = self._wavelength_axis(stokes.nu)
+
+        if norm == StokesNorm.NONE:
+            I, V = stokes.I, stokes.V
+        elif norm == StokesNorm.MAX_I:
+            scale = np.max(stokes.I)
+            I, V = stokes.I / scale, stokes.V / scale
+        elif norm == StokesNorm.BY_REFERENCE:
+            scale = stokes_reference.I
+            I, V = stokes.I / scale, stokes.V / scale
+        elif norm == StokesNorm.MAX_IpV_ImV:
+            scale = np.max(stokes.I)
+            I, V = stokes.I / scale, stokes.V / scale
+        else:
+            raise ValueError(f"Did not recognize normalization option {norm}")
+
+        if norm == StokesNorm.MAX_IpV_ImV:
+            IpV = stokes.I + stokes.V
+            ImV = stokes.I - stokes.V
+            IpV = IpV / np.max(np.abs(IpV))
+            ImV = ImV / np.max(np.abs(ImV))
+        else:
+            IpV = I + V
+            ImV = I - V
+
+        self.axs[0].plot(wavelength, IpV, "-", label=label + " $I+V$", color="blue", linewidth=linewidth, alpha=alpha)
+        self.axs[0].plot(wavelength, ImV, "-", label=label + " $I-V$", color="red", linewidth=linewidth, alpha=alpha)
 
 
 class StokesPlotter(PlotterBase):  # pragma: no cover
