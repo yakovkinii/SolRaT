@@ -298,8 +298,12 @@ class MultiTermAtomRTE(BaseRTE):
                 row_dict["upper_J_constraint"] = tuple(transition.upper_J_for_RTE)
             rows.append(row_dict)
 
-        base_frame = pd.DataFrame(rows)
-        return base_frame
+        if not rows:
+            raise ValueError(
+                "No registered transitions contribute to the supplied frequency grid. "
+                "Check that the frequency grid contains an actual transition frequency."
+            )
+        return pd.DataFrame(rows)
 
     @log_method
     def calculate_all_coefficients(

@@ -225,6 +225,11 @@ class MultiLevelAtomRTE(BaseRTE):
                     "gu": level_upper.g,
                 }
             )
+        if not rows:
+            raise ValueError(
+                "No registered transitions contribute to the supplied frequency grid. "
+                "Check that the frequency grid contains an actual transition frequency."
+            )
         return pd.DataFrame(rows)
 
     @log_method

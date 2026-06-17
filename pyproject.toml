@@ -18,6 +18,7 @@ dependencies = [
     "sympy",
     "scipy",
     "coloredlogs",
+    "typing_extensions>=4.0.0; python_version<'3.11'",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -51,7 +52,7 @@ include = ["solrat*"]
 [tool.setuptools.package-data]
 solrat = [
     "py.typed",
-    "multi_term_atom/atomic_data/**/*.csv",
+    "atom_model/multi_term_atom_model/data/**/*.csv",
 ]
 
 [tool.black]

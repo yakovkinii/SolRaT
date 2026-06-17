@@ -9,6 +9,8 @@ class MultiSlabAtmosphere:
     """
 
     def __init__(self, *slabs: ConstantPropertySlabAtmosphere):
+        if not slabs:
+            raise ValueError("MultiSlabAtmosphere requires at least one slab.")
         self.slabs = slabs
 
     @log_method
