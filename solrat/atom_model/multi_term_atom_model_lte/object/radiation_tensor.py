@@ -3,8 +3,6 @@ try:
 except ImportError:
     from typing_extensions import Self  # Python <3.11
 
-from abc import abstractmethod
-
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.shared.object.angles import Angles
@@ -25,7 +23,6 @@ class RadiationTensorLTE(BaseRadiationTensor):
         """
         return cls()
 
-    @abstractmethod
     def rotate_to_magnetic_frame(self, angles: Angles) -> Self:
         r"""
         Rotate JKQ to the magnetic reference frame.

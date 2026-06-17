@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List, Union
 
 from solrat.atom_model.multi_term_atom_model.object.level_registry import Term
@@ -48,6 +49,12 @@ class TransitionRegistry:
         :param lower_J_constraint:  constrain lower term :math:`J` values in RTE to these values
         :param upper_J_constraint:  constrain upper term :math:`J` values in RTE to these values
         """
+        if lower_J_constraint is not None or upper_J_constraint is not None:
+            logging.warning(
+                "J constraints are an experimental feature."
+                "Check the final solution for adiabatic continuity as B is decreased to zero."
+            )
+
         assert term_lower.S == term_upper.S, "Spin of upper and lower terms must be the same"
 
         transition_id = term_upper.term_id + "->" + term_lower.term_id

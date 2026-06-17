@@ -71,7 +71,7 @@ def _g_ls(L, S, J, artificial_S_scale: Union[float, None] = None):
     :math:`S` scale can be overwritten to model a different magnetic sensitivity of a term. Use with caution.
     """
     if J == 0:
-        return 1
+        return 0
     if artificial_S_scale is not None:  # place it here for extra safety
         return 1 + 0.5 * artificial_S_scale * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
     return 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)

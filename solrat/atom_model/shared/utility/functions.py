@@ -89,7 +89,7 @@ def get_frequencies_from_air_wavelength_range(
     lower_wavelength_A: float, upper_wavelength_A: float, step_A: float
 ) -> np.ndarray:
     """
-    Build a frequency array (Hz) from a vacuum wavelength range (Angstrom).
+    Build a frequency array (Hz) from an air wavelength range (Angstrom).
     """
     lambda_A_air = np.arange(lower_wavelength_A, upper_wavelength_A, step_A)
     lambda_A_vac = lambda_air_to_vacuum(lambda_A_air)

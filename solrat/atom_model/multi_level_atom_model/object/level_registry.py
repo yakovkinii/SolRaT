@@ -48,7 +48,10 @@ class LevelRegistry:
         """
         level_id = self.construct_level_id(alpha=alpha, J=J)
         assert level_id not in self.levels.keys(), f"Level {level_id} is already registered."
-        g = 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
+        if J == 0:
+            g = 0
+        else:
+            g = 1 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / J / (J + 1)
         level = Level(level_id=level_id, alpha=alpha, J=J, energy_cmm1=energy_cmm1, g=g)
         self.levels[level_id] = level
         logging.debug(f"Level registry: registered {level_id} (LS coupling)")
