@@ -4,13 +4,12 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import inspect
-import logging
 from typing import Callable, Dict, Generic, List, TypeVar, Union
 
 import numpy as np
 import pandas as pd
 
-from solrat.engine.functions.decorators import VERBOSE, log_method
+from solrat.engine.functions.decorators import log_method
 from solrat.engine.generators.merge_loopers import DummyOrAlreadyMerged, Looper
 
 
@@ -80,7 +79,7 @@ class FrameFactor:
             self.dependencies: List[str] = [p.name for p in inspect.signature(factor).parameters.values()]
         self.merged: bool = merged
         self.elementwise: bool = elementwise
-        logging.log(VERBOSE, f"Created: {self}")
+        # logging.log(VERBOSE, f"Created: {self}")
 
     def __repr__(self):
         return (
@@ -127,11 +126,11 @@ class Frame(Generic[SumLimitsT]):
             sub_frame_filled = looper.fill_frame(sub_frame)
             assert not sub_frame_filled[looper_name].isna().any()
             self.frame = merge(self.frame, sub_frame_filled)
-            logging.log(VERBOSE, f"Merged {looper_name}, frame shape = {self.frame.shape}")
+            # logging.log(VERBOSE, f"Merged {looper_name}, frame shape = {self.frame.shape}")
 
         self.factors: Dict[str, FrameFactor] = {}
         self._n_factors = 0  # for naming only
-        logging.log(VERBOSE, f"Frame shape after initialization: {self.frame.shape}")
+        # logging.log(VERBOSE, f"Frame shape after initialization: {self.frame.shape}")
 
     @log_method
     def copy(self):
@@ -187,13 +186,12 @@ class Frame(Generic[SumLimitsT]):
     def get_dependent_factors(self, column: str) -> List[str]:
         return [name for name, factor in self.factors.items() if column in factor.dependencies]
 
-    @log_method
     def merge_factor(self, factor_name: str):
         """
         Construct factor frame, evaluate, and merge it to the main frame
         """
         factor = self.factors[factor_name]
-        logging.log(VERBOSE, f"Merging factor: {factor}")
+        # logging.log(VERBOSE, f"Merging factor: {factor}")
 
         factor_frame = self.construct_sub_frame(factor.dependencies)
         # Reshape the dependencies so that they support vector evals.
@@ -212,7 +210,6 @@ class Frame(Generic[SumLimitsT]):
         self.frame = merge(self.frame, factor_frame)
         factor.merged = True
 
-    @log_method
     def combine_all_merged_factors(self) -> str:
         """
         Multiply all merged factors so that the frame has a single combined merged factor.
@@ -235,7 +232,6 @@ class Frame(Generic[SumLimitsT]):
 
         return new_factor_name
 
-    @log_method
     def remove_dependency(self, column: str):
         for factor in self.factors.values():
             if column in factor.dependencies:
@@ -246,7 +242,6 @@ class Frame(Generic[SumLimitsT]):
         """Get looper columns other than the specified one"""
         return [col for col in self.frame.columns if col != exclude and col not in self.factors]
 
-    @log_method
     def reduce_single_index(self, column: Union[str, Looper]):
         """
         Reduction is Looper-wise (this way it clearly follows the logic of 'summation' operation)
@@ -254,44 +249,43 @@ class Frame(Generic[SumLimitsT]):
         if isinstance(column, Looper):
             column = column.get_name()
 
-        logging.log(VERBOSE, "====")
-        logging.log(VERBOSE, f"Reducing column {column}:")
+        # logging.log(VERBOSE, "====")
+        # logging.log(VERBOSE, f"Reducing column {column}:")
         dependent_factors = self.get_dependent_factors(column)
-        logging.log(VERBOSE, f"Dependent factors: {dependent_factors}")
-        logging.log(VERBOSE, f"Dependent factors details: {[self.factors[df] for df in dependent_factors]}")
+        # logging.log(VERBOSE, f"Dependent factors: {dependent_factors}")
+        # logging.log(VERBOSE, f"Dependent factors details: {[self.factors[df] for df in dependent_factors]}")
 
         if len(dependent_factors) == 0:
-            logging.log(VERBOSE, f"No dependent factors for column {column}, dropping it directly.")
+            # logging.log(VERBOSE, f"No dependent factors for column {column}, dropping it directly.")
             self.remove_dependency(column)
             self.frame = self.frame.drop(columns=column)
             return self
 
         for factor_name in dependent_factors:
-            logging.log(VERBOSE, f"Ensuring factor {factor_name} is merged for reduction.")
+            # logging.log(VERBOSE, f"Ensuring factor {factor_name} is merged for reduction.")
             if not self.factors[factor_name].merged:
-                logging.log(VERBOSE, f"    Merging factor {factor_name} now.")
+                # logging.log(VERBOSE, f"    Merging factor {factor_name} now.")
                 self.merge_factor(factor_name)
 
         factor_name = self.combine_all_merged_factors()
-        logging.log(VERBOSE, f"Combined dependent factors into {factor_name} for reduction.")
+        # logging.log(VERBOSE, f"Combined dependent factors into {factor_name} for reduction.")
         self.remove_dependency(column)
 
         group_columns = self.get_other_frame_columns(column)
-        logging.log(VERBOSE, f"  Grouping by columns: {group_columns} to reduce {column}.")
+        # logging.log(VERBOSE, f"  Grouping by columns: {group_columns} to reduce {column}.")
 
         if len(group_columns) == 0:
-            logging.log(VERBOSE, "  Reduced the last looper!")
+            # logging.log(VERBOSE, "  Reduced the last looper!")
             assert len(self.factors) == 1, f"Reduced all loopers, but some factors remain: {self.factors}"
             # self.frame = self.frame.drop(columns=column)
             # logging.log(VERBOSE, f"  No grouping columns left, returning sum of {factor_name}.")
-            logging.log(VERBOSE, "Calculating the sum over the last looper and returning the result")
+            # logging.log(VERBOSE, "Calculating the sum over the last looper and returning the result")
             return self.frame[factor_name].sum()
 
         self.frame = self.frame.groupby(group_columns)[factor_name].sum().reset_index()
-        logging.log(VERBOSE, f"  Reduced frame shape: {self.frame.shape}")
+        # logging.log(VERBOSE, f"  Reduced frame shape: {self.frame.shape}")
         return self
 
-    @log_method
     def _reduce(self, columns) -> Union[np.ndarray, float, complex, Self]:
         result = None
         for col in columns:

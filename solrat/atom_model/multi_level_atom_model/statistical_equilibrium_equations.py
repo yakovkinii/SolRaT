@@ -237,7 +237,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
                 ),
                 elementwise=True,
-            )
+            ).to_coefficient()
 
         absorption_frame = self.absorption_frame.copy()
         absorption_frame.register_multiplication(
@@ -340,7 +340,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
                 ),
                 elementwise=True,
-            )
+            ).to_coefficient()
 
         emission_s_frame = self.emission_s_frame.copy()
         emission_s_frame.register_multiplication(
@@ -440,7 +440,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     * (1 + m1p(K + Kʹ + Kr))
                 ),
                 elementwise=True,
-            )
+            ).to_coefficient()
 
         relaxation_a_frame = self.relaxation_a_frame.copy()
         relaxation_a_frame.register_multiplication(
@@ -501,7 +501,7 @@ class MultiLevelAtomSEE(BaseSEE):
                     * (1 + m1p(K + Kʹ + Kr))
                 ),
                 elementwise=True,
-            )
+            ).to_coefficient()
 
         relaxation_s_frame = self.relaxation_s_frame.copy()
         relaxation_s_frame.register_multiplication(
@@ -529,7 +529,7 @@ class MultiLevelAtomSEE(BaseSEE):
 
         See multi-term :meth:`get_solution` for details on the manual linalg approach.
         """
-        logging.info("Solving Statistical Equilibrium Equations")
+        # logging.info("Solving Statistical Equilibrium Equations")
         sol = -np.linalg.pinv(self.matrix_builder.rho_matrix[1:, 1:]) @ self.matrix_builder.rho_matrix[1:, 0:1]
         sol = np.insert(sol, 0, 1.0, 0)
         sol = sol[:, 0]
