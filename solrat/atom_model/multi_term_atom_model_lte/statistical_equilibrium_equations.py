@@ -85,31 +85,27 @@ class MultiTermAtomSEELTE(BaseSEE):
         logging.info("Applying LTE Statistical Equilibrium Equations solution")
 
         T = self.atmosphere_parameters.temperature_K
-
-        # Fill with zeros
-        rho = Rho(terms=list(self.level_registry.terms.values()))
-        for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
-            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=0.0)
-
         min_energy = min([level.energy_cmm1 for level in self.level_registry.levels.values()])
+
+        # Diagonal LTE populations rho^0_0(J, J) per (term_id, J), plus the normalization trace.
+        rho_00 = {}
         trace = 0.0
         for term in self.level_registry.terms.values():
             for level in term.levels:
                 J = level.J
                 E_erg = energy_cmm1_to_erg(level.energy_cmm1 - min_energy)
-                rho_00 = np.sqrt(2 * J + 1) * np.exp(-E_erg / (kB_erg_Km1 * T))
-                trace += rho_00 * sqrt(2 * J + 1)
-                rho.set_from_term_id(
-                    term_id=term.term_id,
-                    K=0,
-                    Q=0,
-                    J=J,
-                    Jʹ=J,
-                    value=rho_00,
-                )
+                value = np.sqrt(2 * J + 1) * np.exp(-E_erg / (kB_erg_Km1 * T))
+                rho_00[(term.term_id, J)] = value
+                trace += value * sqrt(2 * J + 1)
 
-        # Trace-normalize
-        for k, v in rho.data.items():
-            rho.data[k] = v / trace
+        # Single pass over all coherences: each is the trace-normalized diagonal value, or zero.
+        # Setting each coherence exactly once (already normalized) keeps data and datarows consistent.
+        rho = Rho(terms=list(self.level_registry.terms.values()))
+        for index, (term_id, k, q, j, j_prime) in self.matrix_builder.index_to_parameters.items():
+            if k == 0 and q == 0 and j == j_prime:
+                value = rho_00.get((term_id, j), 0.0) / trace
+            else:
+                value = 0.0
+            rho.set_from_term_id(term_id=term_id, K=k, Q=q, J=j, Jʹ=j_prime, value=value)
 
         return rho

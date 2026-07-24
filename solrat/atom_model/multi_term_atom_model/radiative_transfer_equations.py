@@ -4,7 +4,7 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
-from typing import Union
+from typing import Dict, Union
 
 import numpy as np
 import pandas as pd
@@ -80,9 +80,17 @@ class MultiTermAtomRTE(BaseRTE):
         self.einstein_b_lu = np.vectorize(self.transition_registry.einstein_b_lu)
         self.einstein_b_ul = np.vectorize(self.transition_registry.einstein_b_ul)
 
-        # Precomputed frames
+        # Precomputed frames: atom-specific angular algebra (atmosphere-independent).
         self.eta_rho_a_frame: Union[Frame, None] = None
         self.eta_rho_s_frame: Union[Frame, None] = None
+        # Per-(angles, atmosphere) cache of the rho-index-reduced operator frames. Opt-in
+        # (off by default): only worthwhile when calculate_eta_rho_* is called repeatedly with the
+        # same geometry/atmosphere and only rho varying (e.g. the NLTE iteration). Each entry can be
+        # large for big atoms / fine grids, so enable it deliberately and clear_operator_cache()
+        # when done. The atom-level frame caches above are always on and stay small.
+        self.use_operator_cache: bool = False
+        self.eta_rho_a_operator_cache: Dict = {}
+        self.eta_rho_s_operator_cache: Dict = {}
 
     @classmethod
     def from_model_config(
@@ -104,6 +112,14 @@ class MultiTermAtomRTE(BaseRTE):
             j_constrained=config.j_constrained,
         )
 
+    def clear_operator_cache(self) -> None:
+        r"""
+        Empty the opt-in per-(angles, atmosphere) operator caches to free memory.
+        The atom-level frame caches (eta_rho_a_frame / eta_rho_s_frame) are kept.
+        """
+        self.eta_rho_a_operator_cache.clear()
+        self.eta_rho_s_operator_cache.clear()
+
     @log_method
     def calculate_eta_rho_a(self, angles: Angles, rho: Rho, atmosphere_parameters: AtmosphereParameters) -> np.ndarray:
         r"""
@@ -117,64 +133,90 @@ class MultiTermAtomRTE(BaseRTE):
         Reference: (LL04 7.47 ac)
         """
         magnetic_field_gauss = atmosphere_parameters.magnetic_field_gauss
+        rho_index_cols = ["term_lower_id", "Kl", "Ql", "Jʹʹl", "Jʹl"]
+        cache_key = (
+            angles.chi, angles.theta, angles.gamma, angles.chi_B, angles.theta_B,
+            magnetic_field_gauss,
+            atmosphere_parameters.macroscopic_velocity_cm_sm1,
+            atmosphere_parameters.delta_v_thermal_cm_sm1,
+            atmosphere_parameters.voigt_a,
+        )  # fmt: skip
 
-        if self.eta_rho_a_frame is None:
-            # If no cached frame available, calculate atmosphere-independent part and save
-            frame = Frame.from_sum_limits(
-                base_frame=self.create_base_frame(),
-                sum_limits=self.AFrameSumLimitsConstrained() if self.j_constrained else self.AFrameSumLimits(),
+        if self.use_operator_cache and cache_key in self.eta_rho_a_operator_cache:
+            frame = self.eta_rho_a_operator_cache[cache_key].copy()
+        else:
+            # Atom-specific, atmosphere-independent angular algebra (cached across all calls).
+            if self.eta_rho_a_frame is None:
+                frame = Frame.from_sum_limits(
+                    base_frame=self.create_base_frame(),
+                    sum_limits=self.AFrameSumLimitsConstrained() if self.j_constrained else self.AFrameSumLimits(),
+                )
+                frame.register_multiplication(
+                    a001=lambda Ll:                          n_proj(Ll),
+                    a002=lambda transition_id, K, Kl:        self.einstein_b_lu(transition_id) * sqrt(n_proj(1, K, Kl)),
+                    a003=lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
+                    a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                    w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    w3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
+                    w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    w3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
+                    w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+                )  # fmt: skip
+                self.eta_rho_a_frame = frame.copy()
+            else:
+                frame = self.eta_rho_a_frame.copy()
+
+            # Angle / field / profile factors (everything except rho), then reduce to the rho indexes.
+            D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+            D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+            frame.register_multiplication(
+                tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
+                    K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
+                ),
+                pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
+                    term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb2=lambda term_lower_id, jl, Jʹʹl, Ml: self.paschen_back.eigenvector(
+                    term_id=term_lower_id, j=jl, J=Jʹʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
+                    term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb4=lambda term_upper_id, ju, Jʹu, Mu: self.paschen_back.eigenvector(
+                    term_id=term_upper_id, j=ju, J=Jʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
+                    term_upper_id=term_upper_id,
+                    ju=ju,
+                    Mu=Mu,
+                    term_lower_id=term_lower_id,
+                    jl=jl,
+                    Ml=Ml,
+                    atmosphere_parameters=atmosphere_parameters,
+                ),
+                elementwise=True,
             )
 
-            frame.register_multiplication(
-                a001=lambda Ll:                          n_proj(Ll),
-                a002=lambda transition_id, K, Kl:        self.einstein_b_lu(transition_id) * sqrt(n_proj(1, K, Kl)),
-                a003=lambda Jʹʹl, Ml, qʹ:                m1p(1 + Jʹʹl - Ml + qʹ),
-                a004=lambda Jl, Jʹl, Ju, Jʹu:            sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-                w3j1=lambda Ju, Jl, Mu, Ml, q:           wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-                w3j2=lambda Jʹu, Jʹl, Mu, Mʹl, qʹ:       wigner_3j(Jʹu, Jʹl, 1, -Mu, Mʹl, -qʹ),
-                w3j3=lambda K, q, qʹ, Q:                 wigner_3j(1, 1, K, q, -qʹ, -Q),
-                w3j4=lambda Jʹʹl, Jʹl, Kl, Ml, Mʹl, Ql:  wigner_3j(Jʹʹl, Jʹl, Kl, Ml, -Mʹl, -Ql),
-                w6j1=lambda Lu, Ll, Jl, Ju, S:           wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-                w6j2=lambda Lu, Ll, Jʹl, Jʹu, S:         wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-            )  # fmt: skip
+            # Reduce every column except the rho-index columns (term_lower_id, Kl, Ql, Jʹʹl, Jʹl)
+            reduce_cols = [
+                "K", "Q", "Ju", "Jʹu", "Jl",
+                "jl", "ju", "Ml", "Mʹl", "Mu", "q", "qʹ",
+                "transition_id", "term_upper_id", "Ll", "Lu", "S",
+            ]  # fmt: skip
+            if self.j_constrained:
+                reduce_cols += ["lower_J_constraint", "upper_J_constraint"]
+            frame.reduce_partially(*reduce_cols)
+            if self.use_operator_cache:
+                self.eta_rho_a_operator_cache[cache_key] = frame.copy()
 
-            self.eta_rho_a_frame = frame.copy()
-        else:
-            frame = self.eta_rho_a_frame.copy()
-
-        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
-        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
-
+        # Per-call: multiply by rho and reduce over the rho indexes only.
         frame.register_multiplication(
-            tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
-                K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
+            rho=lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho.get_vector(
+                term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl
             ),
-            pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
-                term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb2=lambda term_lower_id, jl, Jʹʹl, Ml: self.paschen_back.eigenvector(
-                term_id=term_lower_id, j=jl, J=Jʹʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
-                term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb4=lambda term_upper_id, ju, Jʹu, Mu: self.paschen_back.eigenvector(
-                term_id=term_upper_id, j=ju, J=Jʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            rho=lambda term_lower_id, Kl, Ql, Jʹʹl, Jʹl: rho(term_id=term_lower_id, K=Kl, Q=Ql, J=Jʹʹl, Jʹ=Jʹl),
-            phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
-                term_upper_id=term_upper_id,
-                ju=ju,
-                Mu=Mu,
-                term_lower_id=term_lower_id,
-                jl=jl,
-                Ml=Ml,
-                atmosphere_parameters=atmosphere_parameters,
-            ),
-            elementwise=True,
         )
-
-        result = frame.reduce("K", "Q", "Ju", "Jʹu", "Jl", "Kl", "Ql", "Jʹʹl", "Jʹl", ...)
+        result = frame.reduce(*rho_index_cols)
         result = h_erg_s * self.nu / 4 / pi * self.N * result
         return result
 
@@ -191,64 +233,90 @@ class MultiTermAtomRTE(BaseRTE):
         Reference: (LL04 7.47 bd)
         """
         magnetic_field_gauss = atmosphere_parameters.magnetic_field_gauss
+        rho_index_cols = ["term_upper_id", "Ku", "Qu", "Jʹu", "Jʹʹu"]
+        cache_key = (
+            angles.chi, angles.theta, angles.gamma, angles.chi_B, angles.theta_B,
+            magnetic_field_gauss,
+            atmosphere_parameters.macroscopic_velocity_cm_sm1,
+            atmosphere_parameters.delta_v_thermal_cm_sm1,
+            atmosphere_parameters.voigt_a,
+        )  # fmt: skip
 
-        if self.eta_rho_s_frame is None:
-            # If no cached frame available, calculate atmosphere-independent part and save
+        if self.use_operator_cache and cache_key in self.eta_rho_s_operator_cache:
+            frame = self.eta_rho_s_operator_cache[cache_key].copy()
+        else:
+            # Atom-specific, atmosphere-independent angular algebra (cached across all calls).
+            if self.eta_rho_s_frame is None:
+                frame = Frame.from_sum_limits(
+                    base_frame=self.create_base_frame(),
+                    sum_limits=self.SFrameSumLimitsConstrained() if self.j_constrained else self.SFrameSumLimits(),
+                )
+                frame.register_multiplication(
+                    a001=lambda Lu: n_proj(Lu),
+                    a002=lambda transition_id, K, Ku: self.einstein_b_ul(transition_id) * sqrt(n_proj(1, K, Ku)),
+                    a003=lambda Jʹu, Mu, qʹ: m1p(1 + Jʹu - Mu + qʹ),
+                    a004=lambda Jl, Jʹl, Ju, Jʹu: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
+                    w3j1=lambda Ju, Jl, Mu, Ml, q: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
+                    w3j2=lambda Jʹu, Jʹl, Mʹu, Ml, qʹ: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
+                    w3j3=lambda K, q, qʹ, Q: wigner_3j(1, 1, K, q, -qʹ, -Q),
+                    w3j4=lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu: wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
+                    w6j1=lambda Lu, Ll, Jl, Ju, S: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
+                    w6j2=lambda Lu, Ll, Jʹl, Jʹu, S: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
+                )  # fmt: skip
+                self.eta_rho_s_frame = frame.copy()
+            else:
+                frame = self.eta_rho_s_frame.copy()
 
-            frame = Frame.from_sum_limits(
-                base_frame=self.create_base_frame(),
-                sum_limits=self.SFrameSumLimitsConstrained() if self.j_constrained else self.SFrameSumLimits(),
+            # Angle / field / profile factors (everything except rho), then reduce to the rho indexes.
+            D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
+            D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
+            frame.register_multiplication(
+                tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
+                    K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
+                ),
+                pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
+                    term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb2=lambda term_lower_id, jl, Jʹl, Ml: self.paschen_back.eigenvector(
+                    term_id=term_lower_id, j=jl, J=Jʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
+                    term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                pb4=lambda term_upper_id, ju, Jʹʹu, Mu: self.paschen_back.eigenvector(
+                    term_id=term_upper_id, j=ju, J=Jʹʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
+                ),
+                phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
+                    term_upper_id=term_upper_id,
+                    ju=ju,
+                    Mu=Mu,
+                    term_lower_id=term_lower_id,
+                    jl=jl,
+                    Ml=Ml,
+                    atmosphere_parameters=atmosphere_parameters,
+                ),
+                elementwise=True,
             )
 
-            frame.register_multiplication(
-                a001=lambda Lu: n_proj(Lu),
-                a002=lambda transition_id, K, Ku: self.einstein_b_ul(transition_id) * sqrt(n_proj(1, K, Ku)),
-                a003=lambda Jʹu, Mu, qʹ: m1p(1 + Jʹu - Mu + qʹ),
-                a004=lambda Jl, Jʹl, Ju, Jʹu: sqrt(n_proj(Jl, Jʹl, Ju, Jʹu)),
-                w3j1=lambda Ju, Jl, Mu, Ml, q: wigner_3j(Ju, Jl, 1, -Mu, Ml, -q),
-                w3j2=lambda Jʹu, Jʹl, Mʹu, Ml, qʹ: wigner_3j(Jʹu, Jʹl, 1, -Mʹu, Ml, -qʹ),
-                w3j3=lambda K, q, qʹ, Q: wigner_3j(1, 1, K, q, -qʹ, -Q),
-                w3j4=lambda Jʹʹu, Jʹu, Ku, Mu, Mʹu, Qu: wigner_3j(Jʹu, Jʹʹu, Ku, Mʹu, -Mu, -Qu),
-                w6j1=lambda Lu, Ll, Jl, Ju, S: wigner_6j(Lu, Ll, 1, Jl, Ju, S),
-                w6j2=lambda Lu, Ll, Jʹl, Jʹu, S: wigner_6j(Lu, Ll, 1, Jʹl, Jʹu, S),
-            )  # fmt: skip
-            self.eta_rho_s_frame = frame.copy()
-        else:
-            frame = self.eta_rho_s_frame.copy()
+            # Reduce every column except the rho-index columns (term_upper_id, Ku, Qu, Jʹu, Jʹʹu)
+            reduce_cols = [
+                "K", "Q", "Jl", "Jʹl", "Ju",
+                "ju", "jl", "Mu", "Mʹu", "Ml", "q", "qʹ",
+                "transition_id", "term_lower_id", "Ll", "Lu", "S",
+            ]  # fmt: skip
+            if self.j_constrained:
+                reduce_cols += ["lower_J_constraint", "upper_J_constraint"]
+            frame.reduce_partially(*reduce_cols)
+            if self.use_operator_cache:
+                self.eta_rho_s_operator_cache[cache_key] = frame.copy()
 
-        D_inverse_omega = WignerD(alpha=-angles.gamma, beta=-angles.theta, gamma=-angles.chi, K_max=2)
-        D_magnetic = WignerD(alpha=angles.chi_B, beta=angles.theta_B, gamma=0, K_max=2)
-
+        # Per-call: multiply by rho and reduce over the rho indexes only.
         frame.register_multiplication(
-            tkq=lambda K, Q: T_K_Q_double_rotation_all_stokes(
-                K=K, Q=Q, D_inverse_omega=D_inverse_omega, D_magnetic=D_magnetic
+            rho=lambda term_upper_id, Ku, Qu, Jʹʹu, Jʹu: rho.get_vector(
+                term_id=term_upper_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu
             ),
-            pb1=lambda term_lower_id, jl, Jl, Ml: self.paschen_back.eigenvector(
-                term_id=term_lower_id, j=jl, J=Jl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb2=lambda term_lower_id, jl, Jʹl, Ml: self.paschen_back.eigenvector(
-                term_id=term_lower_id, j=jl, J=Jʹl, M=Ml, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb3=lambda term_upper_id, ju, Ju, Mu: self.paschen_back.eigenvector(
-                term_id=term_upper_id, j=ju, J=Ju, M=Mu, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            pb4=lambda term_upper_id, ju, Jʹʹu, Mu: self.paschen_back.eigenvector(
-                term_id=term_upper_id, j=ju, J=Jʹʹu, M=Mu, magnetic_field_gauss=magnetic_field_gauss
-            ),
-            rho=lambda term_upper_id, Ku, Qu, Jʹʹu, Jʹu: rho(term_id=term_upper_id, K=Ku, Q=Qu, J=Jʹu, Jʹ=Jʹʹu),
-            phi=lambda ju, Mu, term_upper_id, jl, Ml, term_lower_id: self.phi(
-                term_upper_id=term_upper_id,
-                ju=ju,
-                Mu=Mu,
-                term_lower_id=term_lower_id,
-                jl=jl,
-                Ml=Ml,
-                atmosphere_parameters=atmosphere_parameters,
-            ),
-            elementwise=True,
         )
-
-        result = frame.reduce("K", "Q", "Jl", "Jʹl", "Ju", "Ku", "Qu", "Jʹu", "Jʹʹu", ...)
+        result = frame.reduce(*rho_index_cols)
         result = h_erg_s * self.nu / 4 / pi * self.N * result
         return result
 

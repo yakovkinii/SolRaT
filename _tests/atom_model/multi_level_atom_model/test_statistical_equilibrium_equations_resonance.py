@@ -6,6 +6,10 @@ from numpy import sqrt
 from solrat.atom_model.model_registry import Models
 from solrat.atom_model.multi_level_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_level_atom_model.object.transition_registry import TransitionRegistry
+from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry as MTLevelRegistry
+from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
+    TransitionRegistry as MTTransitionRegistry,
+)
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
@@ -90,11 +94,6 @@ class TestMultiLevelStatisticalEquilibriumEquationsResonance(unittest.TestCase):
         setup_logging()
 
         # Multi-term version (S = 0, J = L per term)
-        from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry as MTLevelRegistry
-        from solrat.atom_model.multi_term_atom_model.object.transition_registry import (
-            TransitionRegistry as MTTransitionRegistry,
-        )
-
         a_ul = 1e7
 
         mt_level_registry = MTLevelRegistry()
