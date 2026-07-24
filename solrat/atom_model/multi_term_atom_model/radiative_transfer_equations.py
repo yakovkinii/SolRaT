@@ -4,7 +4,7 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
-from typing import Union
+from typing import Dict, Union
 
 import numpy as np
 import pandas as pd
@@ -89,8 +89,8 @@ class MultiTermAtomRTE(BaseRTE):
         # large for big atoms / fine grids, so enable it deliberately and clear_operator_cache()
         # when done. The atom-level frame caches above are always on and stay small.
         self.use_operator_cache: bool = False
-        self.eta_rho_a_operator_cache: dict = {}
-        self.eta_rho_s_operator_cache: dict = {}
+        self.eta_rho_a_operator_cache: Dict = {}
+        self.eta_rho_s_operator_cache: Dict = {}
 
     @classmethod
     def from_model_config(
@@ -113,7 +113,7 @@ class MultiTermAtomRTE(BaseRTE):
         )
 
     def clear_operator_cache(self) -> None:
-        """
+        r"""
         Empty the opt-in per-(angles, atmosphere) operator caches to free memory.
         The atom-level frame caches (eta_rho_a_frame / eta_rho_s_frame) are kept.
         """

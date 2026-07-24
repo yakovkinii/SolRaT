@@ -224,20 +224,24 @@ class MultiLevelAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Ql - Q)
 
         if self.absorption_frame is None:
-            self.absorption_frame = Frame.from_sum_limits(
-                self._base_frame_transitions_lower(),
-                AbsorptionSumLimits(),
-            ).register_multiplication(
-                lambda transition_id, J, Jl, K, Kl, Kr, Q, Ql, Qr: (
-                    (2 * Jl + 1)
-                    * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
-                    * sqrt(3 * n_proj(K, Kl, Kr))
-                    * m1p(Kl + Ql)
-                    * wigner_9j(J, Jl, 1, J, Jl, 1, K, Kl, Kr)
-                    * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
-                ),
-                elementwise=True,
-            ).to_coefficient()
+            self.absorption_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_lower(),
+                    AbsorptionSumLimits(),
+                )
+                .register_multiplication(
+                    lambda transition_id, J, Jl, K, Kl, Kr, Q, Ql, Qr: (
+                        (2 * Jl + 1)
+                        * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
+                        * sqrt(3 * n_proj(K, Kl, Kr))
+                        * m1p(Kl + Ql)
+                        * wigner_9j(J, Jl, 1, J, Jl, 1, K, Kl, Kr)
+                        * wigner_3j(K, Kl, Kr, -Q, Ql, -Qr)
+                    ),
+                    elementwise=True,
+                )
+                .to_coefficient()
+            )
 
         absorption_frame = self.absorption_frame.copy()
         absorption_frame.register_multiplication(
@@ -327,20 +331,24 @@ class MultiLevelAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Qu - Q)
 
         if self.emission_s_frame is None:
-            self.emission_s_frame = Frame.from_sum_limits(
-                self._base_frame_transitions_upper(),
-                EmissionSSumLimits(),
-            ).register_multiplication(
-                lambda transition_id, J, Ju, K, Ku, Kr, Q, Qu, Qr: (
-                    (2 * Ju + 1)
-                    * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
-                    * sqrt(3 * n_proj(K, Ku, Kr))
-                    * m1p(Kr + Ku + Qu)
-                    * wigner_9j(J, Ju, 1, J, Ju, 1, K, Ku, Kr)
-                    * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
-                ),
-                elementwise=True,
-            ).to_coefficient()
+            self.emission_s_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_upper(),
+                    EmissionSSumLimits(),
+                )
+                .register_multiplication(
+                    lambda transition_id, J, Ju, K, Ku, Kr, Q, Qu, Qr: (
+                        (2 * Ju + 1)
+                        * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
+                        * sqrt(3 * n_proj(K, Ku, Kr))
+                        * m1p(Kr + Ku + Qu)
+                        * wigner_9j(J, Ju, 1, J, Ju, 1, K, Ku, Kr)
+                        * wigner_3j(K, Ku, Kr, -Q, Qu, -Qr)
+                    ),
+                    elementwise=True,
+                )
+                .to_coefficient()
+            )
 
         emission_s_frame = self.emission_s_frame.copy()
         emission_s_frame.register_multiplication(
@@ -424,23 +432,27 @@ class MultiLevelAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Qʹ - Q)
 
         if self.relaxation_a_frame is None:
-            self.relaxation_a_frame = Frame.from_sum_limits(
-                self._base_frame_transitions_upper(),
-                RelaxationASumLimits(),
-            ).register_multiplication(
-                lambda transition_id, J, Ju, K, Kʹ, Kr, Q, Qʹ, Qr: (
-                    (2 * J + 1)
-                    * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
-                    * sqrt(3 * n_proj(K, Kʹ, Kr))
-                    * m1p(1 + Ju - J + Kr + Qʹ)
-                    * wigner_6j(K, Kʹ, Kr, J, J, J)
-                    * wigner_6j(1, 1, Kr, J, J, Ju)
-                    * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
-                    * 0.5
-                    * (1 + m1p(K + Kʹ + Kr))
-                ),
-                elementwise=True,
-            ).to_coefficient()
+            self.relaxation_a_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_upper(),
+                    RelaxationASumLimits(),
+                )
+                .register_multiplication(
+                    lambda transition_id, J, Ju, K, Kʹ, Kr, Q, Qʹ, Qr: (
+                        (2 * J + 1)
+                        * self.transition_registry.transitions[str(transition_id)].einstein_b_lu
+                        * sqrt(3 * n_proj(K, Kʹ, Kr))
+                        * m1p(1 + Ju - J + Kr + Qʹ)
+                        * wigner_6j(K, Kʹ, Kr, J, J, J)
+                        * wigner_6j(1, 1, Kr, J, J, Ju)
+                        * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
+                        * 0.5
+                        * (1 + m1p(K + Kʹ + Kr))
+                    ),
+                    elementwise=True,
+                )
+                .to_coefficient()
+            )
 
         relaxation_a_frame = self.relaxation_a_frame.copy()
         relaxation_a_frame.register_multiplication(
@@ -485,23 +497,27 @@ class MultiLevelAtomSEE(BaseSEE):
             Qr = Intersection(Projection(Kr), Qʹ - Q)
 
         if self.relaxation_s_frame is None:
-            self.relaxation_s_frame = Frame.from_sum_limits(
-                self._base_frame_transitions_lower(),
-                RelaxationSSumLimits(),
-            ).register_multiplication(
-                lambda transition_id, J, Jl, K, Kʹ, Kr, Q, Qʹ, Qr: (
-                    (2 * J + 1)
-                    * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
-                    * sqrt(3 * n_proj(K, Kʹ, Kr))
-                    * m1p(1 + Jl - J + Qʹ)
-                    * wigner_6j(K, Kʹ, Kr, J, J, J)
-                    * wigner_6j(1, 1, Kr, J, J, Jl)
-                    * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
-                    * 0.5
-                    * (1 + m1p(K + Kʹ + Kr))
-                ),
-                elementwise=True,
-            ).to_coefficient()
+            self.relaxation_s_frame = (
+                Frame.from_sum_limits(
+                    self._base_frame_transitions_lower(),
+                    RelaxationSSumLimits(),
+                )
+                .register_multiplication(
+                    lambda transition_id, J, Jl, K, Kʹ, Kr, Q, Qʹ, Qr: (
+                        (2 * J + 1)
+                        * self.transition_registry.transitions[str(transition_id)].einstein_b_ul
+                        * sqrt(3 * n_proj(K, Kʹ, Kr))
+                        * m1p(1 + Jl - J + Qʹ)
+                        * wigner_6j(K, Kʹ, Kr, J, J, J)
+                        * wigner_6j(1, 1, Kr, J, J, Jl)
+                        * wigner_3j(K, Kʹ, Kr, Q, -Qʹ, Qr)
+                        * 0.5
+                        * (1 + m1p(K + Kʹ + Kr))
+                    ),
+                    elementwise=True,
+                )
+                .to_coefficient()
+            )
 
         relaxation_s_frame = self.relaxation_s_frame.copy()
         relaxation_s_frame.register_multiplication(

@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, List, Optional, Sequence, Union
+from typing import Callable, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 from numpy import real
@@ -23,16 +23,21 @@ from solrat.engine.generators.nested_loops import nested_loops
 # height grid, or a callable f(z_cm) -> value.
 Profile = Union[float, Sequence[float], np.ndarray, Callable[[float], float]]
 
+# Static assert message for the per-ray transfer (hot path): no per-call string building.
+_ERR_TANGENTIAL_MU = "Quadrature mu is too close to tangential (|mu| < 1e-6)."
+
 
 def _sample_profile(value: Profile, z_cm: np.ndarray, name: str) -> np.ndarray:
-    """Sample a scalar / array / callable profile onto the height grid ``z_cm``."""
+    r"""
+    Sample a scalar / array / callable profile onto the height grid ``z_cm``.
+    """
     if callable(value):
         return np.array([float(value(float(zi))) for zi in z_cm], dtype=np.float64)
     arr = np.asarray(value, dtype=np.float64)
     if arr.ndim == 0:
         return np.full(len(z_cm), float(arr))
-    if arr.shape != z_cm.shape:
-        raise ValueError(f"Profile '{name}' has length {arr.shape} but the height grid has length {z_cm.shape}.")
+    msg = f"Profile '{name}' has length {arr.shape} but the height grid has length {z_cm.shape}."
+    assert arr.shape == z_cm.shape, msg
     return arr
 
 
@@ -86,12 +91,9 @@ class StratifiedAtmosphere:
         continuum_to_line_ratio: float = 0.0,
     ):
         z = np.asarray(height_cm, dtype=np.float64)
-        if z.ndim != 1 or len(z) < 2:
-            raise ValueError("height_cm must be a 1-D grid with at least 2 points.")
-        if not np.all(np.diff(z) > 0):
-            raise ValueError("height_cm must be strictly increasing (z[0] = lower boundary).")
-        if continuum_to_line_ratio < 0:
-            raise ValueError("continuum_to_line_ratio must be non-negative.")
+        assert z.ndim == 1 and len(z) >= 2, "height_cm must be a 1-D grid with at least 2 points."
+        assert np.all(np.diff(z) > 0), "height_cm must be strictly increasing (z[0] = lower boundary)."
+        assert continuum_to_line_ratio >= 0, "continuum_to_line_ratio must be non-negative."
 
         self.model = model
         self.height_cm = z
@@ -110,13 +112,10 @@ class StratifiedAtmosphere:
             self.continuum_opacity_cm_m1: Optional[np.ndarray] = None
         else:
             self.continuum_opacity_cm_m1 = _sample_profile(continuum_opacity_cm_m1, z, "continuum_opacity_cm_m1")
-            if np.any(self.continuum_opacity_cm_m1 < 0):
-                raise ValueError("continuum_opacity_cm_m1 must be non-negative everywhere.")
+            assert np.all(self.continuum_opacity_cm_m1 >= 0), "continuum_opacity_cm_m1 must be non-negative everywhere."
 
-        if np.any(self.temperature_K <= 0):
-            raise ValueError("temperature_K must be positive everywhere.")
-        if np.any(self.number_density_cm3 < 0):
-            raise ValueError("number_density_cm3 must be non-negative everywhere.")
+        assert np.all(self.temperature_K > 0), "temperature_K must be positive everywhere."
+        assert np.all(self.number_density_cm3 >= 0), "number_density_cm3 must be non-negative everywhere."
 
     @classmethod
     def on_uniform_grid(
@@ -127,9 +126,10 @@ class StratifiedAtmosphere:
         n_depth: int,
         **profiles: Profile,
     ) -> "StratifiedAtmosphere":
-        """Convenience builder on a uniform height grid of ``n_depth`` points."""
-        if n_depth < 2:
-            raise ValueError("n_depth must be >= 2.")
+        r"""
+        Convenience builder on a uniform height grid of ``n_depth`` points.
+        """
+        assert n_depth >= 2, "n_depth must be >= 2."
         z = np.linspace(float(z_min_cm), float(z_max_cm), n_depth)
         return cls(model=model, height_cm=z, **profiles)
 
@@ -138,7 +138,9 @@ class StratifiedAtmosphere:
         return len(self.height_cm)
 
     def atmosphere_parameters(self, i: int, macroscopic_velocity_cm_sm1: float):
-        """Build the RTE/SEE ``AtmosphereParameters`` at depth ``i`` for a given LOS velocity."""
+        r"""
+        Build the RTE/SEE ``AtmosphereParameters`` at depth ``i`` for a given LOS velocity.
+        """
         return self.model.AtmosphereParameters(
             model_config=self.model.config,
             magnetic_field_gauss=self.magnetic_field_gauss[i],
@@ -149,11 +151,15 @@ class StratifiedAtmosphere:
         )
 
     def magnetic_frame_angles(self, i: int) -> Angles:
-        """Angles carrying only the depth-``i`` magnetic-field orientation (for J rotation)."""
+        r"""
+        Angles carrying only the depth-``i`` magnetic-field orientation (for J rotation).
+        """
         return Angles(chi_B=self.chi_B[i], theta_B=self.theta_B[i])
 
     def velocity_vector(self, i: int) -> np.ndarray:
-        r"""Macroscopic velocity 3-vector at depth ``i`` in the fixed LL04 frame [cm/s]."""
+        r"""
+        Macroscopic velocity 3-vector at depth ``i`` in the fixed LL04 frame [cm/s].
+        """
         st = np.sin(self.theta_v[i])
         return self.velocity_cm_sm1[i] * np.array(
             [st * np.cos(self.chi_v[i]), st * np.sin(self.chi_v[i]), np.cos(self.theta_v[i])],
@@ -241,15 +247,12 @@ class NLTEStratifiedAtmosphere:
         tolerance: float = 1e-4,
         top_incident_stokes: Optional[Stokes] = None,
     ):
-        if abs(np.cos(los_theta)) < 1e-4:
-            raise ValueError("Observer cos(theta) too close to zero (tangential view).")
-        if n_mu_quadrature < 1 or n_phi_quadrature < 1:
-            raise ValueError("Need at least one mu and one phi quadrature point.")
-        if n_mu_quadrature % 2 != 0:
-            raise ValueError(
-                "n_mu_quadrature must be even: Gauss-Legendre over [-1, 1] with odd order "
-                "includes a tangential mu = 0 ray (infinite path length)."
-            )
+        assert abs(np.cos(los_theta)) >= 1e-4, "Observer cos(theta) too close to zero (tangential view)."
+        assert n_mu_quadrature >= 1 and n_phi_quadrature >= 1, "Need at least one mu and one phi quadrature point."
+        assert n_mu_quadrature % 2 == 0, (
+            "n_mu_quadrature must be even: Gauss-Legendre over [-1, 1] with odd order "
+            "includes a tangential mu = 0 ray (infinite path length)."
+        )
 
         self.model = model
         self.stratification = stratification
@@ -273,6 +276,12 @@ class NLTEStratifiedAtmosphere:
         # forward()); the profiles themselves are built per (ray, depth).
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
+
+        logging.warning(
+            "NLTEStratifiedAtmosphere: the self-consistent NLTE solution is not yet rigorously "
+            "validated against reference solutions (no benchmark comparison, and collisional "
+            "thermalization is not yet implemented). Treat the output as illustrative/experimental."
+        )
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -343,11 +352,10 @@ class NLTEStratifiedAtmosphere:
                 rho=rho_grid[i],
             )
             eta_peak[i] = float(np.max(np.abs(np.real(rtc.get_eta_I()))))
-        if float(np.max(eta_peak)) <= 0:
-            raise ValueError(
-                "Line opacity along the observer ray is zero for the initial guess. "
-                "Check that the frequency grid covers the transition and N(z) > 0."
-            )
+        assert float(np.max(eta_peak)) > 0, (
+            "Line opacity along the observer ray is zero for the initial guess. "
+            "Check that the frequency grid covers the transition and N(z) > 0."
+        )
         # Grey continuum opacity k_c(z): use the user-supplied absolute profile if given
         # (standard slab-model input; TB1999 eqs. 5-7, Khan & Shulyak 2006 eqs. 3-6), otherwise
         # fall back to the continuum-to-line ratio times the line-core opacity.
@@ -382,7 +390,9 @@ class NLTEStratifiedAtmosphere:
             ray_params.append([strat.atmosphere_parameters(i, self._project(v_vectors[i], omega)) for i in range(n_z)])
             ray_angles.append(
                 [
-                    Angles(chi=ray["chi"], theta=ray["theta"], gamma=0.0, chi_B=strat.chi_B[i], theta_B=strat.theta_B[i])
+                    Angles(
+                        chi=ray["chi"], theta=ray["theta"], gamma=0.0, chi_B=strat.chi_B[i], theta_B=strat.theta_B[i]
+                    )
                     for i in range(n_z)
                 ]
             )
@@ -460,7 +470,9 @@ class NLTEStratifiedAtmosphere:
 
     @staticmethod
     def _ray_direction(theta: float, chi: float) -> np.ndarray:
-        r"""Propagation unit vector :math:`\hat\Omega` in the fixed LL04 frame (z = vertical)."""
+        r"""
+        Propagation unit vector :math:`\hat\Omega` in the fixed LL04 frame (z = vertical).
+        """
         st = np.sin(theta)
         return np.array([st * np.cos(chi), st * np.sin(chi), np.cos(theta)], dtype=np.float64)
 
@@ -485,7 +497,7 @@ class NLTEStratifiedAtmosphere:
         """
         return -float(np.dot(v_vector, omega))
 
-    def _build_quadrature_rays(self) -> List[dict]:
+    def _build_quadrature_rays(self) -> List[Dict]:
         r"""
         Gauss-Legendre :math:`\mu` x uniform :math:`\phi` quadrature.  Each ray weight already
         includes the :math:`1/(4\pi)` normalization of :math:`J^K_Q`.
@@ -494,7 +506,7 @@ class NLTEStratifiedAtmosphere:
         phi_grid = np.linspace(0.0, 2 * np.pi, self.n_phi_quadrature, endpoint=False)
         phi_weight_each = 2 * np.pi / self.n_phi_quadrature
 
-        rays: List[dict] = []
+        rays: List[Dict] = []
         for mu, w_mu in zip(mus, mu_weights):
             for phi in phi_grid:
                 rays.append(
@@ -507,15 +519,21 @@ class NLTEStratifiedAtmosphere:
                 )
         return rays
 
-    def _t_conj_for_ray(self, ray: dict) -> dict:
-        r"""Pre-compute :math:`T^{K*}_Q(i, \Omega)` for one ray (gamma = 0 for quadrature rays)."""
+    def _t_conj_for_ray(self, ray: Dict) -> Dict:
+        r"""
+        Pre-compute :math:`T^{K*}_Q(i, \Omega)` for one ray (gamma = 0 for quadrature rays).
+        """
         kq_pairs = list(nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")))
         return {
             (int(K), int(Q)): np.array(
                 [
                     T_K_Q(
-                        K=int(K), Q=int(Q), stokes_component_index=k,
-                        chi=ray["chi"], theta=ray["theta"], gamma=0.0,
+                        K=int(K),
+                        Q=int(Q),
+                        stokes_component_index=k,
+                        chi=ray["chi"],
+                        theta=ray["theta"],
+                        gamma=0.0,
                     ).conjugate()
                     for k in range(4)
                 ],
@@ -525,9 +543,9 @@ class NLTEStratifiedAtmosphere:
         }
 
     def _warn_if_velocity_underresolved(
-        self, rays: List[dict], v_vectors: List[np.ndarray], thermal_v_per_z: np.ndarray, nu: np.ndarray
+        self, rays: List[Dict], v_vectors: List[np.ndarray], thermal_v_per_z: np.ndarray, nu: np.ndarray
     ) -> None:
-        """
+        r"""
         Warn if the observer-frame DELO grid under-resolves the velocity field: either the
         per-cell velocity shift exceeds the local thermal width (gradient unresolved) or the
         largest projection shifts the line off the frequency grid.
@@ -563,7 +581,7 @@ class NLTEStratifiedAtmosphere:
         z: np.ndarray,
         mu_n: float,
         rte: BaseRTE,
-        params_per_z: list,
+        params_per_z: List,
         angles_per_z: List[Angles],
         number_density: np.ndarray,
         k_c_per_z: np.ndarray,
@@ -580,8 +598,7 @@ class NLTEStratifiedAtmosphere:
         n_z = len(z)
         nu = bottom_bc.nu
         n_nu = len(nu)
-        if abs(mu_n) < 1e-6:
-            raise ValueError(f"Quadrature mu = {mu_n} is too close to tangential.")
+        assert abs(mu_n) >= 1e-6, _ERR_TANGENTIAL_MU
 
         # Coefficients at every depth (line, absolute via rte.N, plus grey continuum).
         K_per_z = []
@@ -664,11 +681,11 @@ class NLTEStratifiedAtmosphere:
 
     def _reconstruct_radiation_tensor(
         self,
-        rays: List[dict],
+        rays: List[Dict],
         stokes_per_ray: List[np.ndarray],
-        profile_weights_per_ray: List[List[dict]],
+        profile_weights_per_ray: List[List[Dict]],
         i_z: int,
-        t_conj_per_ray: List[dict],
+        t_conj_per_ray: List[Dict],
     ) -> BaseRadiationTensor:
         r"""
         Reconstruct the radiation-field tensor :math:`J^K_Q` per transition at depth ``i_z``:
@@ -692,7 +709,7 @@ class NLTEStratifiedAtmosphere:
         rad_tens = self.model.RadiationTensor.from_model_config(self.model.config)
         kq_pairs = list(nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")))
 
-        accumulator: dict = {}
+        accumulator: Dict = {}
         for r, ray in enumerate(rays):
             weights = profile_weights_per_ray[r][i_z]
             t_conj = t_conj_per_ray[r]
@@ -711,7 +728,7 @@ class NLTEStratifiedAtmosphere:
         rad_tens._df = None
         return rad_tens
 
-    def _profile_weights_at(self, nu: np.ndarray, params) -> dict:
+    def _profile_weights_at(self, nu: np.ndarray, params) -> Dict:
         r"""
         Normalized absorption profile of each transition at one (ray, depth), the frequency
         weight :math:`\hat\phi_t(\nu)` (sums to 1) used in the :math:`J^K_Q` reconstruction.
@@ -765,7 +782,9 @@ class NLTEStratifiedAtmosphere:
 
     @staticmethod
     def _rho_grid_diff(rho_grid_old: List[BaseRho], rho_grid_new: List[BaseRho]) -> float:
-        r"""Maximum :math:`|\rho_{\rm new} - \rho_{\rm old}|` over the grid and coherences."""
+        r"""
+        Maximum :math:`|\rho_{\rm new} - \rho_{\rm old}|` over the grid and coherences.
+        """
         max_diff = 0.0
         for rho_old, rho_new in zip(rho_grid_old, rho_grid_new):
             for key, val_new in rho_new.data.items():

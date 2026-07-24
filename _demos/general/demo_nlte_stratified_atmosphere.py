@@ -19,7 +19,9 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def build_two_level_model():
-    """A J=0 -> J=1 resonance line as a multi-level atom."""
+    r"""
+    A J=0 -> J=1 resonance line as a multi-level atom.
+    """
     level_registry = LevelRegistry()
     level_registry.register_level(alpha="1s", J=0, energy_cmm1=0, g=1.0)
     level_registry.register_level(alpha="2p", J=1, energy_cmm1=20_000, g=1.2)
@@ -47,7 +49,7 @@ def build_two_level_model():
 
 
 def main():
-    """
+    r"""
     Demo: self-consistent NLTE synthesis through a height-stratified atmosphere with
     continuously varying temperature, magnetic field, and a vertical macroscopic-velocity
     gradient (a bulk upflow that increases with height).
@@ -109,7 +111,9 @@ def main():
     print(f"NLTE final residual  : {atmosphere.final_residual:.3e}")
     print(f"observer optical depth: {atmosphere.tau_grid[-1]:.3e}")
 
-    plotter = StokesPlotter("Stratified NLTE atmosphere (velocity gradient)", reference_lambda_A_air=reference_lambda_A_air)
+    plotter = StokesPlotter(
+        "Stratified NLTE atmosphere (velocity gradient)", reference_lambda_A_air=reference_lambda_A_air
+    )
     plotter.add_stokes(
         nu=nu,
         stokes=emergent,
