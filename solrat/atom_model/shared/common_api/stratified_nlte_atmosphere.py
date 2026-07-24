@@ -1,40 +1,3 @@
-r"""
-Height-stratified, self-consistent NLTE atmosphere with continuously varying physical
-parameters and a full (vector) macroscopic-velocity field.
-
-Unlike :class:`ConstantPropertySlabAtmosphere` (constant properties, imposed
-:math:`J^K_Q`), this atmosphere solves the scattering :math:`J^K_Q` self-consistently and
-lets *every* physical parameter vary with geometric height: temperature, absorber number
-density, magnetic-field vector (magnitude *and* direction), microturbulence, Voigt
-:math:`a`, and the macroscopic-velocity *vector*.
-
-Formulation
------------
-* Geometric height ``z`` [cm] is the independent variable.  ``z[0]`` is the lower
-  boundary (photosphere, or zero radiation at the limb); ``z[-1]`` is the observer side.
-* The opacity scale is the local absorber number density :math:`N(z)` [cm^-3]
-  (the radiative-transfer code computes per-atom coefficients and multiplies by ``N``),
-  so optical depth is a physical *output*, not an imposed input.
-* Transfer is solved in the observer (Eulerian) frame on the fixed ``z`` grid by DELO.
-  Velocity gradients are handled by evaluating the Doppler-shifted absorption profile at
-  the *local* velocity projection of each ray at each depth; this is correct provided the
-  grid resolves the gradient (the per-cell line shift should stay below the line width --
-  a warning is emitted otherwise).
-* The line is pure scattering (collisionless).  A grey continuum is added per depth with a
-  constant continuum-to-line ratio and an LTE source :math:`B(T(z))`.
-
-Angles follow the LL04 convention (Fig. 5.9): a fixed reference frame with ``z`` along the
-vertical/atmosphere normal.  A propagation direction is
-:math:`\hat\Omega = (\sin\theta\cos\chi, \sin\theta\sin\chi, \cos\theta)` with
-:math:`\mu = \cos\theta`; the magnetic field and the macroscopic velocity are given by
-their own polar angles :math:`(\theta_B,\chi_B)` and :math:`(\theta_v,\chi_v)` in the same
-frame.  The line-of-sight Doppler projection is :math:`v_{\rm los} = \hat\Omega\cdot\vec v`.
-
-Reference: Trujillo Bueno & Manso Sainz (1999), ApJ, 516, 436 (DOI 10.1086/307107) for the
-Lambda-iteration / radiation-tensor-moment scheme; generalized here to depth-dependent
-properties, a vector velocity field, and the full Stokes / density-matrix case.
-"""
-
 import logging
 from typing import Callable, List, Optional, Sequence, Union
 
@@ -51,6 +14,7 @@ from solrat.atom_model.shared.object.rotations import T_K_Q
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.constants import c_cm_sm1
 from solrat.atom_model.shared.utility.functions import get_planck_BP
+from solrat.atom_model.shared.utility.voigt_profile import voigt
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.looping import FROMTO, PROJECTION
 from solrat.engine.generators.nested_loops import nested_loops
@@ -94,8 +58,14 @@ class StratifiedAtmosphere:
     :param chi_v:  velocity azimuth :math:`\chi_v(z)` [rad].
     :param delta_v_turbulent_cm_sm1:  microturbulent velocity [cm/s].
     :param voigt_a:  Voigt :math:`a(z)`.
-    :param continuum_to_line_ratio:  grey continuum-to-line opacity ratio (constant for now;
-        the implementation leaves room for a future height-tabulated ``k_c(z)``).
+    :param continuum_opacity_cm_m1:  grey continuum absorption coefficient :math:`k_c(z)`
+        [cm^-1], supplied directly (same units as the line opacity :math:`N\,\eta`). This is the
+        standard slab-model treatment: the continuum opacity is an input, decoupled from the
+        line, with an LTE (Planck) source (cf. Trujillo Bueno & Manso Sainz 1999, eqs. 5-7;
+        Khan & Shulyak 2006, eqs. 3-6). If given, it overrides ``continuum_to_line_ratio``.
+    :param continuum_to_line_ratio:  fallback grey continuum-to-line ratio used only when
+        ``continuum_opacity_cm_m1`` is not supplied; sets :math:`k_c(z)` as this constant times
+        the line-core opacity from the initial populations.
     """
 
     def __init__(
@@ -112,6 +82,7 @@ class StratifiedAtmosphere:
         chi_v: Profile = 0.0,
         delta_v_turbulent_cm_sm1: Profile = 0.0,
         voigt_a: Profile = 0.0,
+        continuum_opacity_cm_m1: Optional[Profile] = None,
         continuum_to_line_ratio: float = 0.0,
     ):
         z = np.asarray(height_cm, dtype=np.float64)
@@ -135,6 +106,12 @@ class StratifiedAtmosphere:
         self.delta_v_turbulent_cm_sm1 = _sample_profile(delta_v_turbulent_cm_sm1, z, "delta_v_turbulent_cm_sm1")
         self.voigt_a = _sample_profile(voigt_a, z, "voigt_a")
         self.continuum_to_line_ratio = float(continuum_to_line_ratio)
+        if continuum_opacity_cm_m1 is None:
+            self.continuum_opacity_cm_m1: Optional[np.ndarray] = None
+        else:
+            self.continuum_opacity_cm_m1 = _sample_profile(continuum_opacity_cm_m1, z, "continuum_opacity_cm_m1")
+            if np.any(self.continuum_opacity_cm_m1 < 0):
+                raise ValueError("continuum_opacity_cm_m1 must be non-negative everywhere.")
 
         if np.any(self.temperature_K <= 0):
             raise ValueError("temperature_K must be positive everywhere.")
@@ -186,20 +163,64 @@ class StratifiedAtmosphere:
 
 class NLTEStratifiedAtmosphere:
     r"""
-    Self-consistent NLTE synthesis through a height-stratified atmosphere.
+    Self-consistent NLTE synthesis through a height-stratified atmosphere, with every
+    physical parameter varying continuously with geometric height: temperature, absorber
+    number density, magnetic-field vector (magnitude and direction), microturbulence, Voigt
+    :math:`a`, and the macroscopic-velocity vector.
 
     The radiation field is propagated along a Gauss-Legendre :math:`\mu` x uniform
     :math:`\phi` quadrature of rays; the emergent Stokes distribution is projected into a
-    multipole radiation tensor :math:`J^K_Q` per depth (profile-weighted in frequency,
-    per ray to account for the local velocity shift), the SEE is re-solved locally, and the
-    loop repeats until :math:`\max|\Delta\rho|` drops below ``tolerance``.
+    multipole radiation tensor :math:`J^K_Q` per depth (profile-weighted in frequency, per
+    ray to account for the local velocity shift), the SEE is re-solved locally, and the loop
+    repeats until :math:`\max|\Delta\rho|` drops below ``tolerance``.
+
+    Formulation:
+
+    * Geometric height ``z`` [cm] is the independent variable; ``z[0]`` is the lower boundary
+      (photosphere, or zero radiation at the limb), ``z[-1]`` the observer side.
+    * The opacity scale is the local absorber number density :math:`N(z)` [cm^-3]: the
+      radiative-transfer code computes per-atom coefficients and multiplies by :math:`N`, so
+      the optical depth follows from :math:`N(z)` and the geometry.
+    * Transfer is solved in the observer (Eulerian) frame on the fixed ``z`` grid by the DELO
+      method. A vertical velocity gradient enters through the Doppler-shifted absorption
+      profile evaluated at the local velocity projection of each ray at each depth, valid
+      while the grid resolves the gradient (the per-cell line shift stays below the line
+      width; a warning is emitted otherwise).
+    * The line is pure scattering (collisionless). A grey continuum is added per depth with a
+      constant continuum-to-line ratio and an LTE source :math:`B(T(z))`.
+
+    Angles follow the LL04 convention (Fig. 5.9): a fixed reference frame with ``z`` along
+    the vertical / atmosphere normal. A propagation direction is
+    :math:`\hat\Omega = (\sin\theta\cos\chi, \sin\theta\sin\chi, \cos\theta)`,
+    :math:`\mu = \cos\theta`; the magnetic field and macroscopic velocity are given by their
+    polar angles :math:`(\theta_B,\chi_B)` and :math:`(\theta_v,\chi_v)` in the same frame.
+    The line-of-sight Doppler projection feeding the profile is
+    :math:`v_{\rm los} = -\hat\Omega\cdot\vec v` (see :meth:`_project`).
+
+    References (equation-level citations are given at each formula below):
+
+    * Lambda-iteration scheme, source functions, continuum, and the radiation-field-tensor
+      moments: Trujillo Bueno & Manso Sainz (1999), ApJ, 516, 436 (DOI 10.1086/307107),
+      eqs. (3)-(7) transfer + source + continuum, (10)-(11) for :math:`J^0_0, J^2_0`,
+      (12)-(13) for the Lambda-iteration update (referred to below as TB1999).
+    * Formal solution of the polarized transfer equation (evolution operator, constant-K step):
+      Landi Degl'Innocenti & Landi Degl'Innocenti (1985), Solar Phys. 97, 239, eqs. (1), (5)
+      (referred to below as LandiLandi1985); see also LL04 Ch. 8.
+    * Polarized transfer with line + continuum and Lambda-iteration: Khan & Shulyak (2006),
+      A&A, 448, 1153, eqs. (2)-(7).
+    * Polarization tensor :math:`T^K_Q`, radiation-field tensor :math:`J^K_Q`, flat-spectrum
+      and moving-atom (velocity) treatment, and the transfer coefficients / number-density
+      scaling: Landi Degl'Innocenti & Landolfi (2004), "Polarization in Spectral Lines" (LL04):
+      Sec. 5.11 (eqs. 5.132-5.135, Table 5.2, and 5.157), Sec. 13.1 (flat spectrum),
+      Secs. 12.4 / 13.2 (velocity), Ch. 7 (transfer coefficients and their :math:`N` dependence).
 
     :param model:  configured :class:`Model`.
     :param stratification:  :class:`StratifiedAtmosphere` height-resolved state.
     :param los_theta:  observer line-of-sight polar angle [rad] (from vertical).
     :param los_chi:  observer line-of-sight azimuth [rad].
     :param los_gamma:  observer polarization reference angle [rad] (orientation of +Q).
-    :param n_mu_quadrature:  number of Gauss-Legendre points in :math:`\mu`.
+    :param n_mu_quadrature:  number of Gauss-Legendre points in :math:`\mu` over [-1, 1];
+        must be even (an odd order places a node at the tangential :math:`\mu = 0`).
     :param n_phi_quadrature:  number of uniform azimuthal samples.
     :param max_iterations:  maximum number of iterations.
     :param tolerance:  convergence threshold on :math:`\max|\Delta\rho|`.
@@ -224,6 +245,11 @@ class NLTEStratifiedAtmosphere:
             raise ValueError("Observer cos(theta) too close to zero (tangential view).")
         if n_mu_quadrature < 1 or n_phi_quadrature < 1:
             raise ValueError("Need at least one mu and one phi quadrature point.")
+        if n_mu_quadrature % 2 != 0:
+            raise ValueError(
+                "n_mu_quadrature must be even: Gauss-Legendre over [-1, 1] with odd order "
+                "includes a tangential mu = 0 ray (infinite path length)."
+            )
 
         self.model = model
         self.stratification = stratification
@@ -243,10 +269,10 @@ class NLTEStratifiedAtmosphere:
         self.final_residual: Optional[float] = None
         self.residual_history: List[float] = []
 
-        # Fixed frequency partition for the J-reconstruction profile weights (set in forward()).
+        # Transition ids and rest frequencies for the per-transition profile weights (set in
+        # forward()); the profiles themselves are built per (ray, depth).
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
-        self._recon_nearest: Optional[np.ndarray] = None
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -265,8 +291,10 @@ class NLTEStratifiedAtmosphere:
 
         see: BaseSEE = self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
         rte: BaseRTE = self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
-        # Opacity is carried by the per-depth number density: set rte.N = N(z_i) per call. N is the
-        # final factor applied after the cached operator, so the operator cache stays valid.
+        # Opacity is carried by the per-depth number density: the line transfer coefficients are
+        # proportional to the lower-level number density N (LL04 Ch. 7), so set rte.N = N(z_i)
+        # per call. N is the final factor applied after the cached operator, so the operator cache
+        # stays valid.
         rte.N = 1.0
         if hasattr(rte, "use_operator_cache"):
             rte.use_operator_cache = True
@@ -302,8 +330,9 @@ class NLTEStratifiedAtmosphere:
             )
             rho_grid.append(see.get_solution())
 
-        # 2. Per-depth line-core opacity along the observer ray (absolute, includes N), and the
-        #    grey continuum opacity from the constant continuum-to-line ratio.
+        # 2. Per-depth line-core opacity along the observer ray (absolute, includes N), used for
+        #    the optical-depth diagnostic and, when no explicit k_c(z) is supplied, to scale the
+        #    grey continuum from the continuum-to-line ratio.
         eta_peak = np.zeros(n_z)
         for i in range(n_z):
             rte.N = float(N[i])
@@ -319,14 +348,20 @@ class NLTEStratifiedAtmosphere:
                 "Line opacity along the observer ray is zero for the initial guess. "
                 "Check that the frequency grid covers the transition and N(z) > 0."
             )
-        k_c_per_z = strat.continuum_to_line_ratio * eta_peak  # [n_z]
+        # Grey continuum opacity k_c(z): use the user-supplied absolute profile if given
+        # (standard slab-model input; TB1999 eqs. 5-7, Khan & Shulyak 2006 eqs. 3-6), otherwise
+        # fall back to the continuum-to-line ratio times the line-core opacity.
+        if strat.continuum_opacity_cm_m1 is not None:
+            k_c_per_z = np.asarray(strat.continuum_opacity_cm_m1, dtype=np.float64)
+        else:
+            k_c_per_z = strat.continuum_to_line_ratio * eta_peak  # [n_z]
 
         # Observer-ray line optical depth (diagnostic): tau = int eta dz / |mu_obs|.
         d_tau = 0.5 * (eta_peak[1:] + eta_peak[:-1]) * np.diff(z) / abs(mu_obs)
         self.tau_grid = np.concatenate([[0.0], np.cumsum(d_tau)])
 
-        # Frequency partition for the J-reconstruction profile weights: nearest transition per
-        # grid point. Depends only on nu, so compute it once for the whole run.
+        # Transition rest frequencies, used to build the per-transition absorption profiles that
+        # weight the J^K_Q reconstruction (LL04 Sec. 13.1). Depends only on the atom, so once.
         recon_transitions = list(
             self.model.RadiationTensor.from_model_config(self.model.config).transition_registry.transitions.values()
         )
@@ -334,7 +369,6 @@ class NLTEStratifiedAtmosphere:
         self._recon_centers = np.array(
             [t.get_mean_transition_frequency_sm1() for t in recon_transitions], dtype=np.float64
         )
-        self._recon_nearest = np.argmin(np.abs(nu[:, np.newaxis] - self._recon_centers[np.newaxis, :]), axis=1)
 
         # 3. Quadrature rays, with the per-ray T^K_Q* and per-(ray, depth) projected velocity.
         rays = self._build_quadrature_rays()
@@ -353,28 +387,36 @@ class NLTEStratifiedAtmosphere:
                 ]
             )
 
+        # Per-(ray, depth) normalized absorption profile of each transition (LL04 eq. 5.44),
+        # used as the frequency weight in the J^K_Q reconstruction. These depend only on the
+        # geometry/atmosphere (not on rho), so precompute them once for the whole iteration.
+        profile_weights_per_ray = [
+            [self._profile_weights_at(nu, ray_params[r][i]) for i in range(n_z)] for r in range(len(rays))
+        ]
+
         bottom_bc = initial_stokes
         top_bc = self.top_incident_stokes if self.top_incident_stokes is not None else Stokes.from_zeros(nu_sm1=nu)
 
-        # 4. Iterate.
+        # 4. Lambda-iteration: rho(old) -> formal solution for I along each ray -> reconstruct
+        # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
+        # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
         for iteration in range(self.max_iterations):
             stokes_per_ray: List[np.ndarray] = []
-            eta_I_per_ray: List[np.ndarray] = []
             for r in range(len(rays)):
-                stokes_z, eta_I_z = self._propagate_ray(
+                stokes_z = self._propagate_ray(
                     rho_grid=rho_grid, z=z, mu_n=rays[r]["mu"], rte=rte,
                     params_per_z=ray_params[r], angles_per_z=ray_angles[r],
                     number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
                     bottom_bc=bottom_bc, top_bc=top_bc,
                 )  # fmt: skip
                 stokes_per_ray.append(stokes_z)
-                eta_I_per_ray.append(eta_I_z)
 
             new_rho_grid: List[BaseRho] = []
             for i in range(n_z):
                 radiation_tensor_i = self._reconstruct_radiation_tensor(
-                    rays=rays, stokes_per_ray=stokes_per_ray, eta_I_per_ray=eta_I_per_ray,
-                    i_z=i, t_conj_per_ray=t_conj_per_ray, nu=nu,
+                    rays=rays, stokes_per_ray=stokes_per_ray,
+                    profile_weights_per_ray=profile_weights_per_ray,
+                    i_z=i, t_conj_per_ray=t_conj_per_ray,
                 )  # fmt: skip
                 see.fill_all_equations(
                     atmosphere_parameters=see_params[i],
@@ -395,7 +437,7 @@ class NLTEStratifiedAtmosphere:
 
         # 5. Final propagation along the observer ray.
         obs_params = [strat.atmosphere_parameters(i, self._project(v_vectors[i], omega_obs)) for i in range(n_z)]
-        observer_stokes_z, _ = self._propagate_ray(
+        observer_stokes_z = self._propagate_ray(
             rho_grid=rho_grid, z=z, mu_n=mu_obs, rte=rte,
             params_per_z=obs_params, angles_per_z=obs_angles,
             number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
@@ -429,12 +471,17 @@ class NLTEStratifiedAtmosphere:
         :math:`v_{\rm los} = -\,\hat\Omega\cdot\vec v`, with :math:`\hat\Omega` the photon
         propagation (toward-observer) direction.
 
-        The minus sign makes this consistent with the bundled profile convention
-        (:math:`\nu = \nu_i (1 - v_{\rm los}/c)`, i.e. positive :math:`v_{\rm los}` = redshift):
-        plasma moving *toward* the observer (a velocity component along :math:`\hat\Omega`)
-        gives :math:`v_{\rm los} < 0` and therefore a blueshift, as required physically. So
-        :math:`v_{\rm los}` is the projection onto the into-the-medium direction
-        (receding-positive).
+        The minus sign matches the profile convention in the RTE (``_phi``:
+        :math:`\nu = \nu_i (1 - v_{\rm los}/c)`, i.e. positive :math:`v_{\rm los}` = redshift):
+        plasma moving toward the observer (a velocity component along :math:`\hat\Omega`) gives
+        :math:`v_{\rm los} < 0` and therefore a blueshift. Equivalently, :math:`v_{\rm los}` is
+        the projection onto the into-the-medium direction (receding-positive).
+
+        Physically this is the Doppler shift of the absorption profile of an atom moving with the
+        local macroscopic velocity, evaluated per ray (the moving-atom picture of LL04 Sec. 13.1;
+        the resulting Doppler shift of the radiation-field tensor is discussed in LL04 Sec. 12.4).
+        A single deterministic bulk velocity per depth is used; the full velocity-space
+        redistribution of LL04 Sec. 13.2 is not implemented.
         """
         return -float(np.dot(v_vector, omega))
 
@@ -525,12 +572,10 @@ class NLTEStratifiedAtmosphere:
         top_bc: Stokes,
     ):
         r"""
-        DELO-propagate Stokes through the ``z`` grid along one ray.
-
-        Returns ``(stokes[n_z, 4, n_nu], eta_I[n_z, n_nu])`` where ``eta_I`` is the line
-        absorption (used as the per-(ray, depth) profile weight in the J reconstruction).
-        ``z[0]`` is the lower boundary, ``z[-1]`` the observer side.  ``mu_n > 0`` propagates
-        upward (boundary at ``z[0]``); ``mu_n < 0`` downward (boundary at ``z[-1]``).
+        DELO-propagate Stokes through the ``z`` grid along one ray, returning
+        ``stokes[n_z, 4, n_nu]``.  ``z[0]`` is the lower boundary, ``z[-1]`` the observer side.
+        ``mu_n > 0`` propagates upward (boundary at ``z[0]``); ``mu_n < 0`` downward (boundary at
+        ``z[-1]``).
         """
         n_z = len(z)
         nu = bottom_bc.nu
@@ -541,7 +586,6 @@ class NLTEStratifiedAtmosphere:
         # Coefficients at every depth (line, absolute via rte.N, plus grey continuum).
         K_per_z = []
         eps_per_z = []
-        eta_I = np.zeros((n_z, n_nu))
         for i in range(n_z):
             rte.N = float(number_density[i])
             rtc = rte.calculate_all_coefficients(
@@ -549,12 +593,15 @@ class NLTEStratifiedAtmosphere:
             )
             K = rtc.K_z()  # [n_nu, 4, 4]
             eps = rtc.epsilon_z()[:, :, 0]  # [n_nu, 4]
+            # Grey continuum: unpolarized continuum opacity on the diagonal of K and an LTE
+            # (Planck) continuum source added to Stokes I. Cf. Trujillo Bueno & Manso Sainz
+            # (1999) eqs. (5)-(7) with S_c = Planck, and Khan & Shulyak (2006, A&A 448, 1153)
+            # eqs. (3)-(6): K = (kappa_c + ...) 1 + line, epsilon_c = kappa_c B(T).
             for k in range(4):
                 K[:, k, k] += k_c_per_z[i]
             eps[:, 0] += k_c_per_z[i] * bp_per_z[i]
             K_per_z.append(K)
             eps_per_z.append(eps)
-            eta_I[i] = np.real(rtc.get_eta_I())
 
         stokes = np.zeros((n_z, 4, n_nu), dtype=np.complex128)
         if mu_n > 0:
@@ -567,24 +614,45 @@ class NLTEStratifiedAtmosphere:
             for i in range(n_z - 1, 0, -1):
                 ds = (z[i] - z[i - 1]) / abs(mu_n)
                 stokes[i - 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
-        return stokes, eta_I
+        return stokes
 
     @staticmethod
     def _delo_matrix_step(K: np.ndarray, epsilon: np.ndarray, current_stokes: np.ndarray, ds: float) -> np.ndarray:
         r"""
-        One DELO step over physical length ``ds``:
-        :math:`S = K^{-1}\epsilon,\; \mathrm{Stokes}(s+ds) = S + e^{-K\,ds}(\mathrm{Stokes}(s) - S)`,
+        One step of the polarized formal solution over physical length ``ds``, with the
+        propagation matrix K and the source function S taken constant across the cell:
+
+        .. math::
+
+            S = K^{-1}\epsilon, \qquad \mathrm{Stokes}(s+ds) = S + e^{-K\,ds}\,(\mathrm{Stokes}(s) - S)
+
         batched over frequency.  ``K`` is ``[n_nu, 4, 4]``, ``epsilon`` ``[n_nu, 4]``,
         ``current_stokes`` ``[4, n_nu]``.
-        """
-        cond = np.linalg.cond(K)
-        well = cond < 1e12
-        S = np.empty_like(epsilon)  # [n_nu, 4]
-        if np.any(well):
-            S[well] = np.linalg.solve(K[well], epsilon[well][:, :, np.newaxis])[:, :, 0]
-        if not np.all(well):
-            S[~well] = np.einsum("nij,nj->ni", np.linalg.pinv(K[~well]), epsilon[~well])
 
+        This is the evolution-operator solution of the transfer equation
+        :math:`\mathrm dI/\mathrm ds = -K\,(I - S)` for constant K: the evolution operator is
+        :math:`O(s+ds, s) = e^{-K\,ds}` (Landi Degl'Innocenti & Landi Degl'Innocenti 1985,
+        Solar Phys. 97, 239; eq. 1 for the transfer equation, eq. 5 for the constant-K operator),
+        evaluated by diagonalization :math:`O = X\,\mathrm{diag}(e^{-k_i\,ds})\,X^{-1}` (ibid.,
+        p. 241; LL04 Sec. 8.4). Integrating the constant-source term over the cell yields the
+        :math:`S + e^{-K\,ds}(I - S)` form (DELO with constant source; LL04 Secs. 8.2, 9.15).
+        """
+        # Source function S = K^{-1} epsilon, i.e. the S such that dI/ds = -K(I - S)
+        # (LandiLandi1985 eq. 1). K carries the continuum on its diagonal and is well-conditioned
+        # almost everywhere, so solve the whole frequency stack at once; fall back per-frequency
+        # on a singular K.
+        try:
+            S = np.linalg.solve(K, epsilon[:, :, np.newaxis])[:, :, 0]  # [n_nu, 4]
+        except np.linalg.LinAlgError:
+            S = np.empty_like(epsilon)
+            for n in range(K.shape[0]):
+                try:
+                    S[n] = np.linalg.solve(K[n], epsilon[n])
+                except np.linalg.LinAlgError:
+                    S[n] = np.linalg.pinv(K[n]) @ epsilon[n]
+
+        # Evolution operator e^{-K ds} by diagonalization O = X diag(e^{-k_i ds}) X^{-1}
+        # (LandiLandi1985 eq. 5 and p. 241; LL04 Sec. 8.4).
         lam, V = np.linalg.eig(-K * ds)  # lam [n_nu, 4], V [n_nu, 4, 4]
         expM = np.real(V @ (np.exp(lam)[:, :, np.newaxis] * np.linalg.inv(V)))  # [n_nu, 4, 4]
 
@@ -598,29 +666,35 @@ class NLTEStratifiedAtmosphere:
         self,
         rays: List[dict],
         stokes_per_ray: List[np.ndarray],
-        eta_I_per_ray: List[np.ndarray],
+        profile_weights_per_ray: List[List[dict]],
         i_z: int,
         t_conj_per_ray: List[dict],
-        nu: np.ndarray,
     ) -> BaseRadiationTensor:
         r"""
-        Reconstruct :math:`J^K_Q` per transition at depth ``i_z``:
+        Reconstruct the radiation-field tensor :math:`J^K_Q` per transition at depth ``i_z``:
 
         .. math::
 
-            J^K_Q = \sum_n w_n \sum_i T^{K*}_Q(i, \Omega_n) \int d\nu\, \phi_n(\nu)\, S_i(\nu, \Omega_n)
+            J^K_Q = \sum_n w_n \sum_i T^{K*}_Q(i, \Omega_n) \int d\nu\, \phi_{n,t}(\nu)\, S_i(\nu, \Omega_n)
 
-        The frequency weight :math:`\phi_n` is the *per-ray* line absorption profile at this
-        depth (so the local velocity shift seen along each ray is accounted for in complete
-        frequency redistribution).  Reduces to Trujillo Bueno & Manso Sainz (1999) eqs.
-        (10)-(11) for the axisymmetric K=0,2, Q=0 case.
+        This is the frequency- and angle-average of the Stokes vector weighted by the
+        polarization tensor :math:`T^K_Q(i, \Omega)` (LL04 Sec. 5.11, eqs. 5.132-5.135 and
+        Table 5.2; radiation-field tensor LL04 eq. 5.157). The angular integral
+        :math:`\oint \mathrm d\Omega/4\pi` is discretized by the Gauss-Legendre :math:`\mu` x
+        uniform :math:`\phi` quadrature, with ``ray["weight"]`` carrying :math:`w_n`. The
+        frequency weight :math:`\phi_{n,t}` is each transition's *own* normalized absorption
+        profile at this ray and depth (flat-spectrum approximation, complete frequency
+        redistribution; LL04 Sec. 13.1), including its local velocity shift (moving-atom Doppler
+        effect on the radiation tensor; LL04 Secs. 12.4, 13.2). Overlapping profiles are summed,
+        not partitioned. For the axisymmetric K=0,2 / Q=0 case this reduces to Trujillo Bueno &
+        Manso Sainz (1999) eqs. (10)-(11).
         """
         rad_tens = self.model.RadiationTensor.from_model_config(self.model.config)
         kq_pairs = list(nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")))
 
         accumulator: dict = {}
         for r, ray in enumerate(rays):
-            weights = self._build_profile_weights(nu=nu, eta_I=np.maximum(eta_I_per_ray[r][i_z], 0.0))
+            weights = profile_weights_per_ray[r][i_z]
             t_conj = t_conj_per_ray[r]
             w_ray = ray["weight"]
             for transition in rad_tens.transition_registry.transitions.values():
@@ -637,25 +711,57 @@ class NLTEStratifiedAtmosphere:
         rad_tens._df = None
         return rad_tens
 
-    def _build_profile_weights(self, nu: np.ndarray, eta_I: np.ndarray) -> dict:
+    def _profile_weights_at(self, nu: np.ndarray, params) -> dict:
         r"""
-        Normalized line-absorption profile weight :math:`\hat\phi(\nu)` per transition (sums to 1),
-        partitioned by nearest transition center for well-separated lines (flat-spectrum).
+        Normalized absorption profile of each transition at one (ray, depth), the frequency
+        weight :math:`\hat\phi_t(\nu)` (sums to 1) used in the :math:`J^K_Q` reconstruction.
 
-        Uses the fixed ``self._recon_*`` partition precomputed in :meth:`forward` (depends only
-        on ``nu``), so the per-(ray, depth) call is just a masked normalization.
+        Each transition contributes its *own* Voigt profile; overlapping profiles coexist (no
+        partition of the frequency axis). This is the flat-spectrum treatment of well-separated
+        or blended lines (LL04 Sec. 13.1); it is exact for a single isolated line.
         """
-        weights = {}
-        for k, transition_id in enumerate(self._recon_transition_ids):
-            w = np.where(self._recon_nearest == k, eta_I, 0.0)
-            total = float(w.sum())
-            if total <= 0.0:
-                w = np.zeros_like(nu)
-                w[int(np.argmin(np.abs(nu - self._recon_centers[k])))] = 1.0
-            else:
-                w = w / total
-            weights[transition_id] = w
-        return weights
+        return {
+            tid: self._absorption_profile(
+                nu=nu,
+                nu0=self._recon_centers[k],
+                delta_v_thermal_cm_sm1=params.delta_v_thermal_cm_sm1,
+                macroscopic_velocity_cm_sm1=params.macroscopic_velocity_cm_sm1,
+                voigt_a=params.voigt_a,
+            )
+            for k, tid in enumerate(self._recon_transition_ids)
+        }
+
+    @staticmethod
+    def _absorption_profile(
+        nu: np.ndarray,
+        nu0: float,
+        delta_v_thermal_cm_sm1: float,
+        macroscopic_velocity_cm_sm1: float,
+        voigt_a: float,
+    ) -> np.ndarray:
+        r"""
+        Normalized Voigt absorption profile of a single transition (discretized to sum to 1).
+
+        Follows LL04 eq. (5.44): :math:`\phi = H(v - v_A, a) / (\sqrt\pi\,\Delta\nu_D)`, with the
+        reduced variables of eqs. (5.42)-(5.43): :math:`\Delta\nu_D = \nu_0\,w_T/c` the Doppler
+        width, :math:`v = (\nu_0 - \nu)/\Delta\nu_D` the reduced frequency,
+        :math:`v_A = w_A/w_T` the bulk-velocity shift, and :math:`a` the damping constant; ``H``
+        is the Voigt function (LL04 eq. 5.45). This matches the RTE profile ``_phi`` used in the
+        transfer opacity. The LL04 sign convention (eq. 5.41: :math:`w_A > 0` for a receding
+        flow, hence a redshift) is consistent with :meth:`_project`. The magnetic (Zeeman) shift
+        :math:`v_B` of eq. (5.44) is omitted: the flat-spectrum pumping term uses the unshifted
+        Doppler profile, valid while the Zeeman splitting is small compared to the line width.
+        """
+        delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
+        v = (nu0 - nu) / delta_nu_D  # reduced frequency
+        v_A = macroscopic_velocity_cm_sm1 / delta_v_thermal_cm_sm1  # bulk-velocity shift
+        phi = np.maximum(np.real(voigt(nu=v - v_A, a=voigt_a)), 0.0)  # H(v - v_A, a)
+        total = float(phi.sum())
+        if total <= 0.0:
+            phi = np.zeros_like(nu)
+            phi[int(np.argmin(np.abs(nu - nu0)))] = 1.0
+            return phi
+        return phi / total
 
     @staticmethod
     def _rho_grid_diff(rho_grid_old: List[BaseRho], rho_grid_new: List[BaseRho]) -> float:

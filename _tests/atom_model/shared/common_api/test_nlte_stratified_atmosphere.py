@@ -204,6 +204,58 @@ class TestNLTEStratifiedAtmosphere(unittest.TestCase):
         assert np.all(np.isfinite(emergent.I))
         assert atmosphere.final_residual is not None
 
+    def test_velocity_doppler_direction_end_to_end(self):
+        """
+        End-to-end sign check: a uniform bulk velocity directed toward the observer must
+        blueshift the emergent line core (higher frequency), by ~|v|/c. This guards the
+        combination of the projection (v_los = -Omega_hat . v) and the profile convention
+        (nu = nu_i (1 - v_los/c)) against a regression in either piece.
+        """
+        setup_logging()
+
+        model, reference_lambda_A_air = _build_two_level_model()
+        nu_rest = energy_cmm1_to_frequency_sm1(20_000)
+        nu = get_frequencies_from_air_wavelength_range(
+            lower_wavelength_A=reference_lambda_A_air - 1.0,
+            upper_wavelength_A=reference_lambda_A_air + 1.0,
+            step_A=5e-3,
+        )
+
+        los_theta, los_chi = 10 * np.pi / 180, 0.0
+        v = 15.0e5  # 15 km/s
+        c_cm_sm1 = 2.99792458e10
+
+        # Velocity pointing along the observer propagation direction = moving toward observer.
+        stratification = StratifiedAtmosphere(
+            model=model,
+            height_cm=np.linspace(0.0, 200e5, 4),
+            temperature_K=8000.0,
+            number_density_cm3=1.0e11,
+            magnetic_field_gauss=0.0,
+            velocity_cm_sm1=v,
+            theta_v=los_theta,
+            chi_v=los_chi,
+            delta_v_turbulent_cm_sm1=2.0e5,
+            continuum_to_line_ratio=1e-2,
+        )
+        atmosphere = NLTEStratifiedAtmosphere(
+            model=model,
+            stratification=stratification,
+            los_theta=los_theta,
+            los_chi=los_chi,
+            n_mu_quadrature=2,
+            n_phi_quadrature=2,
+            max_iterations=4,
+            tolerance=1e-3,
+        )
+        emergent = atmosphere.forward(initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=5700))
+
+        core_nu = nu[int(np.argmin(emergent.I))]
+        # Blueshift: line core at higher frequency than rest.
+        assert core_nu > nu_rest
+        # Magnitude ~ |v|/c (v_los = -|v| since velocity is along the toward-observer direction).
+        assert np.isclose((core_nu - nu_rest) / nu_rest, v / c_cm_sm1, rtol=0.2)
+
 
 if __name__ == "__main__":
     unittest.main()

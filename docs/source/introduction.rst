@@ -1,41 +1,53 @@
 SolRaT: Introduction
 ====================
 
-SolRaT (Solar Radiative Transfer) is a flexible, forward-modeling, non-LTE radiative transfer code for stellar atmospheres. It implements the statistical equilibrium and radiative transfer equations within the multi-term atom model, enabling detailed synthesis of Stokes profiles in magnetic fields of arbitrary strength, from the Zeeman to the Paschen-Back regimes.
+SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, non-LTE transfer of spectral-line radiation in magnetized stellar atmospheres. It solves the statistical-equilibrium and radiative-transfer equations in the density-matrix formalism of Landi Degl'Innocenti & Landolfi (2004, LL04), for magnetic fields of arbitrary strength, from the Zeeman through the Hanle and Paschen-Back regimes.
 
 .. image:: https://www.yakovkinii.com/solrat/media/solrat7.png
    :width: 600
    :alt: Model of He I D3 emission in a limb event under different magnetic fields
    :align: center
 
-Key Features
-------------
-*   **Physics**: Solves non-LTE radiative transfer for multi-term atoms.
-*   **Magnetic Fields**: Handles arbitrary magnetic field strengths (Zeeman, Hanle, Paschen-Back effects).
-*   **Atmosphere**: Supports multi-slab atmospheres for height stratification under anisotropic illumination (ATL08, HAZEL2).
-*   **Flexibility**: Provides a high-level meta-language allowing you to write code that directly resembles the underlying mathematical equations.
-*   **Accessibility**: SolRaT is free, open-source, and platform-independent.
-*   **Performance**: SolRaT uses high-performance libraries that leverage SIMD instruction sets.
-*   **Extensibility**: A clear Modeling API allows for quick prototyping and model adjustments for specific contexts.
+SolRaT is written so that each rate and transfer expression reads close to the equation it implements. The goal is a model transparent enough to inspect and verify against analytic results and established codes, and flexible enough to adapt to a particular line or context rather than be used as a black box. The figure above shows a sample output: He I D3 emission modeled under varying magnetic field strengths.
 
+Physical model
+--------------
+*   **Density-matrix formalism** in the irreducible spherical statistical tensors :math:`\rho^K_Q`, with atomic level polarization fully included (LL04).
+*   **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and a semi-LTE multi-term model, selectable without rewriting the surrounding code.
+*   **Magnetic fields of arbitrary strength**: Zeeman, Hanle, and the Paschen-Back regime by exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Hanle for the multi-level atom).
+*   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or the anisotropic :math:`\{n, w\}` parametrization of ATL08 for coronal/chromospheric lines) or solved self-consistently for the scattering (collisionless) non-LTE problem (TB99).
 
-The figure above demonstrates a sample output: the modeling of He I D3 emission under varying magnetic field strengths.
+Atmospheres and synthesis
+-------------------------
+*   **Constant-property slabs**, optionally stacked into a multi-slab stratification under anisotropic illumination (ATL08, HAZEL2).
+*   **Height-stratified atmosphere** in which temperature, absorber number density, the magnetic-field vector, microturbulence, Voigt damping, and the vector macroscopic velocity vary continuously with geometric height; the scattering :math:`J^K_Q` is solved self-consistently by :math:`\Lambda`-iteration on a depth grid, with the Stokes transfer solved by the DELO method.
+*   Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
 
-The code provides a multi-level framework for modeling radiative transfer:
+Design
+------
+SolRaT is organized in three layers:
 
-*   **Public API** allows to run built-in RT models. Currently, SolRaT ships the non-LTE multi-term atom model (LL04) with multiple constant-slab atmosphere stratification.
-*   **Modeling API** allows to extend existing models or create completely new ones.
-*   **SolRaT Engine** introduces a meta-language that allows the user to write a human-readable code that directly resembles the underlying mathematical equations. The user does not need to focus on code optimization, as it is handled under the hood.
+*   **Public API** runs the built-in models.
+*   **Modeling API** extends an existing model or builds a new one by analogy with the shipped ones.
+*   **SolRaT engine** is a dataframe-based meta-language in which the angular algebra and rate expressions are written close to their mathematical form; the bookkeeping and optimization are handled underneath, so the user can focus on the physics rather than on code optimization.
 
+Scope and limitations
+---------------------
+SolRaT is a forward model. Its non-LTE solution is currently collisionless (pure scattering), so scattering-polarization amplitudes are upper limits until depolarization is parametrized; line formation assumes complete frequency redistribution (CRD). Physical collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out of scope for the current version.
+
+References
+----------
 [LL04] Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)
 
 [ATL08] Asensio Ramos, A., Trujillo Bueno, J., & Landi Degl’Innocenti, E. (2008). Advanced Forward Modeling and Inversion of Stokes Profiles Resulting from the Joint Action of the Hanle and Zeeman Effects. The Astrophysical Journal, 683(1), 542–565.
 
-[HAZEL2] [Link](https://github.com/aasensio/hazel2)
+[TB99] Trujillo Bueno, J., & Manso Sainz, R. (1999). Iterative Methods for the Non-LTE Transfer of Polarized Radiation. The Astrophysical Journal, 516(1), 436–450.
+
+[HAZEL2] https://github.com/aasensio/hazel2
 
 How to Cite
 -----------
-If SolRaT contributes to your research, please cite it as:
+A journal article is in preparation. In the meantime, if SolRaT contributes to your research, please cite it as:
 
     Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yakovkinii.com/solrat/
 

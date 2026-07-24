@@ -14,13 +14,9 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 def main():
     """
     Self-consistent NLTE synthesis of the He I D3 multiplet through a height-stratified
-    atmosphere.
-
-    This is the same formalism-agnostic engine as the multi-level resonance-line demo, here
-    driven with the multi-term He I D3 model: temperature, He triplet number density, the
-    magnetic-field vector, and a vertical macroscopic-velocity gradient all vary with
-    geometric height, and the scattering radiation tensor J^K_Q is solved self-consistently
-    (rather than imposed via the {n, w} parametrization used by the constant-property slab).
+    atmosphere, using the multi-term He I D3 model. Temperature, He triplet number density,
+    the magnetic-field vector, and a vertical macroscopic-velocity gradient all vary with
+    geometric height, and the scattering radiation tensor J^K_Q is solved self-consistently.
 
     The D3 multiplet RTE is heavy, so the grid is kept small (few depths/rays, coarse nu).
     Tune number_density_cm3 so the printed observer optical depth lands where you want it;

@@ -54,7 +54,7 @@ def main():
 
     Every physical parameter varies with geometric height; opacity is set by the absorber
     number-density profile N(z). The velocity is a full vector field (here vertical), so each
-    quadrature ray sees its own line-of-sight projection v . Omega_hat, and the absorption
+    quadrature ray sees its own line-of-sight projection of the velocity, and the absorption
     profile is Doppler-shifted accordingly per ray and per depth.
 
     Tune N and the height span so the printed observer optical depth (tau_grid[-1]) lands
