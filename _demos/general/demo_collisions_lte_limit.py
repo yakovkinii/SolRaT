@@ -23,9 +23,7 @@ def population_ratio(model, transition) -> float:
     atmosphere_parameters = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=_LOCAL_TEMPERATURE_K
     )
-    # Radiation temperature deliberately differs from the local (collisional) temperature: the
-    # collision-dominated limit must relax to the Boltzmann distribution at the *local* temperature,
-    # not the radiation temperature, so the bridge is a genuine LTE anchor rather than a tautology.
+
     radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_planck(temperature_K=8000.0)
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
     see.fill_all_equations(

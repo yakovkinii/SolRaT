@@ -30,7 +30,7 @@ class RadiationTensor(BaseRadiationTensor):
     :math:`K` is always :math:`\le 2` by construction (see eg. 5.157) for electric-dipole transitions
     due to :math:`T` tensor.
 
-    :param transition_registry: :any:`TransitionRegistry` instance
+    :param transition_registry: ``TransitionRegistry`` instance
 
     Reference: (LL04 5.157)
     """
@@ -66,7 +66,7 @@ class RadiationTensor(BaseRadiationTensor):
         not for each frequency.
 
         :param temperature_K: Temperature in Kelvin
-        :return: :any:`RadiationTensor` instance
+        :return: ``RadiationTensor`` instance
         """
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()

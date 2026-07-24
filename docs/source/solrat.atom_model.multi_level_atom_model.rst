@@ -12,6 +12,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   solrat.atom_model.multi_level_atom_model.data
    solrat.atom_model.multi_level_atom_model.object
    solrat.atom_model.multi_level_atom_model.utility
 

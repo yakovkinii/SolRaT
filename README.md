@@ -25,7 +25,7 @@ exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Han
 multi-level atom).
 - **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or the anisotropic $\{n, w\}$
 parametrization of [[ATL08](#References)] for coronal/chromospheric lines) or solved
-self-consistently for the scattering (collisionless) non-LTE problem [[TB99](#References)].
+self-consistently for the non-LTE scattering problem [[TB99](#References)].
 
 #### Atmospheres and synthesis
 - **Constant-property slabs**, optionally stacked into a multi-slab stratification under
@@ -47,11 +47,13 @@ optimization handled underneath.
 Pre-configured lines: He I D3, Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, Fe I 5434.523 &Aring;.
 
 #### Scope and limitations
-SolRaT is a forward model. Its non-LTE solution is currently collisionless (pure scattering),
-so scattering-polarization amplitudes are upper limits until depolarization is parametrized;
-line formation assumes complete frequency redistribution (CRD). Physical collisional rates
-from cross-sections, partial frequency redistribution, and 3D geometry are out of scope for
-the current version.
+SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default,
+so scattering-polarization amplitudes are then upper limits; an optional, experimental
+parametrized-collision extension for the multi-level atom adds inelastic (transfer) and elastic
+(depolarizing) rates that bridge the scattering limit to LTE, but it is not
+yet validated. Line formation assumes complete frequency redistribution (CRD). Physical
+collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out
+of scope for the current version.
 
 #### Installation
 Install SolRaT directly from PyPi by running ```pip install solrat```.
