@@ -4,16 +4,18 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
-from typing import Generic, Union
+from typing import Generic, Optional, Union
 
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import AtmosphereParametersT
 from solrat.atom_model.base_atom_model.object.config import ConfigT
 from solrat.atom_model.base_atom_model.object.radiation_tensor import RadiationTensorT
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import RTET
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import SEET
+from solrat.atom_model.multi_level_atom_model.data.mock import get_mock_atom_config as get_mock_multi_level_atom_config
 from solrat.atom_model.multi_level_atom_model.object.atmosphere_parameters import (
     AtmosphereParameters as MultiLevelAtmosphereParameters,
 )
+from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.multi_level_atom_model.object.multi_level_atom_config import MultiLevelAtomConfig
 from solrat.atom_model.multi_level_atom_model.object.radiation_tensor import (
     RadiationTensor as MultiLevelRadiationTensor,
@@ -147,6 +149,10 @@ class PreconfiguredModels:
     @staticmethod
     def multi_term_atom_mock():
         return Models.multi_term_atom().configure(config=get_mock_atom_config())
+
+    @staticmethod
+    def multi_level_atom_mock(collisions: Optional[ParametrizedCollisions] = None):
+        return Models.multi_level_atom().configure(config=get_mock_multi_level_atom_config(collisions=collisions))
 
     @staticmethod
     def multi_term_atom_mock_nofs():

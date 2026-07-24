@@ -2,43 +2,20 @@ import unittest
 
 import numpy as np
 
-from solrat.atom_model.model_registry import Models
+from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
-from solrat.atom_model.multi_level_atom_model.object.level_registry import LevelRegistry
-from solrat.atom_model.multi_level_atom_model.object.transition_registry import TransitionRegistry
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def _build_model(collisions):
     r"""
-    A J=0 -> J=1 resonance line as a multi-level atom, with optional collisions. Returns the model
+    The mock J=0 -> J=1 multi-level atom with the given (mutable) collisions object. Returns the model
     plus the upper level id and the transition id (for setting collisional rates).
     """
-    level_registry = LevelRegistry()
-    level_registry.register_level(alpha="1s", J=0, energy_cmm1=0, g=1.0)
-    level_registry.register_level(alpha="2p", J=1, energy_cmm1=20_000, g=1.2)
-
-    transition_registry = TransitionRegistry()
-    transition_registry.register_transition(
-        level_upper=level_registry.get_level(alpha="2p", J=1),
-        level_lower=level_registry.get_level(alpha="1s", J=0),
-        einstein_a_ul_sm1=1e7,
-    )
-
-    model = Models.multi_level_atom()
-    model = model.configure(
-        config=model.Config(
-            level_registry=level_registry,
-            transition_registry=transition_registry,
-            atomic_mass_amu=4.0,
-            reference_lambda_A_air=5000.0,
-            collisions=collisions,
-        )
-    )
-    upper_level_id = level_registry.get_level(alpha="2p", J=1).level_id
-    transition_id = next(iter(transition_registry.transitions.keys()))
-    return model, upper_level_id, transition_id
+    model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
+    transition = next(iter(model.config.transition_registry.transitions.values()))
+    return model, transition.level_upper.level_id, transition.transition_id
 
 
 def _solve(model):
