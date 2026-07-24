@@ -1,6 +1,7 @@
-from typing import Union
+from typing import Optional, Union
 
 from solrat.atom_model.base_atom_model.object.config import BaseConfig
+from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.multi_level_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_level_atom_model.object.transition_registry import TransitionRegistry
 
@@ -17,6 +18,8 @@ class MultiLevelAtomConfig(BaseConfig):
     :param custom_delta_nu_cutoff:  Distance in frequency for cutting off irrelevant transitions.
     :param N:  Atom numeric concentration for d/dz transfer modeling.
         Can be left equal to 1 for d/dtau modeling.
+    :param collisions:  Optional :class:`ParametrizedCollisions` with parametrized collisional
+        rates for the SEE (not-yet-validated feature). ``None`` means collisionless (pure scattering).
     """
 
     def __init__(
@@ -28,6 +31,7 @@ class MultiLevelAtomConfig(BaseConfig):
         disable_r_s: bool = False,
         custom_delta_nu_cutoff: Union[float, None] = None,
         N: float = 1.0,
+        collisions: Optional[ParametrizedCollisions] = None,
     ):
         self.level_registry = level_registry
         self.transition_registry = transition_registry
@@ -36,3 +40,4 @@ class MultiLevelAtomConfig(BaseConfig):
         self.disable_r_s = disable_r_s
         self.custom_delta_nu_cutoff = custom_delta_nu_cutoff
         self.N = N
+        self.collisions = collisions

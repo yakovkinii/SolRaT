@@ -17,7 +17,7 @@ Base Atom Model
    solrat.atom_model.base_atom_model*
 
 Multi-Level Atom Model
-=====================
+======================
 
 .. toctree::
    :maxdepth: 1

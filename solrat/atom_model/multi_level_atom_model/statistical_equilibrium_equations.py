@@ -4,14 +4,15 @@ except ImportError:
     from typing_extensions import Self  # Python <3.11
 
 import logging
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
-from numpy import pi, sqrt
+from numpy import exp, pi, sqrt
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_level_atom_model.object.atmosphere_parameters import AtmosphereParameters
+from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.multi_level_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_level_atom_model.object.multi_level_atom_config import MultiLevelAtomConfig
 from solrat.atom_model.multi_level_atom_model.object.radiation_tensor import RadiationTensor
@@ -21,6 +22,7 @@ from solrat.atom_model.multi_level_atom_model.object.rho_matrix_builder import (
     construct_coherence_id_from_level_id,
 )
 from solrat.atom_model.multi_level_atom_model.object.transition_registry import TransitionRegistry
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
 from solrat.engine.functions.general import m1p, n_proj
@@ -35,8 +37,10 @@ class MultiLevelAtomSEE(BaseSEE):
     :param level_registry:  :class:`LevelRegistry` instance for the multi-level atom under study.
     :param transition_registry:  :class:`TransitionRegistry` instance for the multi-level atom under study.
     :param disable_r_s:  Whether to disable stimulated emission relaxation :math:`R_S`.
+    :param collisions:  Optional :class:`ParametrizedCollisions` (not-yet-validated feature);
+        ``None`` means collisionless (pure scattering).
 
-    Reference: (LL04 7.11, 7.14a-f)
+    Reference: (LL04 7.11, 7.14a-f); collisional rates (LL04 7.13, eq. 7.101).
     """
 
     def __init__(
@@ -44,11 +48,13 @@ class MultiLevelAtomSEE(BaseSEE):
         level_registry: LevelRegistry,
         transition_registry: TransitionRegistry,
         disable_r_s: bool = False,
+        collisions: Optional[ParametrizedCollisions] = None,
     ):
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(levels=list(self.level_registry.levels.values()))
         self.disable_r_s = disable_r_s
+        self.collisions = collisions
 
         # Precomputed frames:
         self.coherence_decay_frame: Union[Frame, None] = None
@@ -66,6 +72,7 @@ class MultiLevelAtomSEE(BaseSEE):
             level_registry=config.level_registry,
             transition_registry=config.transition_registry,
             disable_r_s=config.disable_r_s,
+            collisions=config.collisions,
         )
 
     def _base_frame_levels(self) -> pd.DataFrame:
@@ -166,6 +173,8 @@ class MultiLevelAtomSEE(BaseSEE):
         self.add_relaxation_e()
         self.add_relaxation_a(radiation_tensor=radiation_tensor_in_magnetic_frame)
         self.add_relaxation_s(radiation_tensor=radiation_tensor_in_magnetic_frame)
+        if self.collisions is not None:
+            self.add_collisions(atmosphere_parameters=atmosphere_parameters)
 
     @log_method
     def add_coherence_decay(self, atmosphere_parameters: AtmosphereParameters):
@@ -537,6 +546,84 @@ class MultiLevelAtomSEE(BaseSEE):
         )
 
     @log_method
+    def add_collisions(self, atmosphere_parameters: AtmosphereParameters):
+        r"""
+        Add parametrized inelastic/superelastic and elastic (depolarizing) collisional rates.
+
+        Implements LL04 eq. (7.101) in the spherical-statistical-tensor representation: collisions
+        couple only equal (K, Q). Per radiative transition (upper, lower) the user supplies the
+        superelastic de-excitation rate :math:`C_{ul}` (:math:`C_S^{(0)}(l, u)`); the inelastic
+        excitation rate :math:`C_{lu}` (:math:`C_I^{(0)}(u, l)`) follows from Einstein-Milne
+        detailed balance (LL04 eq. 7.98):
+        :math:`C_{lu} = \frac{2J_u + 1}{2J_l + 1}\, e^{-(E_u - E_l)/(k_B T)}\, C_{ul}`.
+        Transfer multipole components are taken K-independent, :math:`C^{(K)} = C^{(0)}`. Elastic
+        collisions add the depolarizing loss :math:`-D^{(K)}` for K >= 1 (LL04 eq. 7.102).
+        Collisional rates simply add to the radiative rates (LL04 Sec. 7.13.e).
+
+        Reference: (LL04 7.101, 7.98, 7.102).
+        """
+        assert self.collisions is not None, "add_collisions called without configured collisions."
+        temperature_K = atmosphere_parameters.temperature_K
+
+        rows = []
+        for transition in self.transition_registry.transitions.values():
+            upper = transition.level_upper
+            lower = transition.level_lower
+            c_ul = self.collisions.deexcitation_rate_sm1(transition.transition_id)  # C_S^(0)(l, u)
+            if c_ul <= 0:
+                continue
+            delta_e_erg = (upper.energy_cmm1 - lower.energy_cmm1) * h_erg_s * c_cm_sm1
+            c_lu = (2 * upper.J + 1) / (2 * lower.J + 1) * exp(-delta_e_erg / (kB_erg_Km1 * temperature_K)) * c_ul
+
+            # Transfer terms (diagonal in K, Q; K valid for both levels), LL04 (7.101).
+            factor_into_upper = sqrt((2 * lower.J + 1) / (2 * upper.J + 1)) * c_lu
+            factor_into_lower = sqrt((2 * upper.J + 1) / (2 * lower.J + 1)) * c_ul
+            for K in range(0, int(2 * min(upper.J, lower.J)) + 1):
+                for Q in range(-K, K + 1):
+                    rows.append(self._collision_row(upper.level_id, K, Q, lower.level_id, K, Q, factor_into_upper))
+                    rows.append(self._collision_row(lower.level_id, K, Q, upper.level_id, K, Q, factor_into_lower))
+
+            # Relaxation (loss) of each level to its transition partner, LL04 (7.101).
+            for K in range(0, int(2 * upper.J) + 1):
+                for Q in range(-K, K + 1):
+                    rows.append(self._collision_row(upper.level_id, K, Q, upper.level_id, K, Q, -c_ul))
+            for K in range(0, int(2 * lower.J) + 1):
+                for Q in range(-K, K + 1):
+                    rows.append(self._collision_row(lower.level_id, K, Q, lower.level_id, K, Q, -c_lu))
+
+        # Elastic depolarizing loss D^(K), K >= 1, per level, LL04 (7.102).
+        for level in self.level_registry.levels.values():
+            for K in range(1, int(2 * level.J) + 1):
+                d_k = self.collisions.depolarizing_rate_sm1(level.level_id, K)
+                if d_k <= 0:
+                    continue
+                for Q in range(-K, K + 1):
+                    rows.append(self._collision_row(level.level_id, K, Q, level.level_id, K, Q, -d_k))
+
+        if not rows:
+            return
+        df = pd.DataFrame(rows)
+        df = self.add_equation_index(df, level_id="eq_level_id", K="eq_K", Q="eq_Q", index="index0")
+        df = self.add_equation_index(df, level_id="rho_level_id", K="rho_K", Q="rho_Q", index="index1")
+        self.matrix_builder.add_coefficient_from_df(df)
+
+    @staticmethod
+    def _collision_row(eq_level_id, eq_K, eq_Q, rho_level_id, rho_K, rho_Q, coefficient):
+        r"""
+        One collisional matrix entry: the coefficient multiplying rho^K_Q(rho_level) in the
+        equation for rho^K_Q(eq_level).
+        """
+        return {
+            "eq_level_id": eq_level_id,
+            "eq_K": eq_K,
+            "eq_Q": eq_Q,
+            "rho_level_id": rho_level_id,
+            "rho_K": rho_K,
+            "rho_Q": rho_Q,
+            "coefficient": coefficient,
+        }
+
+    @log_method
     def get_solution(self) -> Rho:
         r"""
         Get the solution of the Statistical Equilibrium Equations.
@@ -550,7 +637,7 @@ class MultiLevelAtomSEE(BaseSEE):
         sol = np.insert(sol, 0, 1.0, 0)
         sol = sol[:, 0]
 
-        # Normalize: Sum sqrt(2J+1) rho00(αJ) = 1
+        # Normalize: Sum sqrt(2J+1) rho00(alpha J) = 1
         weights = np.zeros_like(sol)
         for index, weight in zip(self.matrix_builder.trace_indexes, self.matrix_builder.trace_weights):
             weights[index] = weight

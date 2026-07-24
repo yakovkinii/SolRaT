@@ -35,9 +35,9 @@ class BaseSEE(Generic[ConfigT, AtmosphereParametersT, RadiationTensorT, RhoT]):
         r"""
         Loop through all equations to construct the complete system of equations for rho.
 
-        :param atmosphere_parameters:  :any:`AtmosphereParameters` instance carrying the magnetic field
+        :param atmosphere_parameters:  ``AtmosphereParameters`` instance carrying the magnetic field
             and other variables.
-        :param radiation_tensor_in_magnetic_frame:  :any:`RadiationTensor` instance
+        :param radiation_tensor_in_magnetic_frame:  ``RadiationTensor`` instance
         """
 
     @abstractmethod
@@ -45,7 +45,7 @@ class BaseSEE(Generic[ConfigT, AtmosphereParametersT, RadiationTensorT, RhoT]):
         r"""
         Get the solution of the Statistical Equilibrium Equations.
 
-        :return: :any:`Rho` instance
+        :return: ``Rho`` instance
         """
 
 

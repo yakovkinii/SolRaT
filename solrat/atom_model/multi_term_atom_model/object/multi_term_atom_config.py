@@ -15,7 +15,7 @@ class MultiTermAtomConfig(BaseConfig):
     :param atomic_mass_amu: Atomic mass (in atomic mass units)
     :param reference_lambda_A_air: air reference wavelength (used for plotting only)
     :param j_constrained: Enable :math:`J` constraint for selecting possible transitions in RTE
-    (if constraint is specified in transition registry)
+        (if constraint is specified in transition registry)
     """
 
     def __init__(

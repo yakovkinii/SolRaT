@@ -38,13 +38,13 @@ class Rho(BaseRho):
         self.levels = {level.level_id: level for level in levels}
 
     def set_from_level_id(self, level_id: str, K: float, Q: float, value: complex):
-        """
+        r"""
         Set the value of :math:`\rho^K_Q(\alpha J)`.
         """
         self.data[construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q)] = value
 
     def __call__(self, K: float, Q: float, level_id: str) -> np.complex128:
-        """
+        r"""
         Get the value of :math:`\rho^K_Q(\alpha J)`.
         """
         coherence_id = construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q)

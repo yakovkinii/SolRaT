@@ -15,7 +15,7 @@ Physical model
 *   **Density-matrix formalism** in the irreducible spherical statistical tensors :math:`\rho^K_Q`, with atomic level polarization fully included (LL04).
 *   **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and a semi-LTE multi-term model, selectable without rewriting the surrounding code.
 *   **Magnetic fields of arbitrary strength**: Zeeman, Hanle, and the Paschen-Back regime by exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Hanle for the multi-level atom).
-*   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or the anisotropic :math:`\{n, w\}` parametrization of ATL08 for coronal/chromospheric lines) or solved self-consistently for the scattering (collisionless) non-LTE problem (TB99).
+*   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or the anisotropic :math:`\{n, w\}` parametrization of ATL08 for coronal/chromospheric lines) or solved self-consistently for the non-LTE scattering problem (TB99): collisionless by default, with optional parametrized collisional rates in the multi-level statistical equilibrium (inelastic transfer with Einstein-Milne detailed balance, and elastic depolarization) that bridge the scattering limit to LTE (experimental, not yet validated).
 
 Atmospheres and synthesis
 -------------------------
@@ -33,7 +33,7 @@ SolRaT is organized in three layers:
 
 Scope and limitations
 ---------------------
-SolRaT is a forward model. Its non-LTE solution is currently collisionless (pure scattering), so scattering-polarization amplitudes are upper limits until depolarization is parametrized; line formation assumes complete frequency redistribution (CRD). Physical collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out of scope for the current version.
+SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default, so scattering-polarization amplitudes are then upper limits; an optional, experimental parametrized-collision extension for the multi-level atom adds inelastic (transfer) and elastic (depolarizing) rates that bridge the scattering limit to LTE via detailed balance, but it is not yet validated. Line formation assumes complete frequency redistribution (CRD). Physical collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out of scope for the current version.
 
 References
 ----------

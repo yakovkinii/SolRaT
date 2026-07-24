@@ -14,6 +14,7 @@ Submodules
 
    solrat.atom_model.shared.utility.constants
    solrat.atom_model.shared.utility.functions
+   solrat.atom_model.shared.utility.log_setup
    solrat.atom_model.shared.utility.plot_stokes_profiles
    solrat.atom_model.shared.utility.voigt_profile
    solrat.atom_model.shared.utility.wigner_3j_6j_9j
