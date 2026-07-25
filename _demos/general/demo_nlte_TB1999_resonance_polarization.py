@@ -93,14 +93,15 @@ def main():
     TB1999 Fig. 1 (roughly 1e-3 up to the total optical thickness, here ~1e6, effectively
     semi-infinite).
 
-    Convergence caveat (this is the central message of TB1999): the loop uses unaccelerated
-    Lambda-iteration, which converges only in ~1/epsilon iterations for a semi-infinite atmosphere
-    (their Figs. 2, 4, 6). A full epsilon = 1e-4 convergence is therefore out of reach here; this
-    demo deliberately uses a *crude* convergence criterion (few iterations, loose tolerance) to keep
-    it fast. Starting from the isotropic LTE guess, Lambda-iteration builds the alignment up from
-    below, so the plotted rho^2_0/rho^0_0 is a lower bound that rises toward the published 0.08292 as
-    the iteration count increases. The residual and the achieved surface value are logged; raise
-    max_iterations for a closer match, or add the convergence acceleration of checklist A2.
+    Convergence caveat (this is the central message of TB1999): plain Lambda-iteration converges
+    only in ~1/epsilon iterations for a semi-infinite atmosphere (their Figs. 2, 4, 6). This demo
+    enables Ng acceleration (ng_acceleration=True), which extrapolates the rho iterates and cuts the
+    iteration count substantially, but full epsilon = 1e-4 convergence still needs many iterations;
+    the run therefore remains partially converged. Starting from the isotropic LTE guess the
+    alignment is built up from below, so the plotted rho^2_0/rho^0_0 is a lower bound that rises
+    toward the published 0.08292 as it converges. The residual and the achieved surface value are
+    logged; raise max_iterations for a closer match. A diagonal-operator ALI/SOR method (checklist
+    A2) would reach the semi-infinite limit far faster.
 
     Sign / reference note: Q is measured against the LL04 reference direction (los_gamma = 0), which
     may differ in sign from TB1999; compare the magnitude of the emergent Q/I.
@@ -143,7 +144,8 @@ def main():
         n_mu_quadrature=6,
         n_phi_quadrature=3,
         max_iterations=100,
-        tolerance=2e-4,
+        tolerance=1e-5,
+        ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
 

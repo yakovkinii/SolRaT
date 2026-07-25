@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, Union
 
@@ -235,6 +236,13 @@ class NLTEStratifiedAtmosphere:
     :param tolerance:  convergence threshold on :math:`\max|\Delta\rho|`.
     :param top_incident_stokes:  Stokes incident from the observer-side boundary (defaults
         to zero).  The lower boundary uses the ``initial_stokes`` passed to :meth:`forward`.
+    :param ng_acceleration:  enable Ng (1974) convergence acceleration of the Lambda-iteration:
+        every ``ng_period`` iterations the last four density-matrix iterates are extrapolated to
+        their fixed point by a small least-squares problem, cutting the iteration count. It operates
+        on rho as an opaque vector (atom-model independent), preserves the trace normalization (the
+        extrapolation weights sum to one), and leaves the converged solution unchanged.
+    :param ng_period:  number of iterations between Ng extrapolations (used only when
+        ``ng_acceleration`` is enabled).
     """
 
     def __init__(
@@ -249,6 +257,8 @@ class NLTEStratifiedAtmosphere:
         max_iterations: int = 50,
         tolerance: float = 1e-4,
         top_incident_stokes: Optional[Stokes] = None,
+        ng_acceleration: bool = False,
+        ng_period: int = 4,
     ):
         assert abs(np.cos(los_theta)) >= 1e-4, "Observer cos(theta) too close to zero (tangential view)."
         assert n_mu_quadrature >= 1 and n_phi_quadrature >= 1, "Need at least one mu and one phi quadrature point."
@@ -256,6 +266,7 @@ class NLTEStratifiedAtmosphere:
             "n_mu_quadrature must be even: Gauss-Legendre over [-1, 1] with odd order "
             "includes a tangential mu = 0 ray (infinite path length)."
         )
+        assert ng_period >= 1, "ng_period must be >= 1."
 
         self.model = model
         self.stratification = stratification
@@ -267,6 +278,8 @@ class NLTEStratifiedAtmosphere:
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.top_incident_stokes = top_incident_stokes
+        self.ng_acceleration = ng_acceleration
+        self.ng_period = ng_period
 
         # Diagnostics populated by forward()
         self.rho_grid: Optional[List[BaseRho]] = None
@@ -414,6 +427,7 @@ class NLTEStratifiedAtmosphere:
         # 4. Lambda-iteration: rho(old) -> formal solution for I along each ray -> reconstruct
         # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
         # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
+        rho_history: List[List[BaseRho]] = []  # last few iterates, for optional Ng acceleration
         for iteration in range(self.max_iterations):
             stokes_per_ray: List[np.ndarray] = []
             for r in range(len(rays)):
@@ -438,12 +452,22 @@ class NLTEStratifiedAtmosphere:
                 )
                 new_rho_grid.append(see.get_solution())
 
+            if self.ng_acceleration:
+                rho_history.append(new_rho_grid)
+                if len(rho_history) > 4:
+                    rho_history.pop(0)
+                if len(rho_history) == 4 and (iteration + 1) % self.ng_period == 0:
+                    accelerated = self._ng_accelerate(rho_history)
+                    if accelerated is not None:
+                        new_rho_grid = accelerated
+                        rho_history[-1] = accelerated
+
             residual = self._rho_grid_diff(rho_grid, new_rho_grid)
             rho_grid = new_rho_grid
             self.iterations_used = iteration + 1
             self.final_residual = residual
             self.residual_history.append(residual)
-            logging.warning(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
+            logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
             if residual < self.tolerance:
                 break
 
@@ -796,3 +820,66 @@ class NLTEStratifiedAtmosphere:
                 if d > max_diff:
                     max_diff = d
         return float(max_diff)
+
+    @staticmethod
+    def _ng_accelerate(history: List[List[BaseRho]]) -> Optional[List[BaseRho]]:
+        r"""
+        Ng (1974) extrapolation of the last four density-matrix iterates ``history`` (oldest first),
+        returning an accelerated grid, or ``None`` if the local least-squares system is degenerate
+        (near convergence). Operates on rho as an opaque complex vector, so it is atom-model
+        independent; the extrapolation weights sum to one, preserving the trace normalization and the
+        fixed point (all iterate differences vanish there).
+
+        Reference: Ng (1974); Olson, Auer & Buchler (1986); Hubeny & Mihalas (2014), Sec. 13.3.
+        """
+        x3, x2, x1, x0 = history[-4], history[-3], history[-2], history[-1]
+        layout = [(depth, key) for depth in range(len(x0)) for key in sorted(x0[depth].data)]
+        v0 = NLTEStratifiedAtmosphere._flatten_rho_grid(x0, layout)
+        v1 = NLTEStratifiedAtmosphere._flatten_rho_grid(x1, layout)
+        v2 = NLTEStratifiedAtmosphere._flatten_rho_grid(x2, layout)
+        v3 = NLTEStratifiedAtmosphere._flatten_rho_grid(x3, layout)
+
+        d0 = v0 - v1
+        q1 = d0 - (v1 - v2)
+        q2 = d0 - (v2 - v3)
+        a11 = float(q1 @ q1)
+        a12 = float(q1 @ q2)
+        a22 = float(q2 @ q2)
+        det = a11 * a22 - a12 * a12
+        if not np.isfinite(det) or det <= 1e-28 * (a11 * a22 + 1e-300):
+            return None
+        b1 = float(q1 @ d0)
+        b2 = float(q2 @ d0)
+        c1 = (b1 * a22 - b2 * a12) / det
+        c2 = (a11 * b2 - a12 * b1) / det
+        if not (np.isfinite(c1) and np.isfinite(c2)):
+            return None
+        # Extrapolated iterate (1 - c1 - c2) x0 + c1 x1 + c2 x2 (weights sum to 1).
+        return NLTEStratifiedAtmosphere._combine_rho_grids([x0, x1, x2], [1.0 - c1 - c2, c1, c2])
+
+    @staticmethod
+    def _flatten_rho_grid(grid: List[BaseRho], layout: List) -> np.ndarray:
+        r"""
+        Flatten a density-matrix grid to a real vector (real and imaginary parts) in the fixed
+        ``layout`` order of ``(depth, coherence key)`` pairs, for the Ng least-squares.
+        """
+        vals = np.empty(2 * len(layout), dtype=np.float64)
+        for idx, (depth, key) in enumerate(layout):
+            value = grid[depth].data[key]
+            vals[2 * idx] = value.real
+            vals[2 * idx + 1] = value.imag
+        return vals
+
+    @staticmethod
+    def _combine_rho_grids(grids: List[List[BaseRho]], coefficients: List[float]) -> List[BaseRho]:
+        r"""
+        Linear combination :math:`\sum_k c_k\,\rho_k` of density-matrix grids, coherence by
+        coherence, returning a new grid with the structure of ``grids[0]``.
+        """
+        combined: List[BaseRho] = []
+        for depth in range(len(grids[0])):
+            merged = copy.deepcopy(grids[0][depth])
+            for key in merged.data:
+                merged.data[key] = sum(c * grid[depth].data[key] for c, grid in zip(coefficients, grids))
+            combined.append(merged)
+        return combined
