@@ -192,8 +192,11 @@ class NLTEStratifiedAtmosphere:
       profile evaluated at the local velocity projection of each ray at each depth, valid
       while the grid resolves the gradient (the per-cell line shift stays below the line
       width; a warning is emitted otherwise).
-    * The line is pure scattering (collisionless). A grey continuum is added per depth with a
-      constant continuum-to-line ratio and an LTE source :math:`B(T(z))`.
+    * The line is treated as scattering; when the atom is configured with parametrized collisions
+      (:class:`ParametrizedCollisions`) the inelastic/superelastic and depolarizing rates enter the
+      SEE and thermalize the line toward LTE. A grey continuum is added per depth with an LTE
+      (Planck) source :math:`B(T(z))` (a constant continuum-to-line ratio, or an explicit
+      :math:`k_c(z)`).
 
     Angles follow the LL04 convention (Fig. 5.9): a fixed reference frame with ``z`` along
     the vertical / atmosphere normal. A propagation direction is
@@ -279,8 +282,9 @@ class NLTEStratifiedAtmosphere:
 
         logging.warning(
             "NLTEStratifiedAtmosphere: the self-consistent NLTE solution is not yet rigorously "
-            "validated against reference solutions (no benchmark comparison, and collisional "
-            "thermalization is not yet implemented). Treat the output as illustrative/experimental."
+            "validated against reference solutions (no completed benchmark comparison). Collisional "
+            "thermalization via a configured ParametrizedCollisions is supported but itself not yet "
+            "validated. Treat the output as illustrative/experimental."
         )
 
     @log_method
