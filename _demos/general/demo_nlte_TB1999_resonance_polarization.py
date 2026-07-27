@@ -15,10 +15,13 @@ from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 _TEMPERATURE_K = 6000.0  # isothermal slab
-_EPSILON = 1.0e-4  # TB1999 Fig. 1 / Fig. 8 photon destruction probability
-_MU_OBSERVER = 0.1  # near-limb line of sight for the emergent-polarization check (TB1999 Table 4)
-_TB1999_SURFACE_ALIGNMENT = 0.08292  # TB1999 surface rho^2_0/rho^0_0 for epsilon=1e-4, delta2=0 (p. 446)
-_TB1999_QI_PERCENT_MU_0P1 = -9.061  # TB1999 Table 4 emergent Q/I at mu=0.1 for epsilon=1e-4
+_EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
+_MU_OBSERVER = 0.0  # tangential line of sight (mu = 0): emergent Q/I = surface source function (Table 4)
+# TB1999 Table 4 reference (epsilon=1e-2, delta2=0), fully angle/space-resolved. The double-Gauss
+# quadrature counts n_mu_quadrature // 2 points per hemisphere (same convention as TB1999's n_mu), so
+# n_mu_quadrature = 30 matches their converged n_mu = 15; coarser values fall short.
+_TB1999_SURFACE_ALIGNMENT = 0.05666  # surface rho^2_0/rho^0_0
+_TB1999_QI_PERCENT_TANGENTIAL = -6.132  # tangential (mu = 0) emergent line-center Q/I
 
 
 def c_ul_for_epsilon(epsilon: float, transition, temperature_K: float) -> float:
@@ -52,13 +55,13 @@ def log_depth_grid(z_max_cm: float, n_depth: int, min_fraction: float = 1e-9) ->
 
 def build_frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarray:
     r"""
-    Frequency grid at ~2 points per Doppler width over +-6 Doppler widths (TB1999 note that two
+    Frequency grid at ~2 points per Doppler width over +-4 Doppler widths (TB1999 note that two
     frequency points per Doppler width suffice for the isothermal Gaussian-profile benchmark).
     """
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
-    step = 0.5 * delta_nu_D
-    return np.arange(nu0 - 6.0 * delta_nu_D, nu0 + 6.0 * delta_nu_D + 0.5 * step, step)
+    step = 0.25 * delta_nu_D
+    return np.arange(nu0 - 4.0 * delta_nu_D, nu0 + 4.0 * delta_nu_D + 0.5 * step, step)
 
 
 def upper_level_alignment(atmosphere: NLTEStratifiedAtmosphere, upper_level_id: str) -> np.ndarray:
@@ -77,40 +80,45 @@ def upper_level_alignment(atmosphere: NLTEStratifiedAtmosphere, upper_level_id: 
 
 def main():
     r"""
-    TB1999 Figure 1 reproduction (for manual comparison against Trujillo Bueno & Manso Sainz 1999,
+    TB1999 benchmark reproduction (for manual comparison against Trujillo Bueno & Manso Sainz 1999,
     ApJ 516, 436).
 
     Their standard resonance-line-polarization benchmark: a J=0 -> J=1 two-level atom in an
     isothermal, self-emitting, plane-parallel slab, no background continuum, no magnetic field
     (Hanle factor H^(2) = 1), no depolarizing collisions (delta^(2) = 0), and photon destruction
-    probability epsilon = 1e-4 set through the parametrized collisional de-excitation rate. The
-    demo plots the upper-level alignment rho^2_0/rho^0_0 versus optical depth measured from the
-    surface (TB1999 Fig. 1 solid line / Fig. 8 delta2=0 curve), with a reference line at the
-    published surface value 0.08292. It also logs the emergent line-center Q/I at mu = 0.1 for
-    comparison with TB1999 Table 4 (-9.061 %).
+    probability epsilon (set through the parametrized collisional de-excitation rate). This demo uses
+    epsilon = 1e-2, which converges far faster than TB1999's headline 1e-4 while still comparing to
+    tabulated values (their Table 4).
 
-    The optical-depth grid is log-spaced in depth below the surface so it spans the same decades as
-    TB1999 Fig. 1 (roughly 1e-3 up to the total optical thickness, here ~1e6, effectively
-    semi-infinite).
+    The plot is the upper-level alignment rho^2_0/rho^0_0 versus optical depth from the surface (TB1999
+    Fig. 1 / Fig. 8, delta2=0), with a reference line at the tabulated surface value (Table 4). The log
+    also reports the tangential (mu = 0) line-center Q/I against the Table 4 value: the mu = 0 emergent
+    is the Eddington-Barbier limit I(0) = S(tau=0) (the surface source function), computed without
+    integrating the ray. The frequency-resolved emergent Q/I profile (mu = 0.1, TB1999 Fig. 10) is a
+    separate demo, demo_nlte_TB1999_resonance_polarization_mu01.py.
 
-    Convergence caveat (this is the central message of TB1999): plain Lambda-iteration converges
-    only in ~1/epsilon iterations for a semi-infinite atmosphere (their Figs. 2, 4, 6). This demo
-    enables Ng acceleration (ng_acceleration=True), which extrapolates the rho iterates and cuts the
-    iteration count substantially, but full epsilon = 1e-4 convergence still needs many iterations;
-    the run therefore remains partially converged. Starting from the isotropic LTE guess the
-    alignment is built up from below, so the plotted rho^2_0/rho^0_0 is a lower bound that rises
-    toward the published 0.08292 as it converges. The residual and the achieved surface value are
-    logged; raise max_iterations for a closer match. A diagonal-operator ALI/SOR method (checklist
-    A2) would reach the semi-infinite limit far faster.
+    Note on angular resolution: TB1999 Table 2/3 show the surface rho^2_0/rho^0_0 approaching its
+    converged value only as the angular quadrature is refined. This code uses a double-Gauss mu rule
+    (an independent Gauss-Legendre rule per hemisphere), which counts n_mu_quadrature // 2 points per
+    hemisphere -- the same convention as TB1999's n_mu -- and, by putting the surface mu = 0 kink on a
+    subinterval boundary, converges to the tabulated value instead of a low-biased one. n_mu_quadrature
+    = 30 matches their converged n_mu = 15; coarser values fall short.
 
-    Sign / reference note: Q is measured against the LL04 reference direction (los_gamma = 0), which
-    may differ in sign from TB1999; compare the magnitude of the emergent Q/I.
+    The optical-depth grid is log-spaced in depth below the surface so it spans the surface decades
+    (roughly 1e-3 up to the total optical thickness, here ~1e6, effectively semi-infinite).
+
+    Convergence caveat: plain Lambda-iteration converges in ~1/epsilon iterations (TB1999 Figs. 2,
+    4, 6); at epsilon = 1e-2 that is a few hundred iterations (Ng acceleration cuts it further).
+    Starting from the isotropic LTE guess the alignment builds up from below toward the tabulated
+    value; the residual and the achieved surface value are logged. A diagonal-operator ALI/SOR method
+    (checklist A2) would converge faster still.
     """
     setup_logging()
 
     number_density_cm3 = 1.0e11  # constant absorber density; sets the total vertical optical thickness
     z_max_cm = 1000e5  # slab thickness [cm] (1000 km)
-    n_depth = 90  # log-spaced in depth below the surface, to resolve ~1e-3 .. total-tau decades
+    n_depth = 400  # log-spaced in depth below the surface; fine enough (Delta tau / tau ~ 0.05 near
+    # tau ~ 1) that the DELO formal solution resolves the surface anisotropy that sets rho^2_0/rho^0_0
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -141,15 +149,16 @@ def main():
         los_theta=float(np.arccos(_MU_OBSERVER)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=6,
+        n_mu_quadrature=30,  # double-Gauss: 15 points per hemisphere, matching TB1999's converged n_mu
         n_phi_quadrature=3,
-        max_iterations=100,
-        tolerance=1e-5,
+        max_iterations=1000,
+        tolerance=1e-10,
         ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
+        ng_damping=0.7,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
 
-    vertical_tau = atmosphere.tau_grid * _MU_OBSERVER  # tau_grid = int eta dz / |mu_obs|
+    vertical_tau = atmosphere.tau_grid  # tau_grid is the vertical line optical depth (observer-independent)
     optical_depth_from_surface = vertical_tau[-1] - vertical_tau
     alignment = upper_level_alignment(atmosphere, upper_level_id)
     surface_alignment = alignment[-1]
@@ -166,26 +175,28 @@ def main():
         "surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, _TB1999_SURFACE_ALIGNMENT
     )
     logging.info(
-        "emergent line-center Q/I at mu=%.2f = %.3f %%  (TB1999 Table 4: %.3f %%, mind the sign)",
-        _MU_OBSERVER,
+        "tangential (mu=0) line-center Q/I = %.3f %%  (TB1999 Table 4: %.3f %%)",
         emergent_qi_percent,
-        _TB1999_QI_PERCENT_MU_0P1,
+        _TB1999_QI_PERCENT_TANGENTIAL,
     )
 
-    plt.figure(figsize=(7, 5))
-    plt.axhline(
+    _, ax_alignment = plt.subplots(figsize=(7, 5))
+
+    # Internal atomic alignment vs optical depth (TB1999 Fig. 1 / Fig. 8, delta2 = 0).
+    ax_alignment.axhline(
         _TB1999_SURFACE_ALIGNMENT,
         color="k",
         linestyle="--",
         label=f"TB1999 surface value = {_TB1999_SURFACE_ALIGNMENT}",
     )
-    plt.plot(optical_depth_from_surface[:-1], alignment[:-1], marker=".", label="SolRaT")
-    plt.xscale("log")
-    plt.xlabel(r"optical depth from surface  $\tau$")
-    plt.ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")
-    plt.ylim(-0.02, 0.10)
-    plt.title(rf"TB1999 Fig. 1 reproduction ($\epsilon = {_EPSILON:.0e}$, $\delta^2 = 0$)")
-    plt.legend()
+    ax_alignment.plot(optical_depth_from_surface[:-1], alignment[:-1], marker=".", label="SolRaT")
+    ax_alignment.set_xscale("log")
+    ax_alignment.set_xlabel(r"optical depth from surface  $\tau$")
+    ax_alignment.set_ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")
+    ax_alignment.set_ylim(-0.02, 0.10)
+    ax_alignment.set_title(rf"TB1999 Fig. 1 / Fig. 8 ($\epsilon = {_EPSILON:.0e}$, $\delta^2 = 0$)")
+    ax_alignment.legend()
+
     plt.tight_layout()
     plt.show()
 

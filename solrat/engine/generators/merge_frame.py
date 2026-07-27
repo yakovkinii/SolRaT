@@ -15,7 +15,8 @@ from solrat.engine.generators.merge_loopers import DummyOrAlreadyMerged, Looper
 
 def merge(df1, df2, on=None):
     """
-    Merge helper function with overwritten default behavior.
+    Merge helper function with overwritten default behavior. Used only for the one-time looper
+    construction (:meth:`Frame.__init__`); the per-call operations use the numpy ``_Table`` backend.
     """
     if on is None:
         on = list(set(df1.columns).intersection(set(df2.columns)))
@@ -24,6 +25,129 @@ def merge(df1, df2, on=None):
         return df1.merge(df2, how="cross")
     else:
         return df1.merge(df2, on=on, how="inner")
+
+
+def _as_column(values: List) -> np.ndarray:
+    """
+    Build a 1-D column array from per-row values. Rows may be array-valued (e.g. the T^K_Q or profile
+    factors, which carry a vector over Stokes/frequency); those are held in an object array so numpy
+    does not try to stack them into a 2-D block. Purely scalar rows keep their natural numeric dtype.
+    """
+    values = list(values)
+    if any(isinstance(v, np.ndarray) for v in values):
+        out = np.empty(len(values), dtype=object)
+        for i, value in enumerate(values):
+            out[i] = value
+        return out
+    return np.asarray(values)
+
+
+class _Table:
+    r"""
+    Minimal columnar table backing the :class:`Frame` engine: an ordered dict of equal-length numpy
+    arrays plus a row count (kept explicitly so the empty-0-column seed used for cross joins is
+    representable). It replaces the internal pandas ``DataFrame`` so the many small per-cell frame
+    operations in the NLTE loop avoid pandas' fixed per-call overhead.
+
+    Index columns keep their natural dtype (float for J/K/Q/M, object for string ids); factor and
+    coefficient columns are object arrays whose entries may themselves be arrays. Joins, group-sums
+    and uniqueness are done with plain Python dicts over row-key tuples -- fast on the small frames of
+    the hot path, and semantically equivalent to the pandas inner-join / groupby-sum / drop-duplicates
+    they replace.
+    """
+
+    def __init__(self, columns: Union[Dict[str, np.ndarray], None] = None, n_rows: Union[int, None] = None):
+        self.columns: Dict[str, np.ndarray] = dict(columns) if columns is not None else {}
+        if n_rows is not None:
+            self._n_rows = int(n_rows)
+        elif self.columns:
+            self._n_rows = len(next(iter(self.columns.values())))
+        else:
+            self._n_rows = 0
+
+    @property
+    def n_rows(self) -> int:
+        return self._n_rows
+
+    @property
+    def names(self) -> List[str]:
+        return list(self.columns.keys())
+
+    def __contains__(self, name: str) -> bool:
+        return name in self.columns
+
+    def copy(self) -> "_Table":
+        return _Table({name: array.copy() for name, array in self.columns.items()}, n_rows=self._n_rows)
+
+    def drop(self, name: str) -> None:
+        del self.columns[name]
+
+    def rename(self, old: str, new: str) -> None:
+        self.columns[new] = self.columns.pop(old)
+
+    def to_dataframe(self) -> pd.DataFrame:
+        if not self.columns:
+            return pd.DataFrame(index=range(self._n_rows), columns=[])
+        return pd.DataFrame(self.columns)
+
+    @staticmethod
+    def from_dataframe(df: pd.DataFrame) -> "_Table":
+        return _Table({column: df[column].to_numpy() for column in df.columns}, n_rows=len(df))
+
+    def unique(self, columns: List[str]) -> "_Table":
+        """Distinct rows over ``columns`` (pandas ``drop_duplicates``), preserving first-seen order."""
+        if len(columns) == 0:
+            return _Table(n_rows=1)
+        keys = list(zip(*[self.columns[column] for column in columns]))
+        seen = set()
+        order = []
+        for key in keys:
+            if key not in seen:
+                seen.add(key)
+                order.append(key)
+        new_columns = {
+            column: np.asarray([key[j] for key in order], dtype=self.columns[column].dtype)
+            for j, column in enumerate(columns)
+        }
+        return _Table(new_columns, n_rows=len(order))
+
+    def add_joined_column(self, name: str, dependency_columns: List[str], source: "_Table") -> None:
+        """Add ``name`` by looking each row's ``dependency_columns`` tuple up in ``source`` (inner join)."""
+        source_values = source.columns[name]
+        if len(dependency_columns) == 0:
+            self.columns[name] = _as_column([source_values[0]] * self._n_rows)
+            return
+        source_keys = list(zip(*[source.columns[column] for column in dependency_columns]))
+        value_by_key = {key: value for key, value in zip(source_keys, source_values)}
+        row_keys = list(zip(*[self.columns[column] for column in dependency_columns]))
+        self.columns[name] = _as_column([value_by_key[key] for key in row_keys])
+
+    def groupby_sum(self, group_columns: List[str], value_column: str) -> "_Table":
+        """Group by ``group_columns`` and sum ``value_column`` (pandas ``groupby(...).sum()``)."""
+        keys = list(zip(*[self.columns[column] for column in group_columns]))
+        values = self.columns[value_column]
+        accumulator: Dict = {}
+        order = []
+        for key, value in zip(keys, values):
+            if key in accumulator:
+                accumulator[key] = accumulator[key] + value
+            else:
+                accumulator[key] = value
+                order.append(key)
+        new_columns = {
+            column: np.asarray([key[j] for key in order], dtype=self.columns[column].dtype)
+            for j, column in enumerate(group_columns)
+        }
+        new_columns[value_column] = _as_column([accumulator[key] for key in order])
+        return _Table(new_columns, n_rows=len(order))
+
+    def sum_column(self, name: str):
+        """Sum a whole column (row entries may be arrays); returns the accumulated value."""
+        values = self.columns[name]
+        total = values[0]
+        for value in values[1:]:
+            total = total + value
+        return total
 
 
 class SumLimits:
@@ -104,6 +228,9 @@ class Frame(Generic[SumLimitsT]):
 
     Loopers are merged immediately to the base frame.
     Factors are stored and evaluated+merged when needed.
+
+    The table is held in a numpy-backed ``_Table`` (:attr:`_table`); the ``frame`` property exposes it
+    as a pandas ``DataFrame`` for backward compatibility (reading, copying, or assigning ``.frame``).
     """
 
     @staticmethod
@@ -112,30 +239,46 @@ class Frame(Generic[SumLimitsT]):
         return Frame(base_frame=base_frame, **looper_dict)
 
     def __init__(self, base_frame: Union[pd.DataFrame, None] = None, **kwargs: Looper):
+        # The one-time looper construction is done with pandas (loopers operate on DataFrames), then
+        # converted to the numpy ``_Table`` backend used by all per-call operations.
         if base_frame is not None:
-            self.frame: pd.DataFrame = base_frame.copy()
+            df: pd.DataFrame = base_frame.copy()
         else:
-            self.frame: pd.DataFrame = pd.DataFrame(index=[0], columns=[])
+            df = pd.DataFrame(index=[0], columns=[])
 
         for looper_name, looper in kwargs.items():
             looper.set_name(looper_name)
             if isinstance(looper, DummyOrAlreadyMerged):
                 continue
             dependent_cols = list(looper.get_directly_dependent_columns())
-            sub_frame = self.construct_sub_frame(dependent_cols)
+            if len(dependent_cols) == 0:
+                sub_frame = pd.DataFrame(index=[0], columns=[])
+            else:
+                sub_frame = df[dependent_cols].drop_duplicates().reset_index(drop=True)
             sub_frame_filled = looper.fill_frame(sub_frame)
             assert not sub_frame_filled[looper_name].isna().any()
-            self.frame = merge(self.frame, sub_frame_filled)
-            # logging.log(VERBOSE, f"Merged {looper_name}, frame shape = {self.frame.shape}")
+            df = merge(df, sub_frame_filled)
 
+        self._table: _Table = _Table.from_dataframe(df)
         self.factors: Dict[str, FrameFactor] = {}
         self._n_factors = 0  # for naming only
-        # logging.log(VERBOSE, f"Frame shape after initialization: {self.frame.shape}")
+
+    @property
+    def frame(self) -> pd.DataFrame:
+        """Pandas view of the table (backward compatibility for modeler code that reads ``.frame``)."""
+        return self._table.to_dataframe()
+
+    @frame.setter
+    def frame(self, value: pd.DataFrame) -> None:
+        self._table = _Table.from_dataframe(value)
 
     @log_method
     def copy(self):
-        new_frame = Frame()
-        new_frame.frame = self.frame.copy()
+        # Bypass __init__: it builds (and _Table-converts) a throwaway empty pandas DataFrame that we
+        # immediately overwrite below. copy() is on the per-cell hot path, so that empty-DataFrame
+        # construction dominated the runtime; __new__ sets up the instance without it.
+        new_frame = Frame.__new__(Frame)
+        new_frame._table = self._table.copy()
         new_frame.factors = {k: factor.copy() for k, factor in self.factors.items()}
         new_frame._n_factors = self._n_factors
         return new_frame
@@ -156,14 +299,14 @@ class Frame(Generic[SumLimitsT]):
 
         return result
 
-    def construct_sub_frame(self, columns: List[str]) -> pd.DataFrame:
+    def construct_sub_frame(self, columns: List[str]) -> _Table:
         """
         This is used to reduce the evaluations of loopers/factors to minimum:
         we get all unique dependencies, evaluate on them, then merge back to the frame.
         """
         if len(columns) == 0:
-            return pd.DataFrame(index=[0], columns=[])
-        return self.frame[columns].drop_duplicates().reset_index(drop=True)
+            return _Table(n_rows=1)
+        return self._table.unique(columns)
 
     @log_method
     def register_multiplication(self, *args: Callable, elementwise: bool = False, **kwargs):
@@ -172,12 +315,12 @@ class Frame(Generic[SumLimitsT]):
         """
         for factor_callable in args:
             name = f"factor_{self._n_factors}"
-            assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
+            assert name not in self._table, f"Cannot add {name} as a factor: name already used."
             self.factors[name] = FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
         for name, factor_callable in kwargs.items():
-            assert name not in self.frame.columns, f"Cannot add {name} as a factor: name already used."
+            assert name not in self._table, f"Cannot add {name} as a factor: name already used."
             self.factors[name] = FrameFactor(name, factor_callable, elementwise=elementwise)
             self._n_factors += 1
 
@@ -191,23 +334,24 @@ class Frame(Generic[SumLimitsT]):
         Construct factor frame, evaluate, and merge it to the main frame
         """
         factor = self.factors[factor_name]
-        # logging.log(VERBOSE, f"Merging factor: {factor}")
 
-        factor_frame = self.construct_sub_frame(factor.dependencies)
-        # Reshape the dependencies so that they support vector evals.
-        arguments = {name: factor_frame[name].values.reshape(-1, 1) for name in factor.dependencies}
+        sub_frame = self.construct_sub_frame(factor.dependencies)
         if factor.elementwise:
             # Do it row-wise, because the factor does not support array inputs.
-            factor_frame[factor_name] = np.nan
-            dfs = []
-            for i in range(factor_frame.shape[0]):
-                row_arguments = {name: arguments[name][i, 0] for name in factor.dependencies}
-                dfs.append(pd.DataFrame({factor_name: [factor.call(**row_arguments)]}))
-            factor_frame[factor_name] = pd.concat(dfs, ignore_index=True)
+            values = []
+            for i in range(sub_frame.n_rows):
+                row_arguments = {name: sub_frame.columns[name][i] for name in factor.dependencies}
+                values.append(factor.call(**row_arguments))
+            sub_frame.columns[factor_name] = _as_column(values)
         else:
-            # Regular logic: just create a column with the factor name and evaluate
-            factor_frame[factor_name] = factor.call(**arguments)
-        self.frame = merge(self.frame, factor_frame)
+            # Regular logic: evaluate the factor on the whole (deduplicated) dependency stack at once.
+            arguments = {name: sub_frame.columns[name].reshape(-1, 1) for name in factor.dependencies}
+            raw = np.reshape(np.asarray(factor.call(**arguments)), (sub_frame.n_rows, -1))
+            if raw.shape[1] == 1:
+                sub_frame.columns[factor_name] = raw[:, 0]
+            else:
+                sub_frame.columns[factor_name] = _as_column([raw[i] for i in range(sub_frame.n_rows)])
+        self._table.add_joined_column(factor_name, factor.dependencies, sub_frame)
         factor.merged = True
 
     def combine_all_merged_factors(self) -> str:
@@ -222,12 +366,15 @@ class Frame(Generic[SumLimitsT]):
             return factor_names[0]
 
         new_factor_name = "*".join(factor_names)
-        self.frame[new_factor_name] = self.frame[factor_names].prod(axis=1)
+        product = self._table.columns[factor_names[0]]
+        for factor_name in factor_names[1:]:
+            product = product * self._table.columns[factor_name]
+        self._table.columns[new_factor_name] = product
         dependencies = list(set().union(*[self.factors[name].dependencies for name in factor_names]))
         self.factors[new_factor_name] = FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
 
         for factor_name in factor_names:
-            del self.frame[factor_name]
+            del self._table.columns[factor_name]
             del self.factors[factor_name]
 
         return new_factor_name
@@ -240,7 +387,7 @@ class Frame(Generic[SumLimitsT]):
 
     def get_other_frame_columns(self, exclude: str) -> List[str]:
         """Get looper columns other than the specified one"""
-        return [col for col in self.frame.columns if col != exclude and col not in self.factors]
+        return [col for col in self._table.names if col != exclude and col not in self.factors]
 
     def reduce_single_index(self, column: Union[str, Looper]):
         """
@@ -249,48 +396,38 @@ class Frame(Generic[SumLimitsT]):
         if isinstance(column, Looper):
             column = column.get_name()
 
-        # logging.log(VERBOSE, "====")
-        # logging.log(VERBOSE, f"Reducing column {column}:")
         dependent_factors = self.get_dependent_factors(column)
-        # logging.log(VERBOSE, f"Dependent factors: {dependent_factors}")
-        # logging.log(VERBOSE, f"Dependent factors details: {[self.factors[df] for df in dependent_factors]}")
 
         if len(dependent_factors) == 0:
-            # logging.log(VERBOSE, f"No dependent factors for column {column}, dropping it directly.")
             self.remove_dependency(column)
-            self.frame = self.frame.drop(columns=column)
+            self._table.drop(column)
             return self
 
         for factor_name in dependent_factors:
-            # logging.log(VERBOSE, f"Ensuring factor {factor_name} is merged for reduction.")
             if not self.factors[factor_name].merged:
-                # logging.log(VERBOSE, f"    Merging factor {factor_name} now.")
                 self.merge_factor(factor_name)
 
         factor_name = self.combine_all_merged_factors()
-        # logging.log(VERBOSE, f"Combined dependent factors into {factor_name} for reduction.")
         self.remove_dependency(column)
 
         group_columns = self.get_other_frame_columns(column)
-        # logging.log(VERBOSE, f"  Grouping by columns: {group_columns} to reduce {column}.")
 
         if len(group_columns) == 0:
-            # logging.log(VERBOSE, "  Reduced the last looper!")
             assert len(self.factors) == 1, f"Reduced all loopers, but some factors remain: {self.factors}"
-            # self.frame = self.frame.drop(columns=column)
-            # logging.log(VERBOSE, f"  No grouping columns left, returning sum of {factor_name}.")
-            # logging.log(VERBOSE, "Calculating the sum over the last looper and returning the result")
-            return self.frame[factor_name].sum()
+            return self._table.sum_column(factor_name)
 
-        self.frame = self.frame.groupby(group_columns)[factor_name].sum().reset_index()
-        # logging.log(VERBOSE, f"  Reduced frame shape: {self.frame.shape}")
+        self._table = self.groupby_sum_keeping_factors(group_columns, factor_name)
         return self
+
+    def groupby_sum_keeping_factors(self, group_columns: List[str], value_column: str) -> _Table:
+        """Group-sum the value column over ``group_columns`` (the surviving loopers)."""
+        return self._table.groupby_sum(group_columns, value_column)
 
     def _reduce(self, columns) -> Union[np.ndarray, float, complex, Self]:
         result = None
         for col in columns:
             assert col not in self.factors, f"Reduction is to be performed on loopers, not factors: {col}"
-            assert col in self.frame.columns, f"Trying to reduce a column not in the frame: {col}"
+            assert col in self._table, f"Trying to reduce a column not in the frame: {col}"
             result = self.reduce_single_index(col)
         return result
 
@@ -303,7 +440,7 @@ class Frame(Generic[SumLimitsT]):
         factor_columns = list(self.factors.keys())
 
         if len(args) == 0 or (len(args) == 1 and args[0] is Ellipsis):
-            result = self._reduce([col for col in self.frame.columns[::-1] if col not in factor_columns])
+            result = self._reduce([col for col in self._table.names[::-1] if col not in factor_columns])
             if result is None:
                 raise ValueError("Trying to return a partially reduced result")
             return result
@@ -320,7 +457,7 @@ class Frame(Generic[SumLimitsT]):
             col.get_name() if isinstance(col, Looper) else col for col in args[ellipsis_index + 1 :]  # noqa: E203
         ]
 
-        frame_columns = [col for col in self.frame.columns if col not in factor_columns]
+        frame_columns = [col for col in self._table.names if col not in factor_columns]
         ellipsis_columns = [col for col in frame_columns if col not in columns_before + columns_after]
         frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
@@ -337,7 +474,7 @@ class Frame(Generic[SumLimitsT]):
         combined_name = self.combine_all_merged_factors()
 
         new_factor_name = "coefficient"
-        self.frame = self.frame.rename(columns={combined_name: new_factor_name})
+        self._table.rename(combined_name, new_factor_name)
         dependencies = self.factors[combined_name].dependencies
         self.factors[new_factor_name] = FrameFactor(new_factor_name, dependencies=dependencies, merged=True)
         del self.factors[combined_name]
@@ -354,5 +491,5 @@ class Frame(Generic[SumLimitsT]):
     def debug_reduce_legacy(self):  # pragma: no cover
         for factor_name in list(self.factors.keys()):
             self.merge_factor(factor_name)
-        factor_names = list(self.factors.keys())
-        return self.frame[factor_names].prod(axis=1).sum()
+        combined_name = self.combine_all_merged_factors()
+        return self._table.sum_column(combined_name)

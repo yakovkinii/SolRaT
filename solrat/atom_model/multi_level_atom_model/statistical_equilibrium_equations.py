@@ -36,7 +36,9 @@ class MultiLevelAtomSEE(BaseSEE):
 
     :param level_registry:  :class:`LevelRegistry` instance for the multi-level atom under study.
     :param transition_registry:  :class:`TransitionRegistry` instance for the multi-level atom under study.
-    :param disable_r_s:  Whether to disable stimulated emission relaxation :math:`R_S`.
+    :param disable_r_s:  DEPRECATED, scheduled for removal. Disables only the stimulated-emission
+        relaxation :math:`R_S`, not the transfer :math:`T_S` nor the RTE stimulated-emission opacity;
+        use the Wien limit (large :math:`h\nu_0 / k T`) to remove stimulated emission consistently.
     :param collisions:  Optional :class:`ParametrizedCollisions` (not-yet-validated feature);
         ``None`` means collisionless (pure scattering).
 
@@ -487,6 +489,8 @@ class MultiLevelAtomSEE(BaseSEE):
 
         Reference: (LL04 7.11, 7.14f)
         """
+        # DEPRECATED: disable_r_s gates only this R_S term (not T_S or the RTE eta_S), so it is not a
+        # consistent stimulated-emission switch. Scheduled for removal (warned at config construction).
         if self.disable_r_s:
             return
 

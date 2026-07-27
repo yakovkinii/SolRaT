@@ -19,7 +19,10 @@ def get_mock_atom_config(  # pragma: no cover
     """
     level_registry = LevelRegistry()
     level_registry.register_level(alpha="lower", J=0, energy_cmm1=0.0, g=1.0)
-    level_registry.register_level(alpha="upper", J=1, energy_cmm1=20_000.0, g=1.0)
+    # High transition energy puts the line deep in the Wien regime (h*nu0 / kT >> 1) at solar
+    # temperatures, so the photon occupation number ~ exp(-h*nu0 / kT) -> 0 and stimulated emission
+    # (RTE eta_S and SEE T_S / R_S) is negligible -- matching TB1999's neglect of stimulated emission.
+    level_registry.register_level(alpha="upper", J=1, energy_cmm1=60_000.0, g=1.0)
 
     transition_registry = TransitionRegistry()
     transition_registry.register_transition(

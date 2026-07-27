@@ -59,7 +59,7 @@ def main():
     quadrature ray sees its own line-of-sight projection of the velocity, and the absorption
     profile is Doppler-shifted accordingly per ray and per depth.
 
-    Tune N and the height span so the printed observer optical depth (tau_grid[-1]) lands
+    Tune N and the height span so the printed vertical optical thickness (tau_grid[-1]) lands
     near the regime you want; the line opacity scales linearly with N(z).
     """
     setup_logging()
@@ -109,7 +109,7 @@ def main():
 
     print(f"NLTE iterations used : {atmosphere.iterations_used}")
     print(f"NLTE final residual  : {atmosphere.final_residual:.3e}")
-    print(f"observer optical depth: {atmosphere.tau_grid[-1]:.3e}")
+    print(f"vertical optical thickness: {atmosphere.tau_grid[-1]:.3e}")
 
     plotter = StokesPlotter(
         "Stratified NLTE atmosphere (velocity gradient)", reference_lambda_A_air=reference_lambda_A_air
