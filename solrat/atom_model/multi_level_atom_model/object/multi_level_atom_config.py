@@ -26,7 +26,7 @@ class MultiLevelAtomConfig(BaseConfig):
     :param N:  Atom numeric concentration for d/dz transfer modeling.
         Can be left equal to 1 for d/dtau modeling.
     :param collisions:  Optional :class:`ParametrizedCollisions` with parametrized collisional
-        rates for the SEE (not-yet-validated feature). ``None`` means collisionless (pure scattering).
+        rates for the SEE. ``None`` means collisionless (pure scattering).
     """
 
     def __init__(

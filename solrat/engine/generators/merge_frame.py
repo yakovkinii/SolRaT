@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from solrat.engine.functions.decorators import log_method
+from solrat.engine.generators.compiled_operator import CompiledOperator
 from solrat.engine.generators.merge_loopers import DummyOrAlreadyMerged, Looper
 
 
@@ -461,6 +462,16 @@ class Frame(Generic[SumLimitsT]):
         ellipsis_columns = [col for col in frame_columns if col not in columns_before + columns_after]
         frame_columns = columns_before + ellipsis_columns + columns_after
         return self._reduce(frame_columns)
+
+    @log_method
+    def to_operator(self, ordered_multiplicand_keys: List[str], coefficient_col: str = "coefficient") -> CompiledOperator:
+        r"""
+        Capture this reduced frame as a :class:`CompiledOperator`: the rows keyed by
+        ``ordered_multiplicand_keys`` (the loop columns left unmerged, in the order the operator is
+        applied against) and the single ``coefficient_col`` column. The remaining
+        ``register_multiplication(value) + reduce`` over those keys is then ``operator.multiply(value)``.
+        """
+        return CompiledOperator.from_columns(self._table.columns, ordered_multiplicand_keys, coefficient_col)
 
     @log_method
     def to_coefficient(self) -> Self:

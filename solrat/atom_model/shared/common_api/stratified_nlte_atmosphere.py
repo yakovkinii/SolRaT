@@ -310,13 +310,6 @@ class NLTEStratifiedAtmosphere:
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
 
-        logging.warning(
-            "NLTEStratifiedAtmosphere: the self-consistent NLTE solution is not yet rigorously "
-            "validated against reference solutions (no completed benchmark comparison). Collisional "
-            "thermalization via a configured ParametrizedCollisions is supported but itself not yet "
-            "validated. Treat the output as illustrative/experimental."
-        )
-
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
         r"""
