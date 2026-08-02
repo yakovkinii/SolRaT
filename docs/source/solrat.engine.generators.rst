@@ -12,6 +12,7 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   solrat.engine.generators.compiled_operator
    solrat.engine.generators.merge_frame
    solrat.engine.generators.merge_loopers
    solrat.engine.generators.multiply

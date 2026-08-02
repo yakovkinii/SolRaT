@@ -170,9 +170,7 @@ def main():
         atmosphere.iterations_used,
         atmosphere.final_residual,
     )
-    logging.info(
-        "surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, _TB1999_SURFACE_ALIGNMENT
-    )
+    logging.info("surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, _TB1999_SURFACE_ALIGNMENT)
     logging.info(
         "tangential (mu=0) line-center Q/I = %.3f %%  (TB1999 Table 4: %.3f %%)",
         emergent_qi_percent,

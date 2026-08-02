@@ -480,7 +480,9 @@ class Frame(Generic[SumLimitsT]):
         return self._reduce(frame_columns)
 
     @log_method
-    def to_operator(self, ordered_multiplicand_keys: List[str], coefficient_col: str = "coefficient") -> CompiledOperator:
+    def to_operator(
+        self, ordered_multiplicand_keys: List[str], coefficient_col: str = "coefficient"
+    ) -> CompiledOperator:
         r"""
         Capture this reduced frame as a :class:`CompiledOperator`: the rows keyed by
         ``ordered_multiplicand_keys`` (the loop columns left unmerged, in the order the operator is
