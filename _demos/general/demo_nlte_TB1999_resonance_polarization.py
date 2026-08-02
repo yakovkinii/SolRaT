@@ -19,7 +19,7 @@ _EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far f
 _MU_OBSERVER = 0.0  # tangential line of sight (mu = 0): emergent Q/I = surface source function (Table 4)
 # TB1999 Table 4 reference (epsilon=1e-2, delta2=0), fully angle/space-resolved. The double-Gauss
 # quadrature counts n_mu_quadrature // 2 points per hemisphere (same convention as TB1999's n_mu), so
-# n_mu_quadrature = 30 matches their converged n_mu = 15; coarser values fall short.
+# n_mu_quadrature = 30 matches their converged n_mu = 15
 _TB1999_SURFACE_ALIGNMENT = 0.05666  # surface rho^2_0/rho^0_0
 _TB1999_QI_PERCENT_TANGENTIAL = -6.132  # tangential (mu = 0) emergent line-center Q/I
 
@@ -60,7 +60,7 @@ def build_frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarra
     """
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
-    step = 0.25 * delta_nu_D
+    step = 0.5 * delta_nu_D  # Use 0.25 for better match
     return np.arange(nu0 - 4.0 * delta_nu_D, nu0 + 4.0 * delta_nu_D + 0.5 * step, step)
 
 
@@ -117,8 +117,7 @@ def main():
 
     number_density_cm3 = 1.0e11  # constant absorber density; sets the total vertical optical thickness
     z_max_cm = 1000e5  # slab thickness [cm] (1000 km)
-    n_depth = 400  # log-spaced in depth below the surface; fine enough (Delta tau / tau ~ 0.05 near
-    # tau ~ 1) that the DELO formal solution resolves the surface anisotropy that sets rho^2_0/rho^0_0
+    n_depth = 80  # use 400 for better match
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -149,11 +148,11 @@ def main():
         los_theta=float(np.arccos(_MU_OBSERVER)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=30,  # double-Gauss: 15 points per hemisphere, matching TB1999's converged n_mu
+        n_mu_quadrature=10,  # Use 30 for better match
         n_phi_quadrature=3,
         max_iterations=1000,
-        tolerance=1e-10,
-        ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
+        tolerance=1e-8,  # Use 1e-10 for better match
+        ng_acceleration=True,
         ng_damping=0.7,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))

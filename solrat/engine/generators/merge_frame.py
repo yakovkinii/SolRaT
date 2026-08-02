@@ -43,6 +43,22 @@ def _as_column(values: List) -> np.ndarray:
     return np.asarray(values)
 
 
+def _rebuild_column(values: List, dtype) -> np.ndarray:
+    """
+    Rebuild a 1-D column from per-row ``values`` (deduplicated / grouped index keys), preserving its
+    dtype. Object columns may hold tuples or arrays (e.g. J-constraint sets); assign those element by
+    element so numpy keeps a 1-D object array instead of stacking them into a 2-D block, which would
+    make the rows unhashable. Scalar columns keep their numeric/string dtype.
+    """
+    values = list(values)
+    if dtype == object:
+        out = np.empty(len(values), dtype=object)
+        for i, value in enumerate(values):
+            out[i] = value
+        return out
+    return np.asarray(values, dtype=dtype)
+
+
 class _Table:
     r"""
     Minimal columnar table backing the :class:`Frame` engine: an ordered dict of equal-length numpy
@@ -107,7 +123,7 @@ class _Table:
                 seen.add(key)
                 order.append(key)
         new_columns = {
-            column: np.asarray([key[j] for key in order], dtype=self.columns[column].dtype)
+            column: _rebuild_column([key[j] for key in order], self.columns[column].dtype)
             for j, column in enumerate(columns)
         }
         return _Table(new_columns, n_rows=len(order))
@@ -136,7 +152,7 @@ class _Table:
                 accumulator[key] = value
                 order.append(key)
         new_columns = {
-            column: np.asarray([key[j] for key in order], dtype=self.columns[column].dtype)
+            column: _rebuild_column([key[j] for key in order], self.columns[column].dtype)
             for j, column in enumerate(group_columns)
         }
         new_columns[value_column] = _as_column([accumulator[key] for key in order])

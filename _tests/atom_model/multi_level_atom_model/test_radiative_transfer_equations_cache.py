@@ -102,7 +102,8 @@ class TestRadiativeTransferEquationsOperatorCache(unittest.TestCase):
         eta_a = rte.calculate_eta_rho_a(rho=rho, atmosphere_parameters=atmosphere_parameters, angles=angles)
         eta_a_hotter = rte.calculate_eta_rho_a(rho=rho, atmosphere_parameters=hotter_atmosphere, angles=angles)
         # A different atmosphere is a different key, so a different (broader-profile) operator is built.
-        assert not np.allclose(eta_a, eta_a_hotter)
+        scale = np.max(np.abs(eta_a))
+        assert not np.allclose(eta_a / scale, eta_a_hotter / scale, atol=1e-6)
 
     def test_clear_invalidates(self):
         model, nu, angles, atmosphere_parameters, rho = self._build()

@@ -90,8 +90,8 @@ def main():
     z_max_cm = 1000e5  # slab thickness [cm] (1000 km)
     # Depth points concentrated in the surface layers (where the mu = 0.1 line core forms) and sparse
     # in the thermalized interior. Bump n_surface if the line core is still shallow vs TB1999 Fig. 10.
-    n_surface = 500  # dense sampling of the surface layers (vertical tau ~ 1e-2 .. 6e1 here)
-    n_deep = 60  # sparse sampling of the thermalized interior (deeper than that, up to tau_total)
+    n_surface = 80   # Use 500 for better match
+    n_deep = 30  # Use 60 for better match
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -120,10 +120,10 @@ def main():
         los_theta=float(np.arccos(_MU_OBSERVER)),  # inclined line of sight, mu = 0.1
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=50,
+        n_mu_quadrature=10, # Use 50 for better match
         n_phi_quadrature=3,
         max_iterations=1000,
-        tolerance=1e-10,
+        tolerance=1e-8, # Use 1e-10 for better match
         ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
         ng_damping=0.7,
     )
