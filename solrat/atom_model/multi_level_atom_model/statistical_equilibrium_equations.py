@@ -36,8 +36,10 @@ class MultiLevelAtomSEE(BaseSEE):
 
     :param level_registry:  :class:`LevelRegistry` instance for the multi-level atom under study.
     :param transition_registry:  :class:`TransitionRegistry` instance for the multi-level atom under study.
-    :param disable_r_s:  Whether to disable stimulated emission relaxation :math:`R_S`.
-    :param collisions:  Optional :class:`ParametrizedCollisions` (not-yet-validated feature);
+    :param disable_r_s:  DEPRECATED, scheduled for removal. Disables only the stimulated-emission
+        relaxation :math:`R_S`, not the transfer :math:`T_S` nor the RTE stimulated-emission opacity;
+        use the Wien limit (large :math:`h\nu_0 / k T`) to remove stimulated emission consistently.
+    :param collisions:  Optional :class:`ParametrizedCollisions`;
         ``None`` means collisionless (pure scattering).
 
     Reference: (LL04 7.11, 7.14a-f); collisional rates (LL04 7.13, eq. 7.101).
@@ -487,6 +489,8 @@ class MultiLevelAtomSEE(BaseSEE):
 
         Reference: (LL04 7.11, 7.14f)
         """
+        # DEPRECATED: disable_r_s gates only this R_S term (not T_S or the RTE eta_S), so it is not a
+        # consistent stimulated-emission switch. Scheduled for removal (warned at config construction).
         if self.disable_r_s:
             return
 
@@ -657,14 +661,34 @@ class MultiLevelAtomSEE(BaseSEE):
         level_id: str,
         K: str,
         Q: str,
-        multiply_by: Union[complex, float, None] = None,
+        multiply_by: Union[complex, float] = 1,
     ):
-        df = frame.frame.copy()
-        df = self.add_equation_index(df, level_id="level_id", K="K", Q="Q", index="index0")
-        df = self.add_equation_index(df, level_id=level_id, K=K, Q=Q, index="index1")
-        if multiply_by is not None:
-            df["coefficient"] = df["coefficient"] * multiply_by
-        self.matrix_builder.add_coefficient_from_df(df)
+        r"""
+        Add a reduced operator ``frame`` (rows keyed by the equation multipole ``level_id/K/Q`` and the
+        coupled rho multipole ``level_id/K/Q`` argument columns, with a scalar ``coefficient`` per row)
+        into the SEE matrix. Reads the numpy ``_Table`` columns directly, maps each (level, K, Q) to its
+        matrix index, and scatter-adds ``multiply_by * coefficient``. An empty frame contributes nothing.
+        """
+        table = frame._table
+        index0 = self._equation_indices(table, "level_id", "K", "Q")
+        index1 = self._equation_indices(table, level_id, K, Q)
+        coefficient = multiply_by * np.asarray(table.columns["coefficient"], dtype=np.complex128)
+        self.matrix_builder.add_coefficients(index0, index1, coefficient)
+
+    def _equation_indices(self, table, level_col: str, K_col: str, Q_col: str) -> np.ndarray:
+        """Matrix index of each row's (level, K, Q), via the same coherence-ids as add_equation_index."""
+        lookup = self.matrix_builder.coherence_id_to_index
+        level_ids = table.columns[level_col]
+        Ks = table.columns[K_col]
+        Qs = table.columns[Q_col]
+        return np.fromiter(
+            (
+                lookup[construct_coherence_id_from_level_id(level_id=level_id, K=K, Q=Q)]
+                for level_id, K, Q in zip(level_ids, Ks, Qs)
+            ),
+            dtype=np.int64,
+            count=len(level_ids),
+        )
 
     def add_equation_index(self, df: pd.DataFrame, level_id: str, K: str, Q: str, index: str):
         """

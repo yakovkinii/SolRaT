@@ -52,11 +52,16 @@ def _log_call_end(message: str, level: int, source_file: str, line_number: int) 
 
 
 def log_method(method):
+    # Resolve the source location once at decoration time: inspect.getsourcelines re-tokenizes the
+    # whole source file, which is far too expensive to do on every call.
+    source_file = inspect.getsourcefile(method)
+    line_number = inspect.getsourcelines(method)[1]
+
     @functools.wraps(method)
     def decorator(self, *args, **kwargs):
+        if not logging.getLogger().isEnabledFor(LOGGING_LEVEL):
+            return method(self, *args, **kwargs)
         class_name = self.__class__.__name__
-        source_file = inspect.getsourcefile(method)
-        line_number = inspect.getsourcelines(method)[1]
 
         level = _get_level()
         _log_call_start(f"{class_name}.{method.__name__}", level, LOGGING_LEVEL, source_file, line_number)
@@ -74,11 +79,12 @@ def log_method(method):
 
 
 def log_method_experimental(method):  # pragma: no cover
+    source_file = inspect.getsourcefile(method)
+    line_number = inspect.getsourcelines(method)[1]
+
     @functools.wraps(method)
     def decorator(self, *args, **kwargs):
         class_name = self.__class__.__name__
-        source_file = inspect.getsourcefile(method)
-        line_number = inspect.getsourcelines(method)[1]
 
         level = _get_level()
         _log_call_start(
@@ -102,10 +108,14 @@ def log_method_experimental(method):  # pragma: no cover
 
 
 def log_function(function):
+    # Resolve the source location once at decoration time (see log_method).
+    source_file = inspect.getsourcefile(function)
+    line_number = inspect.getsourcelines(function)[1]
+
     @functools.wraps(function)
     def decorator(*args, **kwargs):
-        source_file = inspect.getsourcefile(function)
-        line_number = inspect.getsourcelines(function)[1]
+        if not logging.getLogger().isEnabledFor(LOGGING_LEVEL):
+            return function(*args, **kwargs)
 
         level = _get_level()
         _log_call_start(function.__name__, level, LOGGING_LEVEL, source_file, line_number)
@@ -128,11 +138,11 @@ def log_function(function):
 
 
 def log_function_experimental(function):  # pragma: no cover
+    source_file = inspect.getsourcefile(function)
+    line_number = inspect.getsourcelines(function)[1]
+
     @functools.wraps(function)
     def decorator(*args, **kwargs):
-        source_file = inspect.getsourcefile(function)
-        line_number = inspect.getsourcelines(function)[1]
-
         level = _get_level()
         _log_call_start(
             f"{function.__name__} (experimental feature, use with caution!)",

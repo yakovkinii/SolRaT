@@ -98,3 +98,11 @@ class RhoMatrixBuilder:
         """
         df = df[["index0", "index1", "coefficient"]].groupby(["index0", "index1"]).sum().reset_index()
         self.rho_matrix[df.index0, df.index1] += df.coefficient
+
+    def add_coefficients(self, index0: np.ndarray, index1: np.ndarray, coefficient: np.ndarray) -> None:
+        r"""
+        Scatter-add ``coefficient`` into the matrix at ``(index0, index1)``. ``np.add.at`` accumulates
+        repeated ``(index0, index1)`` pairs, matching the groupby-sum of :meth:`add_coefficient_from_df`
+        (the numpy fast path for :meth:`SEE.add_coefficient_for_rho`).
+        """
+        np.add.at(self.rho_matrix, (index0, index1), coefficient)

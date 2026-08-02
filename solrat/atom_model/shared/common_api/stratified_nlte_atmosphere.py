@@ -1,3 +1,4 @@
+import copy
 import logging
 from typing import Callable, Dict, List, Optional, Sequence, Union
 
@@ -25,6 +26,11 @@ Profile = Union[float, Sequence[float], np.ndarray, Callable[[float], float]]
 
 # Static assert message for the per-ray transfer (hot path): no per-call string building.
 _ERR_TANGENTIAL_MU = "Quadrature mu is too close to tangential (|mu| < 1e-6)."
+
+# Observer |mu| below this is treated as an exactly tangential (mu = 0) line of sight: the emergent
+# Stokes is taken as the surface source function (Eddington-Barbier limit I(0, mu->0) = S(tau=0)),
+# so the diverging tangential path length is never integrated.
+_MU_TANGENTIAL_THRESHOLD = 1e-4
 
 
 def _sample_profile(value: Profile, z_cm: np.ndarray, name: str) -> np.ndarray:
@@ -192,8 +198,11 @@ class NLTEStratifiedAtmosphere:
       profile evaluated at the local velocity projection of each ray at each depth, valid
       while the grid resolves the gradient (the per-cell line shift stays below the line
       width; a warning is emitted otherwise).
-    * The line is pure scattering (collisionless). A grey continuum is added per depth with a
-      constant continuum-to-line ratio and an LTE source :math:`B(T(z))`.
+    * The line is treated as scattering; when the atom is configured with parametrized collisions
+      (:class:`ParametrizedCollisions`) the inelastic/superelastic and depolarizing rates enter the
+      SEE and thermalize the line toward LTE. A grey continuum is added per depth with an LTE
+      (Planck) source :math:`B(T(z))` (a constant continuum-to-line ratio, or an explicit
+      :math:`k_c(z)`).
 
     Angles follow the LL04 convention (Fig. 5.9): a fixed reference frame with ``z`` along
     the vertical / atmosphere normal. A propagation direction is
@@ -222,16 +231,31 @@ class NLTEStratifiedAtmosphere:
 
     :param model:  configured :class:`Model`.
     :param stratification:  :class:`StratifiedAtmosphere` height-resolved state.
-    :param los_theta:  observer line-of-sight polar angle [rad] (from vertical).
+    :param los_theta:  observer line-of-sight polar angle [rad] (from vertical). A tangential view
+        (:math:`\theta \to 90^\circ`, :math:`\mu \to 0`) is allowed: the emergent Stokes is then the
+        surface source function (Eddington-Barbier limit), computed without integrating the ray.
     :param los_chi:  observer line-of-sight azimuth [rad].
     :param los_gamma:  observer polarization reference angle [rad] (orientation of +Q).
-    :param n_mu_quadrature:  number of Gauss-Legendre points in :math:`\mu` over [-1, 1];
-        must be even (an odd order places a node at the tangential :math:`\mu = 0`).
+    :param n_mu_quadrature:  total number of :math:`\mu` points; a double-Gauss rule uses
+        ``n_mu_quadrature // 2`` Gauss-Legendre points on each hemisphere ([-1, 0] and [0, 1]).
+        Must be even (so the two hemispheres get equal orders and no node lands on the tangential
+        :math:`\mu = 0`). Comparable to TB1999's ``n_mu``, which likewise counts points per hemisphere.
     :param n_phi_quadrature:  number of uniform azimuthal samples.
     :param max_iterations:  maximum number of iterations.
     :param tolerance:  convergence threshold on :math:`\max|\Delta\rho|`.
     :param top_incident_stokes:  Stokes incident from the observer-side boundary (defaults
         to zero).  The lower boundary uses the ``initial_stokes`` passed to :meth:`forward`.
+    :param ng_acceleration:  enable Ng (1974) convergence acceleration of the Lambda-iteration:
+        every ``ng_period`` iterations the last four density-matrix iterates are extrapolated to
+        their fixed point by a small least-squares problem, cutting the iteration count. It operates
+        on rho as an opaque vector (atom-model independent), preserves the trace normalization (the
+        extrapolation weights sum to one), and leaves the converged solution unchanged.
+    :param ng_period:  number of iterations between Ng extrapolations (used only when
+        ``ng_acceleration`` is enabled). Larger values let the iterates settle into the asymptotic
+        regime before extrapolating, reducing overshoot.
+    :param ng_damping:  under-relaxation of the Ng step in (0, 1]: the accepted update is
+        :math:`\rho_0 + \mathrm{ng\_damping}\,(\rho_{\rm Ng} - \rho_0)`. ``1.0`` is the full Ng step;
+        lower it (e.g. ``0.5``) if the residual jumps up on the extrapolation iterations (overshoot).
     """
 
     def __init__(
@@ -246,13 +270,19 @@ class NLTEStratifiedAtmosphere:
         max_iterations: int = 50,
         tolerance: float = 1e-4,
         top_incident_stokes: Optional[Stokes] = None,
+        ng_acceleration: bool = False,
+        ng_period: int = 4,
+        ng_damping: float = 1.0,
     ):
-        assert abs(np.cos(los_theta)) >= 1e-4, "Observer cos(theta) too close to zero (tangential view)."
+        # A tangential observer (mu -> 0) is allowed: it is handled by the surface-source-function
+        # (Eddington-Barbier) branch in forward(), so no |mu| lower bound is required here.
         assert n_mu_quadrature >= 1 and n_phi_quadrature >= 1, "Need at least one mu and one phi quadrature point."
         assert n_mu_quadrature % 2 == 0, (
-            "n_mu_quadrature must be even: Gauss-Legendre over [-1, 1] with odd order "
-            "includes a tangential mu = 0 ray (infinite path length)."
+            "n_mu_quadrature must be even: the double-Gauss rule splits it evenly between the two "
+            "hemispheres ([-1, 0] and [0, 1]), and no node then lands on the tangential mu = 0."
         )
+        assert ng_period >= 1, "ng_period must be >= 1."
+        assert 0.0 < ng_damping <= 1.0, "ng_damping must be in (0, 1]."
 
         self.model = model
         self.stratification = stratification
@@ -264,6 +294,9 @@ class NLTEStratifiedAtmosphere:
         self.max_iterations = max_iterations
         self.tolerance = tolerance
         self.top_incident_stokes = top_incident_stokes
+        self.ng_acceleration = ng_acceleration
+        self.ng_period = ng_period
+        self.ng_damping = ng_damping
 
         # Diagnostics populated by forward()
         self.rho_grid: Optional[List[BaseRho]] = None
@@ -276,12 +309,6 @@ class NLTEStratifiedAtmosphere:
         # forward()); the profiles themselves are built per (ray, depth).
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
-
-        logging.warning(
-            "NLTEStratifiedAtmosphere: the self-consistent NLTE solution is not yet rigorously "
-            "validated against reference solutions (no benchmark comparison, and collisional "
-            "thermalization is not yet implemented). Treat the output as illustrative/experimental."
-        )
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -364,8 +391,10 @@ class NLTEStratifiedAtmosphere:
         else:
             k_c_per_z = strat.continuum_to_line_ratio * eta_peak  # [n_z]
 
-        # Observer-ray line optical depth (diagnostic): tau = int eta dz / |mu_obs|.
-        d_tau = 0.5 * (eta_peak[1:] + eta_peak[:-1]) * np.diff(z) / abs(mu_obs)
+        # Vertical line optical depth (diagnostic, observer-independent): tau = int eta dz. The
+        # observer-ray depth is this divided by |mu_obs|; storing the vertical value keeps the
+        # diagnostic finite for a tangential (mu = 0) line of sight.
+        d_tau = 0.5 * (eta_peak[1:] + eta_peak[:-1]) * np.diff(z)
         self.tau_grid = np.concatenate([[0.0], np.cumsum(d_tau)])
 
         # Transition rest frequencies, used to build the per-transition absorption profiles that
@@ -410,6 +439,7 @@ class NLTEStratifiedAtmosphere:
         # 4. Lambda-iteration: rho(old) -> formal solution for I along each ray -> reconstruct
         # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
         # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
+        rho_history: List[List[BaseRho]] = []  # last few iterates, for optional Ng acceleration
         for iteration in range(self.max_iterations):
             stokes_per_ray: List[np.ndarray] = []
             for r in range(len(rays)):
@@ -434,26 +464,43 @@ class NLTEStratifiedAtmosphere:
                 )
                 new_rho_grid.append(see.get_solution())
 
+            if self.ng_acceleration:
+                rho_history.append(new_rho_grid)
+                if len(rho_history) > 4:
+                    rho_history.pop(0)
+                if len(rho_history) == 4 and (iteration + 1) % self.ng_period == 0:
+                    accelerated = self._ng_accelerate(rho_history, self.ng_damping)
+                    if accelerated is not None:
+                        new_rho_grid = accelerated
+                        rho_history[-1] = accelerated
+
             residual = self._rho_grid_diff(rho_grid, new_rho_grid)
             rho_grid = new_rho_grid
             self.iterations_used = iteration + 1
             self.final_residual = residual
             self.residual_history.append(residual)
-            logging.warning(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
+            logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
             if residual < self.tolerance:
                 break
 
         self.rho_grid = rho_grid
 
-        # 5. Final propagation along the observer ray.
+        # 5. Final emergent Stokes along the observer ray. A tangential view (|mu| -> 0) is the
+        # Eddington-Barbier limit I(0) = S(tau=0) (the surface source function); otherwise integrate.
         obs_params = [strat.atmosphere_parameters(i, self._project(v_vectors[i], omega_obs)) for i in range(n_z)]
-        observer_stokes_z = self._propagate_ray(
-            rho_grid=rho_grid, z=z, mu_n=mu_obs, rte=rte,
-            params_per_z=obs_params, angles_per_z=obs_angles,
-            number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
-            bottom_bc=bottom_bc, top_bc=top_bc,
-        )  # fmt: skip
-        emergent = observer_stokes_z[-1] if mu_obs > 0 else observer_stokes_z[0]
+        if abs(mu_obs) < _MU_TANGENTIAL_THRESHOLD:
+            emergent = self._tangential_emergent(
+                i_surface=n_z - 1, rte=rte, rho_grid=rho_grid, params_per_z=obs_params,
+                angles_per_z=obs_angles, number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
+            )  # fmt: skip
+        else:
+            observer_stokes_z = self._propagate_ray(
+                rho_grid=rho_grid, z=z, mu_n=mu_obs, rte=rte,
+                params_per_z=obs_params, angles_per_z=obs_angles,
+                number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
+                bottom_bc=bottom_bc, top_bc=top_bc,
+            )  # fmt: skip
+            emergent = observer_stokes_z[-1] if mu_obs > 0 else observer_stokes_z[0]
 
         if hasattr(rte, "clear_operator_cache"):
             rte.clear_operator_cache()
@@ -499,10 +546,28 @@ class NLTEStratifiedAtmosphere:
 
     def _build_quadrature_rays(self) -> List[Dict]:
         r"""
-        Gauss-Legendre :math:`\mu` x uniform :math:`\phi` quadrature.  Each ray weight already
+        Double-Gauss :math:`\mu` x uniform :math:`\phi` quadrature.  Each ray weight already
         includes the :math:`1/(4\pi)` normalization of :math:`J^K_Q`.
+
+        The :math:`\mu` integral uses an independent Gauss-Legendre rule on each hemisphere
+        ([-1, 0] and [0, 1]) rather than a single rule over [-1, 1].  At the surface the radiation
+        field has a kink at :math:`\mu = 0` (up-going rays see the slab, down-going rays see the
+        boundary), which destroys the spectral convergence of a single rule over [-1, 1] and biases
+        the surface anisotropy (hence :math:`\rho^2_0/\rho^0_0`) low.  Splitting at :math:`\mu = 0`
+        puts the kink on a subinterval boundary, so each half is smooth and converges spectrally --
+        this is the standard slab-RT choice (and TB1999's, whose ``n_mu`` counts points per hemisphere).
         """
-        mus, mu_weights = np.polynomial.legendre.leggauss(self.n_mu_quadrature)
+        # n_mu_quadrature total points, split evenly between the two hemispheres.
+        nodes_11, weights_11 = np.polynomial.legendre.leggauss(self.n_mu_quadrature // 2)
+        mus = []
+        mu_weights = []
+        for lower, upper in ((-1.0, 0.0), (0.0, 1.0)):
+            half_width = 0.5 * (upper - lower)
+            midpoint = 0.5 * (upper + lower)
+            mus.extend(half_width * nodes_11 + midpoint)
+            mu_weights.extend(half_width * weights_11)
+        mus = np.array(mus)
+        mu_weights = np.array(mu_weights)
         phi_grid = np.linspace(0.0, 2 * np.pi, self.n_phi_quadrature, endpoint=False)
         phi_weight_each = 2 * np.pi / self.n_phi_quadrature
 
@@ -633,6 +698,52 @@ class NLTEStratifiedAtmosphere:
                 stokes[i - 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
         return stokes
 
+    def _tangential_emergent(
+        self,
+        i_surface: int,
+        rte: BaseRTE,
+        rho_grid: List[BaseRho],
+        params_per_z: List,
+        angles_per_z: List[Angles],
+        number_density: np.ndarray,
+        k_c_per_z: np.ndarray,
+        bp_per_z: List[np.ndarray],
+    ) -> np.ndarray:
+        r"""
+        Emergent Stokes ``[4, n_nu]`` for a tangential line of sight (:math:`\mu \to 0`), the
+        Eddington-Barbier limit :math:`I(0, \mu\to 0) = S(\tau = 0)`: the surface source function
+        :math:`S = K^{-1}\epsilon` at the observer surface, evaluated with the tangential
+        (:math:`\theta = 90^\circ`) transfer coefficients. No path is integrated, so the diverging
+        tangential path length never appears.
+        """
+        rte.N = float(number_density[i_surface])
+        rtc = rte.calculate_all_coefficients(
+            atmosphere_parameters=params_per_z[i_surface], angles=angles_per_z[i_surface], rho=rho_grid[i_surface]
+        )
+        K = rtc.K_z()  # [n_nu, 4, 4]
+        eps = rtc.epsilon_z()[:, :, 0]  # [n_nu, 4]
+        for k in range(4):
+            K[:, k, k] += k_c_per_z[i_surface]
+        eps[:, 0] += k_c_per_z[i_surface] * bp_per_z[i_surface]
+        return self._delo_source_function(K, eps).T  # [4, n_nu]
+
+    @staticmethod
+    def _delo_source_function(K: np.ndarray, epsilon: np.ndarray) -> np.ndarray:
+        r"""
+        Source function :math:`S = K^{-1}\epsilon` (LandiLandi1985 eq. 1), batched over frequency,
+        with a per-frequency pseudo-inverse fallback on a singular ``K``.
+        """
+        try:
+            return np.linalg.solve(K, epsilon[:, :, np.newaxis])[:, :, 0]  # [n_nu, 4]
+        except np.linalg.LinAlgError:
+            source = np.empty_like(epsilon)
+            for n in range(K.shape[0]):
+                try:
+                    source[n] = np.linalg.solve(K[n], epsilon[n])
+                except np.linalg.LinAlgError:
+                    source[n] = np.linalg.pinv(K[n]) @ epsilon[n]
+            return source
+
     @staticmethod
     def _delo_matrix_step(K: np.ndarray, epsilon: np.ndarray, current_stokes: np.ndarray, ds: float) -> np.ndarray:
         r"""
@@ -655,18 +766,8 @@ class NLTEStratifiedAtmosphere:
         :math:`S + e^{-K\,ds}(I - S)` form (DELO with constant source; LL04 Secs. 8.2, 9.15).
         """
         # Source function S = K^{-1} epsilon, i.e. the S such that dI/ds = -K(I - S)
-        # (LandiLandi1985 eq. 1). K carries the continuum on its diagonal and is well-conditioned
-        # almost everywhere, so solve the whole frequency stack at once; fall back per-frequency
-        # on a singular K.
-        try:
-            S = np.linalg.solve(K, epsilon[:, :, np.newaxis])[:, :, 0]  # [n_nu, 4]
-        except np.linalg.LinAlgError:
-            S = np.empty_like(epsilon)
-            for n in range(K.shape[0]):
-                try:
-                    S[n] = np.linalg.solve(K[n], epsilon[n])
-                except np.linalg.LinAlgError:
-                    S[n] = np.linalg.pinv(K[n]) @ epsilon[n]
+        # (LandiLandi1985 eq. 1).
+        S = NLTEStratifiedAtmosphere._delo_source_function(K, epsilon)
 
         # Evolution operator e^{-K ds} by diagonalization O = X diag(e^{-k_i ds}) X^{-1}
         # (LandiLandi1985 eq. 5 and p. 241; LL04 Sec. 8.4).
@@ -792,3 +893,74 @@ class NLTEStratifiedAtmosphere:
                 if d > max_diff:
                     max_diff = d
         return float(max_diff)
+
+    @staticmethod
+    def _ng_accelerate(history: List[List[BaseRho]], damping: float = 1.0) -> Optional[List[BaseRho]]:
+        r"""
+        Ng (1974) extrapolation of the last four density-matrix iterates ``history`` (oldest first),
+        returning an accelerated grid, or ``None`` if the local least-squares system is degenerate
+        (near convergence). Operates on rho as an opaque complex vector, so it is atom-model
+        independent; the extrapolation weights sum to one, preserving the trace normalization and the
+        fixed point (all iterate differences vanish there).
+
+        ``damping`` in (0, 1] under-relaxes the extrapolation step: the returned grid is
+        :math:`\rho_0 + \mathrm{damping}\,(\rho_{\rm Ng} - \rho_0)`, which tames the overshoot of an
+        aggressive extrapolation (``damping = 1`` is the full Ng step). Folding it into the weights
+        keeps their sum at one.
+
+        Reference: Ng (1974); Olson, Auer & Buchler (1986); Hubeny & Mihalas (2014), Sec. 13.3.
+        """
+        x3, x2, x1, x0 = history[-4], history[-3], history[-2], history[-1]
+        layout = [(depth, key) for depth in range(len(x0)) for key in sorted(x0[depth].data)]
+        v0 = NLTEStratifiedAtmosphere._flatten_rho_grid(x0, layout)
+        v1 = NLTEStratifiedAtmosphere._flatten_rho_grid(x1, layout)
+        v2 = NLTEStratifiedAtmosphere._flatten_rho_grid(x2, layout)
+        v3 = NLTEStratifiedAtmosphere._flatten_rho_grid(x3, layout)
+
+        d0 = v0 - v1
+        q1 = d0 - (v1 - v2)
+        q2 = d0 - (v2 - v3)
+        a11 = float(q1 @ q1)
+        a12 = float(q1 @ q2)
+        a22 = float(q2 @ q2)
+        det = a11 * a22 - a12 * a12
+        if not np.isfinite(det) or det <= 1e-28 * (a11 * a22 + 1e-300):
+            return None
+        b1 = float(q1 @ d0)
+        b2 = float(q2 @ d0)
+        c1 = (b1 * a22 - b2 * a12) / det
+        c2 = (a11 * b2 - a12 * b1) / det
+        if not (np.isfinite(c1) and np.isfinite(c2)):
+            return None
+        # Damped extrapolation rho_0 + damping (rho_Ng - rho_0), with rho_Ng = (1-c1-c2) x0 + c1 x1 +
+        # c2 x2. Folded into weights (which still sum to one) over [x0, x1, x2].
+        c0 = 1.0 - c1 - c2
+        weights = [1.0 - damping + damping * c0, damping * c1, damping * c2]
+        return NLTEStratifiedAtmosphere._combine_rho_grids([x0, x1, x2], weights)
+
+    @staticmethod
+    def _flatten_rho_grid(grid: List[BaseRho], layout: List) -> np.ndarray:
+        r"""
+        Flatten a density-matrix grid to a real vector (real and imaginary parts) in the fixed
+        ``layout`` order of ``(depth, coherence key)`` pairs, for the Ng least-squares.
+        """
+        vals = np.empty(2 * len(layout), dtype=np.float64)
+        for idx, (depth, key) in enumerate(layout):
+            value = grid[depth].data[key]
+            vals[2 * idx] = value.real
+            vals[2 * idx + 1] = value.imag
+        return vals
+
+    @staticmethod
+    def _combine_rho_grids(grids: List[List[BaseRho]], coefficients: List[float]) -> List[BaseRho]:
+        r"""
+        Linear combination :math:`\sum_k c_k\,\rho_k` of density-matrix grids, coherence by
+        coherence, returning a new grid with the structure of ``grids[0]``.
+        """
+        combined: List[BaseRho] = []
+        for depth in range(len(grids[0])):
+            merged = copy.deepcopy(grids[0][depth])
+            for key in merged.data:
+                merged.data[key] = sum(c * grid[depth].data[key] for c, grid in zip(coefficients, grids))
+            combined.append(merged)
+        return combined

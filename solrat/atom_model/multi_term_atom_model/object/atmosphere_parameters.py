@@ -35,3 +35,9 @@ class AtmosphereParameters(BaseAtmosphereParameters):
         self.nu_larmor = nu_larmor(magnetic_field_gauss=magnetic_field_gauss)
         self.macroscopic_velocity_cm_sm1 = macroscopic_velocity_cm_sm1
         self.voigt_a = voigt_a
+
+    def _key(self) -> tuple:
+        return (
+            self.magnetic_field_gauss, self.temperature_K, self.delta_v_thermal_cm_sm1,
+            self.nu_larmor, self.macroscopic_velocity_cm_sm1, self.voigt_a,
+        )  # fmt: skip

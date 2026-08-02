@@ -17,3 +17,12 @@ class Angles:
         self.gamma = gamma
         self.chi_B = chi_B
         self.theta_B = theta_B
+
+    def _key(self) -> tuple:
+        return self.chi, self.theta, self.gamma, self.chi_B, self.theta_B
+
+    def __hash__(self) -> int:
+        return hash(self._key())
+
+    def __eq__(self, other) -> bool:
+        return isinstance(other, Angles) and self._key() == other._key()

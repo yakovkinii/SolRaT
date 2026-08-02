@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 from solrat.atom_model.model_registry import Models
@@ -58,9 +59,6 @@ def main():
     number-density profile N(z). The velocity is a full vector field (here vertical), so each
     quadrature ray sees its own line-of-sight projection of the velocity, and the absorption
     profile is Doppler-shifted accordingly per ray and per depth.
-
-    Tune N and the height span so the printed observer optical depth (tau_grid[-1]) lands
-    near the regime you want; the line opacity scales linearly with N(z).
     """
     setup_logging()
 
@@ -109,7 +107,24 @@ def main():
 
     print(f"NLTE iterations used : {atmosphere.iterations_used}")
     print(f"NLTE final residual  : {atmosphere.final_residual:.3e}")
-    print(f"observer optical depth: {atmosphere.tau_grid[-1]:.3e}")
+    print(f"vertical optical thickness: {atmosphere.tau_grid[-1]:.3e}")
+
+    # Physical stratification against the vertical (line-center) optical depth.
+    tau = atmosphere.tau_grid
+    _, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
+    axes[0, 0].plot(tau, stratification.temperature_K, marker=".")
+    axes[0, 0].set_ylabel("temperature [K]")
+    axes[0, 1].plot(tau, stratification.number_density_cm3, marker=".")
+    axes[0, 1].set_yscale("log")
+    axes[0, 1].set_ylabel(r"number density [cm$^{-3}$]")
+    axes[1, 0].plot(tau, stratification.magnetic_field_gauss, marker=".")
+    axes[1, 0].set_ylabel("magnetic field [G]")
+    axes[1, 1].plot(tau, stratification.velocity_cm_sm1 / 1e5, marker=".")
+    axes[1, 1].set_ylabel("macroscopic velocity [km/s]")
+    for ax in axes[1]:
+        ax.set_xlabel(r"vertical optical depth  $\tau$")
+    plt.suptitle("Atmosphere stratification vs optical depth")
+    plt.tight_layout()
 
     plotter = StokesPlotter(
         "Stratified NLTE atmosphere (velocity gradient)", reference_lambda_A_air=reference_lambda_A_air

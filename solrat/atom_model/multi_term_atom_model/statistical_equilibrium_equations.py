@@ -31,7 +31,9 @@ class MultiTermAtomSEE(BaseSEE):
 
     :param level_registry:  LevelRegistry instance for the multi-term atom under study.
     :param transition_registry:  TransitionRegistry instance for the multi-term atom under study.
-    :param disable_r_s:  Whether to disable stimulated emission :math:`R_S` (7.46c).
+    :param disable_r_s:  DEPRECATED, scheduled for removal. Disables only the stimulated-emission
+        relaxation :math:`R_S` (7.46c), not the transfer :math:`T_S` nor the RTE stimulated-emission
+        opacity; use the Wien limit (large :math:`h\nu_0 / k T`) to remove it consistently.
 
     Reference: (LL04 7.38)
 
@@ -652,6 +654,8 @@ class MultiTermAtomSEE(BaseSEE):
 
         Reference: (LL04 7.38, 7.46c)
         """
+        # DEPRECATED: disable_r_s gates only this R_S term (not T_S or the RTE eta_S), so it is not a
+        # consistent stimulated-emission switch. Scheduled for removal (warned at config construction).
         if self.disable_r_s:
             return
 

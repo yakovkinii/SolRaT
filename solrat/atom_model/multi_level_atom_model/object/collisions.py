@@ -1,12 +1,4 @@
-import logging
 from typing import Dict
-
-_NOT_VALIDATED_WARNING = (
-    "ParametrizedCollisions: collisional rates in the multi-level SEE are a new, not-yet-validated "
-    "feature (parametrized inelastic/superelastic transfer and elastic depolarizing rates; "
-    "LL04 Sec. 7.13). Treat results that use collisions as experimental until the TB1999 benchmark "
-    "reproduction is in place."
-)
 
 
 class ParametrizedCollisions:
@@ -30,7 +22,6 @@ class ParametrizedCollisions:
         """
         self._deexcitation_rate_sm1: Dict[str, float] = {}
         self._depolarizing_rate_sm1: Dict[str, Dict[int, float]] = {}
-        logging.warning(_NOT_VALIDATED_WARNING)
 
     def set_deexcitation_rate(self, transition_id: str, rate_sm1: float) -> None:
         r"""
