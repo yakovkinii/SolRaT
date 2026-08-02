@@ -41,9 +41,3 @@ class AtmosphereParameters(BaseAtmosphereParameters):
             self.magnetic_field_gauss, self.temperature_K, self.delta_v_thermal_cm_sm1,
             self.nu_larmor, self.macroscopic_velocity_cm_sm1, self.voigt_a,
         )  # fmt: skip
-
-    def __hash__(self) -> int:
-        return hash(self._key())
-
-    def __eq__(self, other) -> bool:
-        return isinstance(other, AtmosphereParameters) and self._key() == other._key()
