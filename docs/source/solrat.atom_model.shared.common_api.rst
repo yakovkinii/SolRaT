@@ -13,5 +13,6 @@ Submodules
    :maxdepth: 4
 
    solrat.atom_model.shared.common_api.constant_property_slab
+   solrat.atom_model.shared.common_api.milne_eddington_slab
    solrat.atom_model.shared.common_api.multi_slab_atmosphere
    solrat.atom_model.shared.common_api.stratified_nlte_atmosphere
