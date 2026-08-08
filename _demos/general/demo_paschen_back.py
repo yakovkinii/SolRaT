@@ -11,6 +11,9 @@ def main():
     This demo shows the calculation of the Zeeman splitting for the 2p term of hydrogen,
     spanning the linear Zeeman effect regime, the intermediate fields regime,
     and the complete Paschen-Back regime.
+
+    :return: the matplotlib Figure with the term-splitting diagram (not shown; the caller decides
+        whether to display it interactively or save it).
     """
 
     setup_logging()
@@ -40,12 +43,14 @@ def main():
         eigenvalues, eigenvectors = calculate_paschen_back(term=term_2p, magnetic_field_gauss=magnetic_field)
         energies.append(sorted(eigenvalues.data.values()))
 
-    plt.plot(magnetic_fields, np.array(energies), "k")
-    plt.xlabel("Magnetic field (G)")
-    plt.ylabel("Energy (cm$^{-1}$)")
-    plt.title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")
-    plt.show()
+    fig, ax = plt.subplots()
+    ax.plot(magnetic_fields, np.array(energies), "k")
+    ax.set_xlabel("Magnetic field (G)")
+    ax.set_ylabel("Energy (cm$^{-1}$)")
+    ax.set_title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")
+    return fig
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

@@ -15,6 +15,9 @@ def main():
     This demo shows the calculation of  He I D3 transition under extremely strong magnetic fields.
     This result is somewhat related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
     https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
+
+    :return: the StokesPlotter holding the He I D3 Stokes profiles (not shown; the caller decides
+        whether to display it interactively or save ``plotter.fig``).
     """
 
     setup_logging()
@@ -69,8 +72,8 @@ def main():
             label=f"B = {Bz} G",
         )
 
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()
