@@ -14,9 +14,9 @@ from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-_TEMPERATURE_K = 6000.0  # isothermal slab
-_EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
-_MU_OBSERVER = 0.1  # line-of-sight direction cosine mu = 0.1 (TB1999 Fig. 10 emergent Q/I profile)
+TEMPERATURE_K = 6000.0  # isothermal slab
+EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
+MU_OBSERVER = 0.1  # line-of-sight direction cosine mu = 0.1 (TB1999 Fig. 10 emergent Q/I profile)
 
 
 def c_ul_for_epsilon(epsilon: float, transition, temperature_K: float) -> float:
@@ -83,6 +83,9 @@ def main():
 
     The internal radiation field (hence the atomic alignment) is solved with the same double-Gauss mu
     quadrature and log depth grid as the tangential demo; only the observer line of sight differs.
+
+    :return: the matplotlib Figure with the emergent Q/I profile at mu = 0.1 overlaid on the digitized
+        TB1999 Fig. 10 (not shown; the caller decides whether to display it interactively or save it).
     """
     setup_logging()
 
@@ -96,17 +99,17 @@ def main():
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
-    collisions.set_deexcitation_rate(transition.transition_id, c_ul_for_epsilon(_EPSILON, transition, _TEMPERATURE_K))
+    collisions.set_deexcitation_rate(transition.transition_id, c_ul_for_epsilon(EPSILON, transition, TEMPERATURE_K))
 
     params = model.AtmosphereParameters(
-        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=_TEMPERATURE_K
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=TEMPERATURE_K
     )
     nu = build_frequency_grid(transition, params.delta_v_thermal_cm_sm1)
 
     stratification = StratifiedAtmosphere(
         model=model,
         height_cm=surface_refined_depth_grid(z_max_cm, n_surface, n_deep),
-        temperature_K=_TEMPERATURE_K,
+        temperature_K=TEMPERATURE_K,
         number_density_cm3=number_density_cm3,
         magnetic_field_gauss=0.0,
         velocity_cm_sm1=0.0,
@@ -117,7 +120,7 @@ def main():
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=float(np.arccos(_MU_OBSERVER)),  # inclined line of sight, mu = 0.1
+        los_theta=float(np.arccos(MU_OBSERVER)),  # inclined line of sight, mu = 0.1
         los_chi=0.0,
         los_gamma=0.0,
         n_mu_quadrature=10,  # Use 50 for better match
@@ -133,7 +136,7 @@ def main():
     reduced_frequency = (nu - nu0) / (nu0 * params.delta_v_thermal_cm_sm1 / c_cm_sm1)  # (nu - nu0)/Delta nu_D
     qi_profile_percent = 100.0 * emergent.Q / emergent.I  # emergent (mu = 0.1) Q/I profile
 
-    logging.info("TB1999 benchmark (mu = 0.1): epsilon = %.0e, delta2 = 0, no continuum, no field", _EPSILON)
+    logging.info("TB1999 benchmark (mu = 0.1): epsilon = %.0e, delta2 = 0, no continuum, no field", EPSILON)
     logging.info(
         "vertical optical thickness = %.1f, iterations = %d, residual = %.2e",
         float(atmosphere.tau_grid[-1]),
@@ -157,7 +160,7 @@ def main():
     tb_reduced_frequency_full = np.concatenate([tb_reduced_frequency, -tb_reduced_frequency[::-1]])
     tb_qi_percent_full = np.concatenate([tb_qi_percent, tb_qi_percent[::-1]])
 
-    _, ax_qi = plt.subplots(figsize=(7, 5))
+    fig_qi, ax_qi = plt.subplots(figsize=(7, 5))
 
     # Emergent Q/I profile at mu = 0.1 (TB1999 Fig. 10, delta2 = 0).
     ax_qi.axhline(0.0, color="k", linewidth=0.8)
@@ -168,12 +171,12 @@ def main():
     ax_qi.plot(reduced_frequency, qi_profile_percent, marker=".", label=r"SolRaT ($\mu = 0.1$)")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     ax_qi.set_ylabel(r"$100\,Q/I$")
-    ax_qi.set_title(rf"TB1999 Fig. 10 emergent Q/I ($\mu = 0.1$, $\delta^2 = 0$, $\epsilon = {_EPSILON:.0e}$)")
+    ax_qi.set_title(rf"TB1999 Fig. 10 emergent Q/I ($\mu = 0.1$, $\delta^2 = 0$, $\epsilon = {EPSILON:.0e}$)")
     ax_qi.legend()
-
-    plt.tight_layout()
-    plt.show()
+    fig_qi.tight_layout()
+    return fig_qi
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

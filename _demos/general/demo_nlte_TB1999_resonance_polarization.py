@@ -14,14 +14,14 @@ from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-_TEMPERATURE_K = 6000.0  # isothermal slab
-_EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
-_MU_OBSERVER = 0.0  # tangential line of sight (mu = 0): emergent Q/I = surface source function (Table 4)
+TEMPERATURE_K = 6000.0  # isothermal slab
+EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
+MU_OBSERVER = 0.0  # tangential line of sight (mu = 0): emergent Q/I = surface source function (Table 4)
 # TB1999 Table 4 reference (epsilon=1e-2, delta2=0), fully angle/space-resolved. The double-Gauss
 # quadrature counts n_mu_quadrature // 2 points per hemisphere (same convention as TB1999's n_mu), so
 # n_mu_quadrature = 30 matches their converged n_mu = 15
-_TB1999_SURFACE_ALIGNMENT = 0.05666  # surface rho^2_0/rho^0_0
-_TB1999_QI_PERCENT_TANGENTIAL = -6.132  # tangential (mu = 0) emergent line-center Q/I
+TB1999_SURFACE_ALIGNMENT = 0.05666  # surface rho^2_0/rho^0_0
+TB1999_QI_PERCENT_TANGENTIAL = -6.132  # tangential (mu = 0) emergent line-center Q/I
 
 
 def c_ul_for_epsilon(epsilon: float, transition, temperature_K: float) -> float:
@@ -112,6 +112,11 @@ def main():
     Starting from the isotropic LTE guess the alignment builds up from below toward the tabulated
     value; the residual and the achieved surface value are logged. A diagonal-operator ALI/SOR method
     (checklist A2) would converge faster still.
+
+    :return: a tuple ``(alignment_figure, convergence_figure)`` -- the upper-level alignment versus
+        optical depth (TB1999 Fig. 1 / Fig. 8) and the Lambda-iteration convergence history
+        (max\|delta rho\| versus iteration). Neither is shown; the caller decides whether to display
+        them interactively or save them (they are separate manuscript figures).
     """
     setup_logging()
 
@@ -123,10 +128,10 @@ def main():
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
     upper_level_id = transition.level_upper.level_id
-    collisions.set_deexcitation_rate(transition.transition_id, c_ul_for_epsilon(_EPSILON, transition, _TEMPERATURE_K))
+    collisions.set_deexcitation_rate(transition.transition_id, c_ul_for_epsilon(EPSILON, transition, TEMPERATURE_K))
 
     params = model.AtmosphereParameters(
-        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=_TEMPERATURE_K
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=TEMPERATURE_K
     )
     nu = build_frequency_grid(transition, params.delta_v_thermal_cm_sm1)
     line_center_index = int(np.argmin(np.abs(nu - transition.get_mean_transition_frequency_sm1())))
@@ -134,7 +139,7 @@ def main():
     stratification = StratifiedAtmosphere(
         model=model,
         height_cm=log_depth_grid(z_max_cm, n_depth),
-        temperature_K=_TEMPERATURE_K,
+        temperature_K=TEMPERATURE_K,
         number_density_cm3=number_density_cm3,
         magnetic_field_gauss=0.0,
         velocity_cm_sm1=0.0,
@@ -145,7 +150,7 @@ def main():
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=float(np.arccos(_MU_OBSERVER)),
+        los_theta=float(np.arccos(MU_OBSERVER)),
         los_chi=0.0,
         los_gamma=0.0,
         n_mu_quadrature=10,  # Use 30 for better match
@@ -163,40 +168,55 @@ def main():
     surface_alignment = alignment[-1]
     emergent_qi_percent = 100.0 * emergent.Q[line_center_index] / emergent.I[line_center_index]
 
-    logging.info("TB1999 benchmark: epsilon = %.0e, delta2 = 0, no continuum, no field", _EPSILON)
+    logging.info("TB1999 benchmark: epsilon = %.0e, delta2 = 0, no continuum, no field", EPSILON)
     logging.info(
         "vertical optical thickness = %.1f, iterations = %d, residual = %.2e",
         float(vertical_tau[-1]),
         atmosphere.iterations_used,
         atmosphere.final_residual,
     )
-    logging.info("surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, _TB1999_SURFACE_ALIGNMENT)
+    logging.info("surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, TB1999_SURFACE_ALIGNMENT)
     logging.info(
         "tangential (mu=0) line-center Q/I = %.3f %%  (TB1999 Table 4: %.3f %%)",
         emergent_qi_percent,
-        _TB1999_QI_PERCENT_TANGENTIAL,
+        TB1999_QI_PERCENT_TANGENTIAL,
     )
 
-    _, ax_alignment = plt.subplots(figsize=(7, 5))
+    fig_alignment, ax_alignment = plt.subplots(figsize=(7, 5))
 
     # Internal atomic alignment vs optical depth (TB1999 Fig. 1 / Fig. 8, delta2 = 0).
     ax_alignment.axhline(
-        _TB1999_SURFACE_ALIGNMENT,
+        TB1999_SURFACE_ALIGNMENT,
         color="k",
         linestyle="--",
-        label=f"TB1999 surface value = {_TB1999_SURFACE_ALIGNMENT}",
+        label=f"TB1999 surface value = {TB1999_SURFACE_ALIGNMENT}",
     )
     ax_alignment.plot(optical_depth_from_surface[:-1], alignment[:-1], marker=".", label="SolRaT")
     ax_alignment.set_xscale("log")
     ax_alignment.set_xlabel(r"optical depth from surface  $\tau$")
     ax_alignment.set_ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")
     ax_alignment.set_ylim(-0.02, 0.10)
-    ax_alignment.set_title(rf"TB1999 Fig. 1 / Fig. 8 ($\epsilon = {_EPSILON:.0e}$, $\delta^2 = 0$)")
+    ax_alignment.set_title(rf"TB1999 Fig. 1 / Fig. 8 ($\epsilon = {EPSILON:.0e}$, $\delta^2 = 0$)")
     ax_alignment.legend()
+    fig_alignment.tight_layout()
 
-    plt.tight_layout()
-    plt.show()
+    # Lambda-iteration convergence: the max|delta rho| residual per iteration (TB1999 Figs. 2, 4, 6
+    # show the analogous 1/epsilon convergence rate). The isotropic LTE guess relaxes toward the
+    # self-consistent alignment; Ng acceleration produces the periodic downward jumps.
+    fig_convergence, ax_convergence = plt.subplots(figsize=(7, 5))
+    ax_convergence.semilogy(np.arange(1, len(atmosphere.residual_history) + 1), atmosphere.residual_history, marker=".")
+    ax_convergence.axhline(
+        atmosphere.tolerance, color="k", linestyle="--", label=f"tolerance = {atmosphere.tolerance:.0e}"
+    )
+    ax_convergence.set_xlabel("iteration")
+    ax_convergence.set_ylabel(r"convergence residual  $\max|\Delta\rho|$")
+    ax_convergence.set_title(rf"Self-consistent NLTE convergence ($\epsilon = {EPSILON:.0e}$, Ng accelerated)")
+    ax_convergence.legend()
+    fig_convergence.tight_layout()
+
+    return fig_alignment, fig_convergence
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

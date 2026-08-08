@@ -11,6 +11,9 @@ def main():
     Hanle effect: depolarization of the upper-state Q=2 coherence as a function
     of magnetic field strength. Critical magnetic field is approximately
     A_ul / (Q × 2π × g_J × ν_L/G) = 4.3 G
+
+    :return: the matplotlib Figure with the Hanle saturation curve (not shown; the caller decides
+        whether to display it interactively or save it).
     """
     setup_logging()
 
@@ -74,8 +77,9 @@ def main():
     ax.legend()
     ax.grid(True)
     fig.tight_layout()
-    plt.show()
+    return fig
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

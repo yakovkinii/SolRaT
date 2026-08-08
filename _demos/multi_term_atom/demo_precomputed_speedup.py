@@ -60,7 +60,7 @@ def main():
     # ------------------------------------------------------------------
     N_CALLS = 2  # repeat fill_all_equations to get a stable timing
 
-    def _make_inputs(model):
+    def make_inputs(model):
         atm = model.AtmosphereParameters(
             model_config=model.config,
             magnetic_field_gauss=100,
@@ -73,8 +73,8 @@ def main():
         )
         return atm, rad
 
-    atm_fresh, rad_fresh = _make_inputs(model_fresh)
-    atm_disk, rad_disk = _make_inputs(model_disk)
+    atm_fresh, rad_fresh = make_inputs(model_fresh)
+    atm_disk, rad_disk = make_inputs(model_disk)
 
     # ------------------------------------------------------------------
     # Time  fresh

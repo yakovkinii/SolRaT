@@ -11,9 +11,12 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV_IpmV
 
 
-def demo_constant_property_slab_multiline():
+def main():
     """
     Demonstrate basic usage of ConstantPropertySlab for multiple non-overlapping line synthesis.
+
+    :return: the StokesPlotter_IV_IpmV holding the Mn/Fe/Ni Stokes profiles (not shown; the caller
+        decides whether to display it interactively or save ``plotter.fig``).
     """
     setup_logging()
 
@@ -182,8 +185,8 @@ def demo_constant_property_slab_multiline():
         label="RTE with LTE SEE",
     )
 
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    demo_constant_property_slab_multiline()
+    main().show()
