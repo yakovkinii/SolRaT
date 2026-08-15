@@ -93,8 +93,7 @@ def main():
             analytic_positions.append(g_upper * m_upper - g_lower * m_lower)
     analytic_positions = np.array(analytic_positions)
 
-    print(f"B = {MAGNETIC_FIELD_GAUSS:.0f} G: max|SolRaT - linear Zeeman| positions = "
-          f"{np.max(np.abs(displacements - analytic_positions)):.2e} Lorentz units")  # fmt: skip
+    position_error = float(np.max(np.abs(displacements - analytic_positions)))
 
     colors = {(-1): "#d62728", 0: "#1f77b4", 1: "#2ca02c"}
     labels = {(-1): r"$\sigma_-$ ($\Delta M = -1$)", 0: r"$\pi$ ($\Delta M = 0$)", 1: r"$\sigma_+$ ($\Delta M = +1$)"}
@@ -111,6 +110,10 @@ def main():
     ax.set_title(r"Zeeman pattern of $^2S_{1/2}\to{}^2P_{3/2}$ (anomalous, D2-like)")
     ax.legend(fontsize=8)
     fig.tight_layout()
+    print(
+        f"Zeeman pattern (B = {MAGNETIC_FIELD_GAUSS:.0f} G): max|SolRaT - linear Zeeman| positions = "
+        f"{position_error:.2e} Lorentz units"
+    )
     return fig
 
 

@@ -90,6 +90,10 @@ def main():
     plt.title("Collisional LTE limit (bridge to Boltzmann)")
     plt.legend()
     plt.tight_layout()
+    print(
+        f"Collisionless-to-LTE limit: strong-collision n_u/n_l vs Boltzmann relative error = "
+        f"{abs(ratios[-1] / boltzmann_ratio - 1.0):.2e} (C_ul = {c_ul_sweep[-1]:.0e})"
+    )
     plt.show()
 
 

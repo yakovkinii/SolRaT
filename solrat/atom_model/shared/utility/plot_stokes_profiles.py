@@ -51,7 +51,6 @@ class PlotterBase:  # pragma: no cover
         self.fig, self.axs = plt.subplots(n_axes, 1, sharex=True, constrained_layout=True, figsize=figsize, num=title)
         if n_axes == 1:
             self.axs = [self.axs]
-        self.fig.suptitle(title)
         for ax, label in zip(self.axs, y_labels):
             ax.set_ylabel(label)
         self._wavelength_label = x_label
@@ -69,11 +68,16 @@ class PlotterBase:  # pragma: no cover
         return wavelength
 
     @log_method
-    def show(self):
+    def finalize(self, legend=True):
         for ax in self.axs:
             ax.grid(True)
-            ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize="x-small")
+            if legend:
+                ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize="x-small")
         self.axs[-1].set_xlabel(self._wavelength_label or r"$\lambda_\mathrm{vac}$ ($\AA$)")
+
+    @log_method
+    def show(self):
+        self.finalize()
         plt.show()
 
 

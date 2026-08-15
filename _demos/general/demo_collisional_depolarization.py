@@ -120,8 +120,7 @@ def main():
     normalized_alignment = alignments / alignments[0]
     analytic_factor = 1.0 / (1.0 + depolarizing_ratios)
 
-    for ratio, numeric, analytic in zip(depolarizing_ratios, normalized_alignment, analytic_factor):
-        print(f"  D2/A_ul = {ratio:5.1f} : SolRaT {numeric:.4f}   1/(1+D2/A_ul) {analytic:.4f}")
+    max_deviation = float(np.max(np.abs(normalized_alignment - analytic_factor)))
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(depolarizing_ratios, analytic_factor, lw=2.8, ls=(0, (1, 1)), color="k", label=r"$1/(1 + D^{(2)}/A_{ul})$")
@@ -133,6 +132,7 @@ def main():
     ax.grid(True, which="both", alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(f"Collisional depolarization: max|SolRaT - 1/(1+D2/A_ul)| = {max_deviation:.2e}")
     return fig
 
 

@@ -8,14 +8,14 @@ from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import get_frequencies_from_air_wavelength_range
 from solrat.atom_model.shared.utility.log_setup import setup_logging
-from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV_IpmV
+from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_IV
 
 
 def main():
     """
     Demonstrate basic usage of ConstantPropertySlab for multiple non-overlapping line synthesis.
 
-    :return: the StokesPlotter_IV_IpmV holding the Mn/Fe/Ni Stokes profiles (not shown; the caller
+    :return: the StokesPlotter_IV holding the Mn/Fe/Ni Stokes I and V profiles (not shown; the caller
         decides whether to display it interactively or save ``plotter.fig``).
     """
     setup_logging()
@@ -48,8 +48,9 @@ def main():
     radiation_tensor_Fe = model_Fe.RadiationTensor()
     radiation_tensor_Ni = model_Ni.RadiationTensor()
 
-    # Test different magnetic field strengths
-    plotter = StokesPlotter_IV_IpmV("Mn, Fe, and Ni lines:", reference_lambda_A_air=reference_lambda_A_Mn)
+    plotter = StokesPlotter_IV(
+        "Mn, Fe, and Ni lines:", use_air_wavelengths=False, reference_lambda_A_air=reference_lambda_A_Mn
+    )
 
     angles = Angles(chi=0, theta=0, gamma=0, chi_B=0, theta_B=0)
 
@@ -76,12 +77,12 @@ def main():
         ConstantPropertySlabAtmosphere(
             model=model_Mn,
             radiation_tensor=radiation_tensor_Mn,
-            line_delta_tau=1.6,
+            line_delta_tau=0.8,
             continuum_delta_tau=slab1_continuum_delta_tau,
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
                 model_config=model_Mn.config,
-                delta_v_turbulent_cm_sm1=5000_00,
+                delta_v_turbulent_cm_sm1=2000_00,
                 voigt_a=0,
                 **atmosphere1,
             ),
@@ -94,7 +95,7 @@ def main():
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
                 model_config=model_Mn.config,
-                delta_v_turbulent_cm_sm1=5000_00,
+                delta_v_turbulent_cm_sm1=2000_00,
                 voigt_a=0,
                 **atmosphere2,
             ),
@@ -107,7 +108,7 @@ def main():
         ConstantPropertySlabAtmosphere(
             model=model_Fe,
             radiation_tensor=radiation_tensor_Fe,
-            line_delta_tau=2.6,
+            line_delta_tau=1.2,
             continuum_delta_tau=slab1_continuum_delta_tau,
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
@@ -125,7 +126,7 @@ def main():
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
                 model_config=model_Fe.config,
-                delta_v_turbulent_cm_sm1=5000_00,
+                delta_v_turbulent_cm_sm1=2000_00,
                 voigt_a=0,
                 **atmosphere2,
             ),
@@ -138,12 +139,12 @@ def main():
         ConstantPropertySlabAtmosphere(
             model=model_Ni,
             radiation_tensor=radiation_tensor_Ni,
-            line_delta_tau=1.5,
+            line_delta_tau=0.8,
             continuum_delta_tau=slab1_continuum_delta_tau,
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
                 model_config=model_Ni.config,
-                delta_v_turbulent_cm_sm1=5000_00,
+                delta_v_turbulent_cm_sm1=2000_00,
                 voigt_a=0,
                 **atmosphere1,
             ),
@@ -156,7 +157,7 @@ def main():
             angles=angles,
             atmosphere_parameters=AtmosphereParameters(
                 model_config=model_Ni.config,
-                delta_v_turbulent_cm_sm1=5000_00,
+                delta_v_turbulent_cm_sm1=2000_00,
                 voigt_a=0,
                 **atmosphere2,
             ),
@@ -167,7 +168,7 @@ def main():
 
     plotter.add_stokes(
         nu=np.concat([nu_Mn, nu_Fe, nu_Ni]),
-        norm=StokesPlotter_IV_IpmV.Norm.BY_REFERENCE,
+        norm=StokesPlotter_IV.Norm.BY_REFERENCE,
         stokes=Stokes(
             nu=np.concat([stokes_Mn.nu, stokes_Fe.nu, stokes_Ni.nu]),
             I=np.concat([stokes_Mn.I, stokes_Fe.I, stokes_Ni.I]),

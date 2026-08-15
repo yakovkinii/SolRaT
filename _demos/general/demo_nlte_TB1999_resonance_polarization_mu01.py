@@ -62,7 +62,7 @@ def build_frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarra
     """
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
-    step = 0.1 * delta_nu_D
+    step = 0.05 * delta_nu_D
     return np.arange(nu0 - 4.0 * delta_nu_D, nu0 + 4.0 * delta_nu_D + 0.5 * step, step)
 
 
@@ -93,8 +93,8 @@ def main():
     z_max_cm = 1000e5  # slab thickness [cm] (1000 km)
     # Depth points concentrated in the surface layers (where the mu = 0.1 line core forms) and sparse
     # in the thermalized interior. Bump n_surface if the line core is still shallow vs TB1999 Fig. 10.
-    n_surface = 80  # Use 500 for better match
-    n_deep = 30  # Use 60 for better match
+    n_surface = 50  # Use 500 for better match
+    n_deep = 20  # Use 60 for better match
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -126,7 +126,7 @@ def main():
         n_mu_quadrature=10,  # Use 50 for better match
         n_phi_quadrature=3,
         max_iterations=1000,
-        tolerance=1e-8,  # Use 1e-10 for better match
+        tolerance=1e-10,  # Use 1e-10 for better match
         ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
         ng_damping=0.7,
     )
@@ -171,9 +171,14 @@ def main():
     ax_qi.plot(reduced_frequency, qi_profile_percent, marker=".", label=r"SolRaT ($\mu = 0.1$)")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     ax_qi.set_ylabel(r"$100\,Q/I$")
-    ax_qi.set_title(rf"TB1999 Fig. 10 emergent Q/I ($\mu = 0.1$, $\delta^2 = 0$, $\epsilon = {EPSILON:.0e}$)")
     ax_qi.legend()
     fig_qi.tight_layout()
+    line_center_index = int(np.argmin(np.abs(reduced_frequency)))
+    print(
+        f"TB1999 Fig. 10 (mu=0.1): iterations = {atmosphere.iterations_used}, final residual = "
+        f"{atmosphere.final_residual:.2e}, line-center 100 Q/I = {qi_profile_percent[line_center_index]:.3f} "
+        f"(TBD: re-run at better convergence for the final figure -- see final-review flag FR9)"
+    )
     return fig_qi
 
 

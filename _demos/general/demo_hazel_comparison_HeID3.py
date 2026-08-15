@@ -138,19 +138,20 @@ def main():
     for axis, curve in zip(axes.ravel(), hazel_panels):
         axis.plot(hazel["delta_lambda_A"], curve, lw=2.6, ls=(0, (1, 1)), color="k")
     solrat_fractions = [panel[1] for panel in solrat_panels[1:]]  # Q/I, U/I, V/I
+    agreement = []
     for label, solrat_fraction, hazel_fraction in zip(["Q/I", "U/I", "V/I"], solrat_fractions, hazel_panels[1:]):
         hazel_on_solrat = np.interp(delta_lambda_a, hazel["delta_lambda_A"], hazel_fraction)
         peak = float(np.max(np.abs(solrat_fraction)))
         rms = float(np.sqrt(np.mean((solrat_fraction - hazel_on_solrat) ** 2)))
-        print(f"  {label}: SolRaT peak={peak:.2e}  RMS(SolRaT-Hazel)={rms:.2e}  relative={rms / peak:.1%}")
+        agreement.append(f"{label}: peak={peak:.2e} RMS={rms:.2e} rel={rms / peak:.1%}")
 
     for axis in axes[1]:
         axis.set_xlabel(r"$\lambda - %.1f$ ($\AA$)" % LINE_CENTER_A)
     style_key = [Line2D([], [], color="#1f77b4", lw=1.4, label="SolRaT")]
     style_key.append(Line2D([], [], color="k", lw=2.6, ls=(0, (1, 1)), label="Hazel"))
-    axes[0, 0].legend(handles=style_key, fontsize=9, loc="best")
-    fig.suptitle(f"He I D3, $|B|={MAGNETIC_FIELD_GAUSS:.0f}$ G inclined: SolRaT vs Hazel")
+    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
     fig.tight_layout()
+    print("SolRaT vs Hazel (He I D3, |B|=8000 G inclined): " + "; ".join(agreement))
     return fig
 
 

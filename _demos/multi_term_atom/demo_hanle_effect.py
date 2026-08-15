@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.functions import nu_larmor
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
@@ -36,6 +37,7 @@ def main():
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
 
     upper_term = model.config.level_registry.get_term(beta="2p", L=1, S=0.5)
+    transition = next(iter(model.config.transition_registry.transitions.values()))
     J_align = 1.5
 
     B_values = np.linspace(0, 20, 40)
@@ -68,15 +70,27 @@ def main():
     scale = alignments[0]
     alignments_norm = alignments / scale
 
-    fig, ax = plt.subplots(figsize=(7, 4), num="Hanle Effect")
-    ax.plot(B_values, alignments_norm, lw=2, label=r"$|\rho^2_2(J=1.5,\,J'=1.5)|\,/\,|\rho^2_2(B{=}0)|$")
-    ax.axhline(1 / np.sqrt(2), color="gray", linestyle="--", lw=1, label="1/sqrt(2) level")
-    ax.set_xlabel("Magnetic field B (G)")
-    ax.set_ylabel("Normalised alignment modulus")
-    ax.set_title("Hanle effect - upper-state Q=2 coherence vs magnetic field")
+    # Analytic Hanle factor (LL04 eq. 10.30): |rho^2_Q(B)/rho^2_Q(0)| = 1/sqrt(1 + (Q H_u)^2), with the
+    # Hanle parameter H_u = 2 pi nu_L(B) g_Ju / A_ul (Larmor precession over the upper-level lifetime),
+    # here for the plotted Q = 2 coherence. g_Ju is the LS Lande factor of the 2p upper term (= 4/3).
+    g_upper = 1.0 + (J_align * (J_align + 1) + 0.5 * (0.5 + 1) - 1 * (1 + 1)) / (2 * J_align * (J_align + 1))
+    hanle_H = 2.0 * np.pi * nu_larmor(B_values) * g_upper / transition.einstein_a_ul
+    analytic_hanle = 1.0 / np.sqrt(1.0 + (2.0 * hanle_H) ** 2)
+
+    fig, ax = plt.subplots(figsize=(6, 6), num="Hanle Effect")
+    ax.plot(B_values, alignments_norm, lw=2, label=r"SolRaT $|\rho^2_2|\,/\,|\rho^2_2(B{=}0)|$")
+    ax.plot(B_values, analytic_hanle, lw=2.6, ls=(0, (1, 1)), color="k",
+            label=r"LL04 eq. (10.30): $1/\sqrt{1+(Q H_u)^2}$")  # fmt: skip
+    ax.axhline(1 / np.sqrt(2), color="gray", linestyle="--", lw=1, label=r"$1/\sqrt{2}$ level")
+    ax.set_xlabel(r"$B$ (G)")
+    ax.set_ylabel(r"$|\rho^2_2|\,/\,|\rho^2_2|_{B=0}$")
     ax.legend()
     ax.grid(True)
     fig.tight_layout()
+    print(
+        f"Hanle depolarization vs LL04 eq. (10.30): max|SolRaT - analytic| = "
+        f"{float(np.max(np.abs(alignments_norm - analytic_hanle))):.2e}"
+    )
     return fig
 
 

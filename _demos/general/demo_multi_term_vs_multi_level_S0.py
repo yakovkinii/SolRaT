@@ -175,9 +175,7 @@ def main():
         ("$V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
     ]
 
-    print(f"B = {magnetic_field_gauss:.0f} G  (S = 0 line; multi-term must equal multi-level):")
-    for label, mt_curve, ml_curve in panels:
-        print(f"  max|Delta {label}| = {np.max(np.abs(mt_curve - ml_curve)):.2e}")
+    max_stokes_delta = max(float(np.max(np.abs(mt_curve - ml_curve))) for _, mt_curve, ml_curve in panels)
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     for ax, (label, mt_curve, ml_curve) in zip(axes.ravel(), panels):
@@ -192,9 +190,12 @@ def main():
         Line2D([], [], color="#1f77b4", lw=1.2, label="Multi-term atom"),
         Line2D([], [], color="#d62728", lw=2.8, ls=(0, (1, 1)), label="Multi-level atom"),
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
-    fig.suptitle("Multi-term vs multi-level: S=0 line ($^1S_0 \\to {}^1P_1$), $B = 1200$ G")
+    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
     fig.tight_layout()
+    print(
+        f"Multi-term vs multi-level (S=0 line, B = {magnetic_field_gauss:.0f} G): "
+        f"max|Delta Stokes| = {max_stokes_delta:.2e} (should be ~machine precision)"
+    )
     return fig
 
 

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.special import wofz
 
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, sqrt_pi
 from solrat.atom_model.shared.utility.log_setup import setup_logging
@@ -43,6 +44,11 @@ def main():
     plt.ylim(-0.6, 0.6)
     plt.legend()
     plt.grid()
+    # Numeric check of the absorption profile H(a, v) = Re[w(v + i a)] against the reference Faddeeva
+    # function (scipy.special.wofz); convention-independent, so it validates SolRaT's Voigt directly.
+    v_grid = np.linspace(-12.0, 12.0, 2000)
+    max_abs_error = float(np.max(np.abs(np.real(voigt(nu=v_grid, a=a)) - np.real(wofz(v_grid + 1j * a)))))
+    print(f"Voigt profile H(a, v) vs scipy.special.wofz: max|SolRaT - reference| = {max_abs_error:.2e} (a = {a:.3f})")
     plt.show()
 
 

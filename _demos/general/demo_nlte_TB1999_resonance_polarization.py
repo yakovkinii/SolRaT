@@ -196,24 +196,58 @@ def main():
     ax_alignment.set_xlabel(r"optical depth from surface  $\tau$")
     ax_alignment.set_ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")
     ax_alignment.set_ylim(-0.02, 0.10)
-    ax_alignment.set_title(rf"TB1999 Fig. 1 / Fig. 8 ($\epsilon = {EPSILON:.0e}$, $\delta^2 = 0$)")
     ax_alignment.legend()
     fig_alignment.tight_layout()
 
-    # Lambda-iteration convergence: the max|delta rho| residual per iteration (TB1999 Figs. 2, 4, 6
-    # show the analogous 1/epsilon convergence rate). The isotropic LTE guess relaxes toward the
-    # self-consistent alignment; Ng acceleration produces the periodic downward jumps.
+    # Lambda-iteration convergence with and without Ng acceleration (TB1999 Figs. 2, 4, 6 show the
+    # analogous 1/epsilon convergence rate). Both start from the isotropic LTE guess and relax toward
+    # the same self-consistent alignment; the plain-iteration run reuses the same stratification and
+    # quadrature and is capped at more iterations because it converges an order of magnitude slower.
+    # The upward spikes on the Ng curve are the extrapolation steps: the residual is the change
+    # between successive iterates, so a step that skips a long way toward the solution registers as a
+    # large max|delta rho| (a skip, not an overshoot -- the residual drops again immediately after).
+    atmosphere_plain = NLTEStratifiedAtmosphere(
+        model=model,
+        stratification=stratification,
+        los_theta=float(np.arccos(MU_OBSERVER)),
+        los_chi=0.0,
+        los_gamma=0.0,
+        n_mu_quadrature=10,
+        n_phi_quadrature=3,
+        max_iterations=2000,
+        tolerance=1e-8,
+        ng_acceleration=False,
+    )
+    atmosphere_plain.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+
     fig_convergence, ax_convergence = plt.subplots(figsize=(7, 5))
-    ax_convergence.semilogy(np.arange(1, len(atmosphere.residual_history) + 1), atmosphere.residual_history, marker=".")
+    ax_convergence.semilogy(
+        np.arange(1, len(atmosphere_plain.residual_history) + 1),
+        atmosphere_plain.residual_history,
+        marker=".",
+        label=r"plain $\Lambda$-iteration",
+    )
+    ax_convergence.semilogy(
+        np.arange(1, len(atmosphere.residual_history) + 1),
+        atmosphere.residual_history,
+        marker=".",
+        label="Ng accelerated",
+    )
     ax_convergence.axhline(
         atmosphere.tolerance, color="k", linestyle="--", label=f"tolerance = {atmosphere.tolerance:.0e}"
     )
     ax_convergence.set_xlabel("iteration")
     ax_convergence.set_ylabel(r"convergence residual  $\max|\Delta\rho|$")
-    ax_convergence.set_title(rf"Self-consistent NLTE convergence ($\epsilon = {EPSILON:.0e}$, Ng accelerated)")
     ax_convergence.legend()
     fig_convergence.tight_layout()
 
+    print(
+        f"TB1999 (epsilon={EPSILON:.0e}): surface rho^2_0/rho^0_0 = {surface_alignment:.5f} "
+        f"(TB1999 {TB1999_SURFACE_ALIGNMENT:.5f}, rel err "
+        f"{abs(surface_alignment / TB1999_SURFACE_ALIGNMENT - 1.0):.1%}); tangential Q/I = "
+        f"{emergent_qi_percent:.3f}% (TB1999 {TB1999_QI_PERCENT_TANGENTIAL:.3f}%); "
+        f"Ng iterations = {atmosphere.iterations_used}, plain iterations = {atmosphere_plain.iterations_used}"
+    )
     return fig_alignment, fig_convergence
 
 

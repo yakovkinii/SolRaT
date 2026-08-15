@@ -194,6 +194,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     field_values_gauss = [500.0, 1000.0, 2000.0]
     zoom_limits = (-5.0, 5.0)  # reduced-frequency window on the observed-line core (satellites excluded)
     fig, axes = plt.subplots(3, len(field_values_gauss), figsize=(12, 10), sharey="row")
+    worst_delta_v = 0.0
     for column, magnetic_field_gauss in enumerate(field_values_gauss):
         stokes_mt_full = synthesize(model_mt_full, nu, angles, magnetic_field_gauss, anisotropic=False)
         stokes_mt_constrained = synthesize(model_mt_constrained, nu, angles, magnetic_field_gauss, anisotropic=False)
@@ -202,7 +203,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         max_deltaV = np.max(
             np.abs(stokes_mt_constrained.V / np.max(stokes_mt_constrained.I) - stokes_ml.V / np.max(stokes_ml.I))
         )
-        print(f"  B = {magnetic_field_gauss:6.0f} G : max|Delta V/Imax| (constrained MT - ML) = {max_deltaV:.2e}")
+        worst_delta_v = max(worst_delta_v, float(max_deltaV))
 
         ax_intensity_full, ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column], axes[2, column]
         for stokes, lw, color, linestyle in (
@@ -222,17 +223,21 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         for ax in (ax_intensity_full, ax_intensity_zoom, ax_v_zoom):
             ax.axhline(0.0, color="0.7", lw=0.6)
             ax.grid(alpha=0.3)
-    axes[0, 0].set_ylabel(r"$I\,/\,\max I$ (full)")
-    axes[1, 0].set_ylabel(r"$I\,/\,\max I$ (zoom)")
-    axes[2, 0].set_ylabel(r"$V\,/\,\max I$ (zoom)")
+    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$ (full)")
+    axes[1, 0].set_ylabel(r"$I\,/\,I_{\max}$ (zoom)")
+    axes[2, 0].set_ylabel(r"$V\,/\,I_{\max}$ (zoom)")
     style_key = [
         Line2D([], [], color="#00FF00", lw=0.9, label="Multi-term, all branches"),
         Line2D([], [], color="#0000FF", lw=1.5, ls="--", label="Multi-term, $J$-constrained"),
         Line2D([], [], color="k", lw=2.2, ls=(0, (1, 1)), label="Multi-level (linear)"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
-    fig.suptitle(r"Second-order Zeeman: $^4P_{5/2}\to{}^4S_{3/2}$ observed branch, multi-term vs multi-level")
     fig.tight_layout()
+    print(
+        f"Second-order Zeeman (MT J-constrained vs ML): max|Delta V/I_max| = {worst_delta_v:.2e} "
+        f"over B = {[int(b) for b in field_values_gauss]} G (should grow from ~0 at low field into "
+        f"incomplete Paschen-Back)"
+    )
     return fig
 
 
@@ -254,19 +259,19 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     stokes_mt_lte = synthesize(model_mt_lte, nu, angles, magnetic_field_gauss, anisotropic=True)
     qi_ml = 100.0 * stokes_ml.Q / stokes_ml.I
     qi_mt_lte = 100.0 * stokes_mt_lte.Q / stokes_mt_lte.I
-    print(f"  weak field: max|Q/I| ML (NLTE) = {np.max(np.abs(qi_ml)):.3e} %, "
-          f"MT (LTE) = {np.max(np.abs(qi_mt_lte)):.3e} %")  # fmt: skip
-
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(reduced_frequency, qi_ml, lw=1.5, color="#1f77b4", label="Multi-level (NLTE scattering)")
     ax.plot(reduced_frequency, qi_mt_lte, lw=1.5, ls="--", color="#d62728", label="Multi-term (LTE, no scattering)")
     ax.axhline(0.0, color="0.7", lw=0.6)
     ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     ax.set_ylabel("$100\\,Q/I$")
-    ax.set_title(r"Weak-field scattering polarization the LTE multi-term atom misses")
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(
+        f"Weak-field scattering Q/I: ML (NLTE) max|Q/I| = {np.max(np.abs(qi_ml)):.3e} %, "
+        f"MT (LTE) max|Q/I| = {np.max(np.abs(qi_mt_lte)):.3e} % (MT-LTE should be ~0)"
+    )
     return fig
 
 
@@ -304,9 +309,7 @@ def main():
     ).delta_v_thermal_cm_sm1  # fmt: skip
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
 
-    print("Part (a) second-order Zeeman (isotropic field, LTE):")
     second_order_zeeman = second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D)
-    print("Part (b) NLTE scattering (anisotropic field, weak field):")
     nlte_scattering = nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D)
     return second_order_zeeman, nlte_scattering
 

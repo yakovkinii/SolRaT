@@ -77,7 +77,6 @@ def main():
             step_A=1.2 / n_points,
         )
         forward_times.append(time_forward(model, radiation_tensor, atmosphere_parameters, angles, nu, repeats=3))
-        print(f"  {len(nu):5d} frequency points : {forward_times[-1] * 1e3:8.2f} ms")
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(n_frequency_points, np.array(forward_times) * 1e3, marker="o")
@@ -88,6 +87,8 @@ def main():
     ax.set_title("He I D3 constant-property slab: forward-synthesis scaling")
     ax.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
+    scaling = "  ".join(f"{n}:{t * 1e3:.1f}ms" for n, t in zip(n_frequency_points, forward_times))
+    print(f"Forward-synthesis scaling (He I D3 slab): {scaling}")
     return fig
 
 

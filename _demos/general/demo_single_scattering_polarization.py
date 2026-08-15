@@ -102,8 +102,7 @@ def main():
 
     rayleigh = np.sin(scattering_angles) ** 2
     normalization = np.max(np.abs(qi_line_center))
-    print(f"max|Q/I| over the scan = {normalization:.3e} at theta = "
-          f"{np.rad2deg(scattering_angles[int(np.argmax(np.abs(qi_line_center)))]):.0f} deg")  # fmt: skip
+    shape_deviation = float(np.max(np.abs(np.abs(qi_line_center) / normalization - rayleigh / np.max(rayleigh))))
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(np.rad2deg(scattering_angles), np.abs(qi_line_center) / normalization, lw=1.2, marker="o",
@@ -116,6 +115,10 @@ def main():
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(
+        f"Single-scattering polarization: max|SolRaT - Rayleigh sin^2| (normalized shape) = "
+        f"{shape_deviation:.2e}; peak |Q/I| = {normalization:.3e}"
+    )
     return fig
 
 

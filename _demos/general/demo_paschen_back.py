@@ -45,9 +45,8 @@ def main():
 
     fig, ax = plt.subplots()
     ax.plot(magnetic_fields, np.array(energies), "k")
-    ax.set_xlabel("Magnetic field (G)")
-    ax.set_ylabel("Energy (cm$^{-1}$)")
-    ax.set_title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")
+    ax.set_xlabel(r"$B$ (G)")
+    ax.set_ylabel(r"$E$ (cm$^{-1}$)")
     return fig
 
 
