@@ -51,13 +51,8 @@ def boltzmann_population_ratio(transition) -> float:
 
 def main():
     r"""
-    Demo: the LTE (Boltzmann) limit of the parametrized collisions, as an epsilon-bridge.
-
-    A two-level mock atom is solved for a sweep of collisional de-excitation rates C_ul. As collisions
-    grow large compared with the radiative rates (A_ul = 1e7), the upper/lower population ratio n_u/n_l
-    is dragged away from the collisionless (pure-scattering) value and onto the Boltzmann distribution at
-    the local temperature (LL04 eq. 7.98, detailed balance) - the horizontal reference line - even though
-    the radiation temperature is different. This is the LTE <-> NLTE bridge that the collisions provide.
+    LTE (Boltzmann) limit of the parametrized collisions: as the collisional de-excitation rate grows,
+    the upper/lower population ratio approaches the Boltzmann value (LL04 eq. 7.98, detailed balance).
     """
     setup_logging()
 

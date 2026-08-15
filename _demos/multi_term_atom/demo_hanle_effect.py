@@ -9,12 +9,10 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 def main():
     r"""
-    Hanle effect: depolarization of the upper-state Q=2 coherence as a function
-    of magnetic field strength. Critical magnetic field is approximately
-    A_ul / (Q × 2π × g_J × ν_L/G) = 4.3 G
+    Hanle depolarization of the upper-state :math:`\rho^2_2` coherence versus magnetic-field strength,
+    against the analytic Hanle factor (LL04 eq. 10.30).
 
-    :return: the matplotlib Figure with the Hanle saturation curve (not shown; the caller decides
-        whether to display it interactively or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 

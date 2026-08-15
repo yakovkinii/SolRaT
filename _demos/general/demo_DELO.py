@@ -11,8 +11,8 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
-    """
-    This demo shows how the DELO solver works against the different more primitive finite difference method.
+    r"""
+    Compare the DELO transfer solver against a finite-difference integration for a He I D3 slab.
     """
     setup_logging()
 

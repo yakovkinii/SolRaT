@@ -10,19 +10,9 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
-    """
-    Precomputed vs. fresh: speed comparison for He I D3 SEE.
-
-    The atom-specific frames (Wigner symbols, Einstein coefficients, etc.) are
-    independent of the radiation field and atmospheric parameters.  They can be
-    built once, saved to CSV, and reloaded instantly on subsequent runs.
-
-    This demo measures the wall-clock time for:
-      1. Fresh computation  – frames built from scratch on every fill_all_equations call.
-      2. Disk-precomputed   – frames loaded from CSV; only the radiation-tensor
-                              contractions are performed at run time.
-
-    Both paths produce bit-identical rho solutions (verified below).
+    r"""
+    Speed comparison of fresh vs. disk-precomputed atom frames for the He I D3 SEE; both paths produce
+    identical rho solutions.
     """
     setup_logging()
 

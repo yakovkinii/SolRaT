@@ -62,26 +62,18 @@ def zeeman_components(term_lower, term_upper, magnetic_field_gauss: float):
 
 def main():
     r"""
-    Zeeman pattern of an anomalous multiplet (^2S_{1/2} -> ^2P_{3/2}, D2-like): the pi (Delta M = 0)
-    and sigma (Delta M = +-1) component positions and relative strengths (LL04 Sec. 3.3).
+    Zeeman pattern of an anomalous multiplet (:math:`^2S_{1/2} \to {}^2P_{3/2}`, D2-like): the
+    :math:`\pi` and :math:`\sigma^\pm` component positions and relative strengths, against the
+    linear-Zeeman positions (LL04 Sec. 3.3).
 
-    The component displacements are computed from SolRaT's Paschen-Back diagonalization (the same
-    routine that feeds the propagation matrix) and shown in units of the Lorentz splitting; in the
-    weak-field regime they collapse onto the linear-Zeeman positions g_u M_u - g_l M_l, which are
-    overplotted as open markers. The relative strengths are the LS dipole strengths from the 3-j
-    symbol. This is a fast, transfer-free check of the Zeeman-pattern machinery.
-
-    :return: the matplotlib Figure with the stick-spectrum Zeeman pattern (not shown; the caller
-        decides whether to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
     term_lower, term_upper = build_terms()
     q_values, displacements, strengths = zeeman_components(term_lower, term_upper, MAGNETIC_FIELD_GAUSS)
 
-    # Linear-Zeeman reference positions g_u M_u - g_l M_l (Lorentz units) for the same components,
-    # with the LS Lande factor g = 1 + [J(J+1)+S(S+1)-L(L+1)]/(2J(J+1)) (LL04 eq. 3.8) written out
-    # here so the reference is independent of the code under test.
+    # Linear-Zeeman reference positions (LS Lande factor, LL04 eq. 3.8), independent of the code under test.
     lande = lambda L, S, J: 1.0 + 0.5 * (J * (J + 1) + S * (S + 1) - L * (L + 1)) / (J * (J + 1))  # noqa: E731
     g_lower = lande(term_lower.L, term_lower.S, J_LOWER)
     g_upper = lande(term_upper.L, term_upper.S, J_UPPER)

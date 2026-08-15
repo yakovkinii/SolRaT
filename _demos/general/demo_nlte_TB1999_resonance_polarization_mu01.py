@@ -14,9 +14,9 @@ from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-TEMPERATURE_K = 6000.0  # isothermal slab
-EPSILON = 1.0e-2  # TB1999 photon destruction probability; 1e-2 converges far faster than their 1e-4
-MU_OBSERVER = 0.1  # line-of-sight direction cosine mu = 0.1 (TB1999 Fig. 10 emergent Q/I profile)
+TEMPERATURE_K = 6000.0
+EPSILON = 1.0e-2  # photon destruction probability
+MU_OBSERVER = 0.1  # inclined line of sight
 
 
 def c_ul_for_epsilon(epsilon: float, transition, temperature_K: float) -> float:
@@ -38,16 +38,15 @@ def surface_refined_depth_grid(
     z_max_cm: float, n_surface: int, n_deep: int, surface_fraction: float = 1e-3, min_fraction: float = 1e-7
 ) -> np.ndarray:
     r"""
-    Depth grid concentrated near the observer surface, for an inclined line of sight.
+    Depth grid concentrated near the observer surface (where the inclined-ray line core forms), with
+    a sparse thermalized interior. ``z[0]`` is the lower boundary, ``z[-1]`` the observer surface.
 
-    ``n_surface`` points are packed logarithmically in the surface layers (depth below the surface
-    ``min_fraction`` .. ``surface_fraction`` of the slab -- the low optical depths where an inclined
-    ray forms its line core), and ``n_deep`` sparse points cover the thermalized interior
-    (``surface_fraction`` .. 1, effectively semi-infinite). This resolves the inclined-ray DELO steps
-    at line center, whose per-cell optical depth is amplified by 1/mu (Delta tau_LOS = Delta
-    tau_vertical / mu) and which a uniform log grid under-resolves (a too-shallow line core). Since the
-    optical depth scales with geometric depth (constant N), a fraction of the slab maps to that same
-    fraction of the total optical thickness. ``z[0]`` is the lower boundary, ``z[-1]`` the surface.
+    :param z_max_cm: slab thickness [cm].
+    :param n_surface: number of logarithmically packed surface points.
+    :param n_deep: number of sparse interior points.
+    :param surface_fraction: depth (fraction of the slab) separating the packed surface from the interior.
+    :param min_fraction: thinnest top cell as a fraction of the slab.
+    :return: sorted height grid [cm].
     """
     surface = np.logspace(np.log10(min_fraction), np.log10(surface_fraction), n_surface, endpoint=False)
     deep = np.logspace(np.log10(surface_fraction), 0.0, n_deep)
@@ -57,44 +56,31 @@ def surface_refined_depth_grid(
 
 def build_frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarray:
     r"""
-    Frequency grid at ~2 points per Doppler width over +-4 Doppler widths (TB1999 note that two
-    frequency points per Doppler width suffice for the isothermal Gaussian-profile benchmark).
+    Frequency grid covering the line for the synthesis.
+
+    :param transition: the radiative transition.
+    :param delta_v_thermal_cm_sm1: thermal+turbulent Doppler velocity [cm/s].
+    :return: frequency grid [1/s].
     """
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
-    step = 0.05 * delta_nu_D
+    step = 0.1 * delta_nu_D
     return np.arange(nu0 - 4.0 * delta_nu_D, nu0 + 4.0 * delta_nu_D + 0.5 * step, step)
 
 
 def main():
     r"""
-    TB1999 benchmark reproduction, emergent Q/I profile at mu = 0.1 (for manual comparison against
-    Trujillo Bueno & Manso Sainz 1999, ApJ 516, 436, Fig. 10, delta2 = 0).
+    Emergent :math:`Q/I` profile of the TB1999 :math:`J=0 \to 1` scattering line at an inclined line
+    of sight (:math:`\mu=0.1`), overlaid on the digitized TB1999 (ApJ 516, 436) Fig. 10.
 
-    Same slab as demo_nlte_TB1999_resonance_polarization.py (a J=0 -> J=1 two-level atom in an
-    isothermal, self-emitting, plane-parallel slab; no continuum, no field, no depolarizing collisions,
-    epsilon = 1e-2), but instead of the tangential (mu = 0) surface source function this observes along
-    an inclined line of sight, mu = 0.1, and integrates the ray through the atmosphere. That is what
-    gives the emergent Q/I its frequency structure: each frequency probes a different optical depth
-    (line center is opaque and samples the shallow, weakly aligned surface layers; the wings are
-    transparent and sample deeper, more aligned layers), so Q/I(nu) is a profile rather than the
-    flat surface-source-function value of the tangential case. Compare its shape and amplitude with
-    TB1999 Fig. 10 (delta2 = 0 curve).
-
-    The internal radiation field (hence the atomic alignment) is solved with the same double-Gauss mu
-    quadrature and log depth grid as the tangential demo; only the observer line of sight differs.
-
-    :return: the matplotlib Figure with the emergent Q/I profile at mu = 0.1 overlaid on the digitized
-        TB1999 Fig. 10 (not shown; the caller decides whether to display it interactively or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
-    number_density_cm3 = 1.0e11  # constant absorber density; sets the total vertical optical thickness
-    z_max_cm = 1000e5  # slab thickness [cm] (1000 km)
-    # Depth points concentrated in the surface layers (where the mu = 0.1 line core forms) and sparse
-    # in the thermalized interior. Bump n_surface if the line core is still shallow vs TB1999 Fig. 10.
-    n_surface = 50  # Use 500 for better match
-    n_deep = 20  # Use 60 for better match
+    number_density_cm3 = 1.0e11
+    z_max_cm = 1000e5
+    n_surface = 50
+    n_deep = 20
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -120,21 +106,21 @@ def main():
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=float(np.arccos(MU_OBSERVER)),  # inclined line of sight, mu = 0.1
+        los_theta=float(np.arccos(MU_OBSERVER)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,  # Use 50 for better match
+        n_mu_quadrature=10,
         n_phi_quadrature=3,
         max_iterations=1000,
-        tolerance=1e-10,  # Use 1e-10 for better match
-        ng_acceleration=True,  # Ng extrapolation of the rho iterates to cut the iteration count
+        tolerance=1e-10,
+        ng_acceleration=True,
         ng_damping=0.7,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
 
     nu0 = transition.get_mean_transition_frequency_sm1()
-    reduced_frequency = (nu - nu0) / (nu0 * params.delta_v_thermal_cm_sm1 / c_cm_sm1)  # (nu - nu0)/Delta nu_D
-    qi_profile_percent = 100.0 * emergent.Q / emergent.I  # emergent (mu = 0.1) Q/I profile
+    reduced_frequency = (nu - nu0) / (nu0 * params.delta_v_thermal_cm_sm1 / c_cm_sm1)
+    qi_profile_percent = 100.0 * emergent.Q / emergent.I
 
     logging.info("TB1999 benchmark (mu = 0.1): epsilon = %.0e, delta2 = 0, no continuum, no field", EPSILON)
     logging.info(
@@ -144,9 +130,7 @@ def main():
         atmosphere.final_residual,
     )
 
-    # TB1999 Fig. 10 (delta2 = 0, mu = 0.1), digitized: reduced frequency (nu - nu0)/Delta nu_D and
-    # 100 Q/I. Only the blue wing was digitized; the static isothermal profile is symmetric about line
-    # center, so mirror it onto the red wing for a full-range comparison.
+    # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
     tb_reduced_frequency = np.array([
         -5.00365, -4.75456, -4.39872, -4.05109, -3.71989, -3.37226, -3.07664, -2.84672, -2.63869,
         -2.43066, -2.23905, -2.01734, -1.81752, -1.61496, -1.42336, -1.24818, -1.06752, -0.9115,

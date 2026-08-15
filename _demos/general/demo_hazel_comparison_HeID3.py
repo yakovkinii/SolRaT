@@ -16,23 +16,18 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-# He I D3 (5876 A) single-slab synthesis compared against Hazel. Parameters mirror
-# C:\ubuntu\hazel\solrat_validation\main.py -- keep the two in sync. Inclined line of sight and a
-# strong, inclined field so all four Stokes are non-trivial: at |B| = 8000 G the Zeeman splitting is
-# comparable to the Doppler width, so the transverse-Zeeman Q and U grow to be comparable to V and
-# dominate over the (field-independent, Hanle-saturated) scattering polarization.
 LINE_CENTER_A = 5876.0
 HALF_WINDOW_A = 1.0
 N_WAVELENGTH = 300
 MAGNETIC_FIELD_GAUSS = 8000.0
-FIELD_INCLINATION_DEG = 80.0  # theta_B from the vertical
-FIELD_AZIMUTH_DEG = 45.0  # chi_B
-LOS_INCLINATION_DEG = 60.0  # theta of the line of sight from the vertical
-OPTICAL_DEPTH = 1.02  # tuned so the SolRaT line depth matches Hazel (does not have to equal Hazel tau)
+FIELD_INCLINATION_DEG = 80.0
+FIELD_AZIMUTH_DEG = 45.0
+LOS_INCLINATION_DEG = 60.0
+OPTICAL_DEPTH = 1.02  # does not have to equal Hazel tau
 DOPPLER_VELOCITY_KM_S = 8.0
 HEIGHT_ARCSEC = 10.0
 TEMPERATURE_K = 10000.0
-DELTA_V_TURBULENT_CM_SM1 = 4.7e5  # with the temperature, gives ~8 km/s He Doppler width (Hazel deltav)
+DELTA_V_TURBULENT_CM_SM1 = 4.7e5
 CONTINUUM_TEMPERATURE_K = 6000.0
 
 HAZEL_REFERENCE_CSV = pathlib.Path(__file__).with_name("hazel_reference") / "hazel_HeID3.csv"
@@ -99,17 +94,7 @@ def main():
     r"""
     Compare SolRaT and Hazel He I D3 Stokes profiles for a strong, inclined field.
 
-    Synthesizes the line with SolRaT for the same single-slab parameters as the Hazel script
-    (``C:\ubuntu\hazel\solrat_validation\main.py``) and overlays the Hazel reference copied into
-    ``hazel_reference/hazel_HeID3.csv``. Stokes I is continuum-normalized and Q, U, V shown as
-    fractions of I; the per-Stokes relative error (RMS difference over SolRaT peak) is printed. At
-    |B| = 8000 G all four Stokes are non-trivial and the linear polarization is regular transverse
-    Zeeman. The residual (largest in V) reflects the multi-term LS treatment of the fine-structure line
-    strengths (one term A_ul distributed by LS 6j, versus Hazel's per-J A values) and incomplete
-    Paschen-Back; Q and U are tied to the positive-Q reference direction.
-
-    :return: the matplotlib Figure with the four Stokes panels (not shown; the caller decides whether
-        to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 

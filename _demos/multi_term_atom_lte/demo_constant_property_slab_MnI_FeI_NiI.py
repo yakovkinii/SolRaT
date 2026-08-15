@@ -12,11 +12,11 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_
 
 
 def main():
-    """
-    Demonstrate basic usage of ConstantPropertySlab for multiple non-overlapping line synthesis.
+    r"""
+    Stokes I and V of the Fe I 5434.5, Ni I 5435.9, Mn I 5432.5 photospheric triplet through a
+    two-slab LTE atmosphere.
 
-    :return: the StokesPlotter_IV holding the Mn/Fe/Ni Stokes I and V profiles (not shown; the caller
-        decides whether to display it interactively or save ``plotter.fig``).
+    :return: StokesPlotter_IV.
     """
     setup_logging()
 

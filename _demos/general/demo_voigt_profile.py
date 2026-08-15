@@ -8,9 +8,9 @@ from solrat.atom_model.shared.utility.voigt_profile import voigt
 
 
 def main():
-    """
-    Reference: (LL04 5.43)
-    This corresponds to Fig. 5.3.
+    r"""
+    Absorption and dispersion (Faraday-Voigt) profiles of a normal Zeeman triplet (LL04 eq. 5.43,
+    Fig. 5.3), checked against scipy.special.wofz.
     """
     setup_logging()
 

@@ -9,8 +9,8 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_
 
 
 def main():
-    """
-    Zeeman effect in the Mn I 5432 A line (LTE) for a range of magnetic field strengths.
+    r"""
+    Zeeman effect in the Mn I 5432 A line (LTE) over a range of magnetic-field strengths.
     """
     setup_logging()
 

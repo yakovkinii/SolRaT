@@ -40,7 +40,7 @@ by $\Lambda$-iteration on a depth grid, with the Stokes transfer solved by the D
 SolRaT is organized in three layers:
 - a **public API** to run the built-in models;
 - a **modeling API** to extend a model or build a new one by analogy with the shipped ones;
-- the **SolRaT engine**, a dataframe-based meta-language in which the angular algebra and rate
+- the **SolRaT engine**, a vectorized meta-language in which the angular algebra and rate
 expressions are written close to their mathematical form, with the bookkeeping and
 optimization handled underneath.
 

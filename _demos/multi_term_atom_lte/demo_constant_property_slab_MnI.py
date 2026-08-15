@@ -9,8 +9,8 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_
 
 
 def demo_constant_property_slab_MnI():
-    """
-    Demonstrate basic usage of ConstantPropertySlab for Mn I LTE line synthesis.
+    r"""
+    Mn I 5432 A LTE line synthesis with a constant-property slab.
     """
     setup_logging()
 
@@ -22,12 +22,10 @@ def demo_constant_property_slab_MnI():
         step_A=1e-3,
     )
 
-    # Test different magnetic field strengths
     plotter = StokesPlotter_IV_IpmV("Mn I 5432 Line", reference_lambda_A_air=reference_lambda_A_air)
 
     angles = Angles(chi=0, theta=0, gamma=0, chi_B=0, theta_B=0)
 
-    # Atmosphere parameters:
     atmosphere1 = {
         "magnetic_field_gauss": 500,
         "temperature_K": 5000,

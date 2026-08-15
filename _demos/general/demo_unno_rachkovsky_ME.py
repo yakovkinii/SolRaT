@@ -155,24 +155,17 @@ def build_normal_triplet_lte_model():
 def main():
     r"""
     Benchmark SolRaT against the analytic Unno-Rachkovsky (Milne-Eddington) solution for a normal
-    Zeeman triplet at several field strengths.
+    Zeeman triplet (LL04 eq. 9.109) at several field strengths. The Stokes-V sign follows LL04
+    eq. 5.36.
 
-    A J_l = 0 -> J_u = 1 LTE line (Lande factor g_u = 1) is synthesized with SolRaT's
-    :class:`MilneEddingtonSlabAtmosphere`, and the analytic solution is built from the same physical
-    parameters (v_B = g_u nu_larmor / delta_nu_D), with the analytic propagation matrix normalized
-    the same way SolRaT normalizes its ``K_tau``. The Stokes-V sign follows LL04 eq. (5.36); SolRaT
-    is checked to reproduce it. Two residual sets are printed per field: the normalization-free
-    coefficient ratios eta_Q/eta_I, eta_V/eta_I, rho_V/eta_I, and the emergent Stokes profiles.
-
-    :return: the matplotlib Figure with the four Stokes panels (not shown; the caller decides whether
-        to display it interactively or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
     temperature_K = 6000.0
     delta_v_turbulent_cm_sm1 = 2.0e5
     voigt_a = 0.05
-    theta_B = np.deg2rad(60.0)  # field inclination (line of sight along the vertical, theta = 0)
+    theta_B = np.deg2rad(60.0)
     chi_B = np.deg2rad(0.0)
     eta_0 = 10.0
     source_0, source_1 = 1.0, 3.0

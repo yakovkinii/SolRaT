@@ -6,13 +6,9 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter_
 
 
 def main():
-    """
-    This demo shows the calculation of stimulated emission eta_S profiles
-    for the He I D3 transition under super-strong magnetic fields.
-    This result is closely related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
-    https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
-    In the mentioned paper, the Stokes profiles are shown instead,
-    but they match (after normalization) eta_S for low optical depths.
+    r"""
+    Stimulated-emission eta_S profiles for the He I D3 transition under super-strong magnetic fields,
+    related to Fig. 8 of Yakovkin & Lozitsky (MNRAS, 2023, https://doi.org/10.1093/mnras/stad1816).
     """
 
     setup_logging()
@@ -36,22 +32,19 @@ def main():
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
     rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
-    # Fill the radiation tensor with anisotropic radiation field 10 arcsec from the Sun's apparent surface
     radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
         h_arcsec=10,
     )
 
-    # Set up the plotter
     plotter = StokesPlotter_IV(
         title="He I D3: Emission coefficient vs wavelength", reference_lambda_A_air=reference_lambda_A_air
     )
 
-    # loop through the magnetic field values
     for Bz in [20000, 40000, 60000, 80000, 100000]:
         atmosphere_parameters = model.AtmosphereParameters(
             model_config=model.config,
             magnetic_field_gauss=Bz,
-            temperature_K=1000,  # Low temperature to see the details of fine structure
+            temperature_K=1000,
         )
 
         # Construct SEE

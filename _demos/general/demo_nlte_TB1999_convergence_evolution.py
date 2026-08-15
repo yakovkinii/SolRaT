@@ -135,18 +135,11 @@ def save_convergence_animation(
 
 def main():
     r"""
-    Show how the emergent ``Q/I`` profile of the TB1999 (mu = 0.1) scattering line evolves as the
-    self-consistent NLTE loop converges: from the isotropic-Planck guess (essentially unpolarized) the
-    upper-level alignment builds up over the Lambda-iterations and the line-center ``Q/I`` grows toward
-    its converged value. A companion of ``demo_nlte_TB1999_resonance_polarization_mu01`` (which shows
-    only the final profile).
+    Show how the emergent :math:`Q/I` profile of the TB1999 (:math:`\mu=0.1`) scattering line evolves
+    as the self-consistent NLTE loop converges. Companion of
+    ``demo_nlte_TB1999_resonance_polarization_mu01``, which shows only the final profile.
 
-    The static figure overlays the ``100 Q/I`` profile at each iteration (light to dark) with the
-    converged profile in bold black; a GIF of the same sequence is written next to this file
-    (best-effort). Ng acceleration is disabled so the sequence is a clean monotone Lambda progression.
-
-    :return: the matplotlib Figure with the overlaid per-iteration profiles (not shown; the caller
-        decides whether to display it interactively or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
@@ -162,10 +155,8 @@ def main():
     nu0 = transition.get_mean_transition_frequency_sm1()
     reduced_frequency = (nu - nu0) / (nu0 * params.delta_v_thermal_cm_sm1 / c_cm_sm1)
 
-    # Same grid/quadrature as demo_nlte_TB1999_resonance_polarization_mu01: a coarser rule leaves the
-    # inclined-ray reconstruction under-resolved (a spurious anisotropy J^2_0 > J^0_0), which blows the
-    # alignment up toward Q = -I. The k-th iterate is obtained by re-running from scratch, so the total
-    # cost grows quadratically in the highest captured iteration -- deliberately long, but robust.
+    # Same grid/quadrature as the mu01 demo (a coarser rule diverges to Q = -I). The k-th iterate is
+    # captured by re-running forward() from scratch with max_iterations = k, so cost is quadratic.
     stratification = StratifiedAtmosphere(
         model=model,
         height_cm=surface_refined_depth_grid(1000e5, n_surface=80, n_deep=30),

@@ -29,7 +29,7 @@ SolRaT is organized in three layers:
 
 *   **Public API** runs the built-in models.
 *   **Modeling API** extends an existing model or builds a new one by analogy with the shipped ones.
-*   **SolRaT engine** is a dataframe-based meta-language in which the angular algebra and rate expressions are written close to their mathematical form; the bookkeeping and optimization are handled underneath, so the user can focus on the physics rather than on code optimization.
+*   **SolRaT engine** is a vectorized meta-language in which the angular algebra and rate expressions are written close to their mathematical form; the bookkeeping and optimization are handled underneath, so the user can focus on the physics rather than on code optimization.
 
 Scope and limitations
 ---------------------

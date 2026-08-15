@@ -11,13 +11,11 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
-    """
-    This demo shows the calculation of  He I D3 transition under extremely strong magnetic fields.
-    This result is somewhat related to Fig. 8 in Yakovkin & Lozitsky (MNRAS, 2023)
-    https://doi.org/10.1093/mnras/stad1816, where these profiles were obtained using HAZEL2.
+    r"""
+    He I D3 synthesis across strong magnetic fields, related to Fig. 8 of Yakovkin & Lozitsky
+    (MNRAS, 2023, https://doi.org/10.1093/mnras/stad1816).
 
-    :return: the StokesPlotter holding the He I D3 Stokes profiles (not shown; the caller decides
-        whether to display it interactively or save ``plotter.fig``).
+    :return: StokesPlotter.
     """
 
     setup_logging()
