@@ -13,7 +13,7 @@ SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, 
 Browse
 ------
 Check out the :doc:`introduction` for SolRaT description, the :doc:`quickstart` guide for basic usage examples,
-or dive straight into the full API reference reference starting with the :doc:`api`.
+or dive straight into the full API reference starting with the :doc:`api`.
 
 .. toctree::
    :maxdepth: 1

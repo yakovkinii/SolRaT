@@ -8,13 +8,9 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
-    """
-    This demo shows the calculation of the stimulated emission eta_S profiles
-    in the case of a two-term atom under anisotropic irradiation.
-    The inclined POV results in non-zero Stokes I, Q, and U parameters
-    even when no magnetic field is present (Stokes V is still 0 since J1Q is 0).
-    The results are compared with the analytical solution.
-    Reference: (LL04 10.127)
+    r"""
+    Stimulated-emission eta_S profiles of a two-term atom under anisotropic irradiation with no
+    magnetic field, compared with the analytic solution (LL04 eq. 10.127).
     """
 
     setup_logging()

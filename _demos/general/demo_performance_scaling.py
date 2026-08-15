@@ -46,17 +46,9 @@ def time_forward(model, radiation_tensor, atmosphere_parameters, angles, nu: np.
 
 def main():
     r"""
-    Performance scaling of a forward synthesis with the number of frequency points.
+    Forward-synthesis time versus number of frequency points, for a He I D3 constant-property slab.
 
-    The atom-frame quantities (Wigner symbols, Einstein coefficients) and the statistical-equilibrium
-    solution are independent of frequency; the per-frequency cost is the radiative transfer. Timing a
-    He I D3 constant-property slab over a geometrically increasing frequency-grid size therefore shows
-    a near-constant setup cost plus a term linear in the number of points, which is the practically
-    relevant scaling for spectral synthesis. This is a supplementary/repository demo, not a manuscript
-    figure.
-
-    :return: the matplotlib Figure with forward-synthesis time versus number of frequency points (not
-        shown; the caller decides whether to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
@@ -77,7 +69,6 @@ def main():
             step_A=1.2 / n_points,
         )
         forward_times.append(time_forward(model, radiation_tensor, atmosphere_parameters, angles, nu, repeats=3))
-        print(f"  {len(nu):5d} frequency points : {forward_times[-1] * 1e3:8.2f} ms")
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(n_frequency_points, np.array(forward_times) * 1e3, marker="o")
@@ -88,6 +79,8 @@ def main():
     ax.set_title("He I D3 constant-property slab: forward-synthesis scaling")
     ax.grid(True, which="both", alpha=0.3)
     fig.tight_layout()
+    scaling = "  ".join(f"{n}:{t * 1e3:.1f}ms" for n, t in zip(n_frequency_points, forward_times))
+    print(f"Forward-synthesis scaling (He I D3 slab): {scaling}")
     return fig
 
 

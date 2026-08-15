@@ -45,19 +45,11 @@ def build_j0_j1_atom(reference_lambda_A_air: float):
 
 def main():
     r"""
-    Single-scattering (resonance) polarization of a J=0 -> J=1 line versus scattering angle
-    (LL04 Sec. 10.2 / Sec. 5.8).
+    Single-scattering (resonance) polarization of a :math:`J=0 \to 1` line versus scattering angle,
+    against the Rayleigh :math:`\sin^2\theta` law (LL04 Sec. 10.2 / 5.8). Angular-shape check
+    (normalized), not an absolute-amplitude validation.
 
-    With no magnetic field, an anisotropic (axisymmetric) radiation field aligns the J=1 upper level;
-    the emergent linear polarization of the scattered line depends on the angle theta between the line
-    of sight and the symmetry axis. Because the alignment is fixed by the field and only the
-    observing direction changes, the atomic density matrix is solved once and the line-center
-    emissivity ratio eta_Q/eta_I is evaluated over a scan of theta. For a J=0 -> J=1 -> J=0 transition
-    the resonance-scattering polarization follows the Rayleigh sin^2(theta) law, overplotted here in
-    normalized form. This is a fast, illustrative angular-dependence check.
-
-    :return: the matplotlib Figure with normalized line-center Q/I versus scattering angle and the
-        Rayleigh reference (not shown; the caller decides whether to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
@@ -74,8 +66,6 @@ def main():
     atmosphere_parameters = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=6000.0, delta_v_turbulent_cm_sm1=2.0e5
     )
-    # Axisymmetric anisotropy about the vertical (theta_B = 0); the alignment is independent of the
-    # observing direction, so the SEE is solved once.
     field_frame_angles = Angles(chi=0.0, theta=0.0, gamma=0.0, chi_B=0.0, theta_B=0.0)
     radiation_tensor = (
         model.RadiationTensor.from_model_config(model.config)
@@ -102,8 +92,7 @@ def main():
 
     rayleigh = np.sin(scattering_angles) ** 2
     normalization = np.max(np.abs(qi_line_center))
-    print(f"max|Q/I| over the scan = {normalization:.3e} at theta = "
-          f"{np.rad2deg(scattering_angles[int(np.argmax(np.abs(qi_line_center)))]):.0f} deg")  # fmt: skip
+    shape_deviation = float(np.max(np.abs(np.abs(qi_line_center) / normalization - rayleigh / np.max(rayleigh))))
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(np.rad2deg(scattering_angles), np.abs(qi_line_center) / normalization, lw=1.2, marker="o",
@@ -116,6 +105,10 @@ def main():
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(
+        f"Single-scattering polarization: max|SolRaT - Rayleigh sin^2| (normalized shape) = "
+        f"{shape_deviation:.2e}; peak |Q/I| = {normalization:.3e}"
+    )
     return fig
 
 

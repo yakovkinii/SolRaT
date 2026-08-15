@@ -51,14 +51,8 @@ def build_two_level_model():
 
 def main():
     r"""
-    Demo: self-consistent NLTE synthesis through a height-stratified atmosphere with
-    continuously varying temperature, magnetic field, and a vertical macroscopic-velocity
-    gradient (a bulk upflow that increases with height).
-
-    Every physical parameter varies with geometric height; opacity is set by the absorber
-    number-density profile N(z). The velocity is a full vector field (here vertical), so each
-    quadrature ray sees its own line-of-sight projection of the velocity, and the absorption
-    profile is Doppler-shifted accordingly per ray and per depth.
+    Self-consistent NLTE synthesis through a height-stratified atmosphere with continuously varying
+    temperature, magnetic field, and a vertical macroscopic-velocity gradient.
     """
     setup_logging()
 

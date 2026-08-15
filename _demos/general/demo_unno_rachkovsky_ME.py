@@ -155,24 +155,17 @@ def build_normal_triplet_lte_model():
 def main():
     r"""
     Benchmark SolRaT against the analytic Unno-Rachkovsky (Milne-Eddington) solution for a normal
-    Zeeman triplet at several field strengths.
+    Zeeman triplet (LL04 eq. 9.109) at several field strengths. The Stokes-V sign follows LL04
+    eq. 5.36.
 
-    A J_l = 0 -> J_u = 1 LTE line (Lande factor g_u = 1) is synthesized with SolRaT's
-    :class:`MilneEddingtonSlabAtmosphere`, and the analytic solution is built from the same physical
-    parameters (v_B = g_u nu_larmor / delta_nu_D), with the analytic propagation matrix normalized
-    the same way SolRaT normalizes its ``K_tau``. The Stokes-V sign follows LL04 eq. (5.36); SolRaT
-    is checked to reproduce it. Two residual sets are printed per field: the normalization-free
-    coefficient ratios eta_Q/eta_I, eta_V/eta_I, rho_V/eta_I, and the emergent Stokes profiles.
-
-    :return: the matplotlib Figure with the four Stokes panels (not shown; the caller decides whether
-        to display it interactively or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
     temperature_K = 6000.0
     delta_v_turbulent_cm_sm1 = 2.0e5
     voigt_a = 0.05
-    theta_B = np.deg2rad(60.0)  # field inclination (line of sight along the vertical, theta = 0)
+    theta_B = np.deg2rad(60.0)
     chi_B = np.deg2rad(0.0)
     eta_0 = 10.0
     source_0, source_1 = 1.0, 3.0
@@ -189,6 +182,8 @@ def main():
     axis_labels = ["$I$", "$Q/I$", "$U/I$", "$V/I$"]
     field_values_gauss = [500.0, 1500.0, 3000.0]
     colors = ["#1f77b4", "#d62728", "#2ca02c"]
+    worst_ratio_residual = 0.0
+    worst_stokes_delta = 0.0
 
     for magnetic_field_gauss, color in zip(field_values_gauss, colors):
         atmosphere_parameters = model.AtmosphereParameters(
@@ -227,18 +222,20 @@ def main():
             np.abs(solrat_num[core] / eta_I[core] - analytic_num[core] / eta_I_line_a[core])
         )
 
-        print(f"B = {magnetic_field_gauss:.0f} G  (v_B = {v_B:.3f} Doppler widths):")
-        print(f"  ratio residuals  eta_Q/eta_I={ratio_residual(rtc.get_eta_Q(), eta_Q_a):.2e}  "
-              f"eta_V/eta_I={ratio_residual(rtc.get_eta_V(), eta_V_a):.2e}  "
-              f"rho_V/eta_I={ratio_residual(rtc.get_rho_V(), rho_V_a):.2e}")  # fmt: skip
+        worst_ratio_residual = max(
+            worst_ratio_residual,
+            ratio_residual(rtc.get_eta_Q(), eta_Q_a),
+            ratio_residual(rtc.get_eta_V(), eta_V_a),
+            ratio_residual(rtc.get_rho_V(), rho_V_a),
+        )
         panels = [
             (solrat_stokes.I, stokes_I_a),
             (solrat_stokes.Q / solrat_stokes.I, stokes_Q_a / stokes_I_a),
             (solrat_stokes.U / solrat_stokes.I, stokes_U_a / stokes_I_a),
             (solrat_stokes.V / solrat_stokes.I, stokes_V_a / stokes_I_a),
         ]
-        for label, (solrat_curve, analytic_curve) in zip(axis_labels, panels):
-            print(f"  max|Delta {label}| = {np.max(np.abs(solrat_curve - analytic_curve)):.2e}")
+        for solrat_curve, analytic_curve in panels:
+            worst_stokes_delta = max(worst_stokes_delta, float(np.max(np.abs(solrat_curve - analytic_curve))))
         for ax, (solrat_curve, analytic_curve) in zip(axes.ravel(), panels):
             ax.plot(v, solrat_curve, lw=1.2, color=color)
             ax.plot(v, analytic_curve, lw=2.8, ls=(0, (1, 1)), color=color)
@@ -256,10 +253,13 @@ def main():
     field_key = [
         Line2D([], [], color=color, lw=2.4, label=f"B = {b:.0f} G") for b, color in zip(field_values_gauss, colors)
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
-    axes[0, 1].legend(handles=field_key, fontsize=8, loc="best")
-    fig.suptitle("SolRaT vs analytic Unno-Rachkovsky (normal Zeeman triplet, LTE)")
+    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
+    axes[0, 1].legend(handles=field_key, fontsize=11, loc="best")
     fig.tight_layout()
+    print(
+        f"Unno-Rachkovsky (ME) vs analytic: max ratio residual = {worst_ratio_residual:.2e}, "
+        f"max|Delta Stokes| = {worst_stokes_delta:.2e} (over B = {[int(b) for b in field_values_gauss]} G)"
+    )
     return fig
 
 

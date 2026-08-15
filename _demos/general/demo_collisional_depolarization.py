@@ -46,10 +46,9 @@ def frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarray:
 
 def surface_alignment(depolarizing_rate_over_a_ul: float) -> float:
     r"""
-    Surface upper-level fractional alignment :math:`\rho^2_0/\rho^0_0` of the collisionless-scattering
-    two-level atom, with an elastic depolarizing rate :math:`D^{(2)} = (\text{ratio})\,A_{ul}` acting
-    on the upper level (LL04 Sec. 7.13 / Sec. 10.6). No inelastic (de-excitation) collisions are set,
-    so the atom polarizes by pure resonance scattering and :math:`D^{(2)}` is the only depolarizer.
+    Surface upper-level fractional alignment :math:`\rho^2_0/\rho^0_0` of a collisionless-scattering
+    two-level atom with an elastic depolarizing rate :math:`D^{(2)}` on the upper level (LL04
+    Sec. 7.13 / 10.6).
 
     :param depolarizing_rate_over_a_ul: ratio :math:`D^{(2)}/A_{ul}` [dimensionless].
     :return: surface :math:`\rho^2_0/\rho^0_0`.
@@ -80,7 +79,7 @@ def surface_alignment(depolarizing_rate_over_a_ul: float) -> float:
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=np.pi / 2,  # tangential surface (mu = 0)
+        los_theta=np.pi / 2,
         los_chi=0.0,
         los_gamma=0.0,
         n_mu_quadrature=10,
@@ -102,16 +101,10 @@ def main():
     r"""
     Collisional depolarization of resonance-scattering polarization (LL04 Sec. 10.6).
 
-    An elastic collision reshuffles the magnetic sublevels of the upper term without destroying the
-    atom, damping the upper-level alignment :math:`\rho^2_0` (and thus the scattering polarization)
-    while leaving the population :math:`\rho^0_0` untouched. For a two-level atom the alignment is
-    reduced from its collisionless value by the depolarization factor
-    :math:`1/(1 + D^{(2)}/A_{ul})`. This demo scans :math:`D^{(2)}/A_{ul}` for a J=0 -> J=1 scattering
-    slab and overlays the SolRaT surface alignment ratio on that analytic factor, bridging the pure
-    resonance-scattering limit (D^(2) = 0) toward the collisionally unpolarized (LTE) limit.
+    Scans :math:`D^{(2)}/A_{ul}` for a :math:`J=0 \to 1` scattering slab and overlays the SolRaT
+    surface alignment ratio on the analytic factor :math:`1/(1 + D^{(2)}/A_{ul})`.
 
-    :return: the matplotlib Figure with the normalized surface alignment versus D^(2)/A_ul and the
-        analytic depolarization factor (not shown; the caller decides whether to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
@@ -120,8 +113,7 @@ def main():
     normalized_alignment = alignments / alignments[0]
     analytic_factor = 1.0 / (1.0 + depolarizing_ratios)
 
-    for ratio, numeric, analytic in zip(depolarizing_ratios, normalized_alignment, analytic_factor):
-        print(f"  D2/A_ul = {ratio:5.1f} : SolRaT {numeric:.4f}   1/(1+D2/A_ul) {analytic:.4f}")
+    max_deviation = float(np.max(np.abs(normalized_alignment - analytic_factor)))
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(depolarizing_ratios, analytic_factor, lw=2.8, ls=(0, (1, 1)), color="k", label=r"$1/(1 + D^{(2)}/A_{ul})$")
@@ -133,6 +125,7 @@ def main():
     ax.grid(True, which="both", alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(f"Collisional depolarization: max|SolRaT - 1/(1+D2/A_ul)| = {max_deviation:.2e}")
     return fig
 
 

@@ -26,7 +26,7 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-UPPER_ENERGY_CMM1 = 20_000.0  # ~5000 A transition, inside the n(lambda)/w(lambda) fit range
+UPPER_ENERGY_CMM1 = 20_000.0  # ~5000 A
 EINSTEIN_A_UL_SM1 = 1.0e7
 ATOMIC_MASS_AMU = 56.0
 
@@ -43,9 +43,9 @@ def reference_frequency_and_wavelength():
 
 def build_multi_term_normal_triplet(reference_lambda_A_air: float):
     r"""
-    Build the normal Zeeman triplet ^1S_0 -> ^1P_1 (S = 0, one J per term, Lande g_u = 1) as a
-    multi-term atom. With a single J per term there is no intra-term Paschen-Back J-mixing, so the
-    multi-term description reduces exactly to the multi-level one.
+    Build the normal Zeeman triplet :math:`^1S_0 \to {}^1P_1` (:math:`S=0`, one :math:`J` per term,
+    Lande :math:`g_u=1`) as a multi-term atom. With a single :math:`J` per term there is no intra-term
+    Paschen-Back :math:`J`-mixing, so the multi-term description reduces exactly to the multi-level one.
 
     :param reference_lambda_A_air: air reference wavelength of the line [Angstrom].
     :return: configured multi-term Model.
@@ -72,9 +72,9 @@ def build_multi_term_normal_triplet(reference_lambda_A_air: float):
 
 def build_multi_level_normal_triplet(reference_lambda_A_air: float):
     r"""
-    Build the same line as a multi-level atom: a J = 0 -> J = 1 resonance transition with upper-level
-    Lande factor g_u = 1 (the ^1P_1 value), matching :func:`build_multi_term_normal_triplet` in
-    energy, Einstein coefficient, and mass.
+    Build the same line as a multi-level atom: a :math:`J=0 \to 1` resonance transition with
+    upper-level Lande factor :math:`g_u=1`, matching :func:`build_multi_term_normal_triplet` in energy,
+    Einstein coefficient, and mass.
 
     :param reference_lambda_A_air: air reference wavelength of the line [Angstrom].
     :return: configured multi-level Model.
@@ -133,17 +133,10 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
 
 def main():
     r"""
-    Multi-term vs multi-level agreement on an S = 0 line (^1S_0 -> ^1P_1 / J = 0 -> J = 1).
+    Multi-term vs multi-level agreement on an :math:`S=0` line (:math:`^1S_0 \to {}^1P_1` /
+    :math:`J=0 \to 1`).
 
-    The two pipelines are run through the same prescribed-J constant-property slab with an identical
-    anisotropic radiation tensor, geometry, and atmosphere; only the atom model differs. Because the
-    term has a single J, the multi-term atom carries no intra-term Paschen-Back J-mixing, so the two
-    descriptions are formally identical and the emergent Stokes profiles must agree to numerical
-    precision even at kilogauss fields. This is the agreement baseline for the multi-term / multi-level
-    comparison (the counterpart to the fine-structure divergence demo).
-
-    :return: the matplotlib Figure overlaying the multi-term (thin solid) and multi-level (thick
-        short-dotted) Stokes profiles (not shown; the caller decides whether to display or save it).
+    :return: matplotlib Figure.
     """
     setup_logging()
 
@@ -166,7 +159,7 @@ def main():
         model_config=model_mt.config, magnetic_field_gauss=magnetic_field_gauss, temperature_K=6000.0,
         delta_v_turbulent_cm_sm1=2.0e5, voigt_a=0.05,
     ).delta_v_thermal_cm_sm1  # fmt: skip
-    reduced_frequency = (nu - nu0) / (nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1)  # (nu - nu0)/Delta nu_D
+    reduced_frequency = (nu - nu0) / (nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1)
 
     panels = [
         ("$I$", stokes_mt.I, stokes_ml.I),
@@ -175,9 +168,7 @@ def main():
         ("$V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
     ]
 
-    print(f"B = {magnetic_field_gauss:.0f} G  (S = 0 line; multi-term must equal multi-level):")
-    for label, mt_curve, ml_curve in panels:
-        print(f"  max|Delta {label}| = {np.max(np.abs(mt_curve - ml_curve)):.2e}")
+    max_stokes_delta = max(float(np.max(np.abs(mt_curve - ml_curve))) for _, mt_curve, ml_curve in panels)
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     for ax, (label, mt_curve, ml_curve) in zip(axes.ravel(), panels):
@@ -192,9 +183,12 @@ def main():
         Line2D([], [], color="#1f77b4", lw=1.2, label="Multi-term atom"),
         Line2D([], [], color="#d62728", lw=2.8, ls=(0, (1, 1)), label="Multi-level atom"),
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
-    fig.suptitle("Multi-term vs multi-level: S=0 line ($^1S_0 \\to {}^1P_1$), $B = 1200$ G")
+    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
     fig.tight_layout()
+    print(
+        f"Multi-term vs multi-level (S=0 line, B = {magnetic_field_gauss:.0f} G): "
+        f"max|Delta Stokes| = {max_stokes_delta:.2e} (should be ~machine precision)"
+    )
     return fig
 
 

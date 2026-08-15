@@ -10,8 +10,8 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
-    """
-    This demo shows the calculation of the Zeeman splitting for the Fe I 5434 A line.
+    r"""
+    Zeeman/Paschen-Back splitting of the Fe I 5434 A line.
     """
 
     setup_logging()
@@ -19,37 +19,37 @@ def main():
     level_registry = LevelRegistry()
     level_registry.register_level(
         beta="a5F",
-        L=3,  # F term  -> L = 3
-        S=2.0,  # 2S+1 = 5 -> S = 2
-        J=1.0,  # a^5F_1
+        L=3,
+        S=2.0,
+        J=1.0,
         energy_cmm1=8154.713,  # NIST: 3d^7(4F)4s a^5F1 level
     )
     level_registry.register_level(
         beta="a5F",
-        L=3,  # F term  -> L = 3
-        S=2.0,  # 2S+1 = 5 -> S = 2
-        J=2.0,  # a^5F_1
+        L=3,
+        S=2.0,
+        J=2.0,
         energy_cmm1=7985.785,  # NIST: 3d^7(4F)4s a^5F1 level
     )
     level_registry.register_level(
         beta="a5F",
-        L=3,  # F term  -> L = 3
-        S=2.0,  # 2S+1 = 5 -> S = 2
-        J=3.0,  # a^5F_1
+        L=3,
+        S=2.0,
+        J=3.0,
         energy_cmm1=7728.060,  # NIST: 3d^7(4F)4s a^5F1 level
     )
     level_registry.register_level(
         beta="a5F",
-        L=3,  # F term  -> L = 3
-        S=2.0,  # 2S+1 = 5 -> S = 2
-        J=4.0,  # a^5F_1
+        L=3,
+        S=2.0,
+        J=4.0,
         energy_cmm1=7376.764,  # NIST: 3d^7(4F)4s a^5F1 level
     )
     level_registry.register_level(
         beta="a5F",
-        L=3,  # F term  -> L = 3
-        S=2.0,  # 2S+1 = 5 -> S = 2
-        J=5.0,  # a^5F_1
+        L=3,
+        S=2.0,
+        J=5.0,
         energy_cmm1=6928.268,  # NIST: 3d^7(4F)4s a^5F1 level
     )
     level_registry.validate()

@@ -11,8 +11,8 @@ from solrat.atom_model.shared.utility.plot_stokes_profiles import StokesPlotter
 
 
 def main():
-    """
-    This demo shows how the DELO solver works against the different more primitive finite difference method.
+    r"""
+    Compare the DELO transfer solver against a finite-difference integration for a He I D3 slab.
     """
     setup_logging()
 
@@ -59,9 +59,10 @@ def main():
         atmosphere_parameters=atmosphere_parameters,
     )
 
+    delo_stokes = atmosphere.forward(initial_stokes=initial_stokes)
     plotter.add_stokes(
         nu=nu,
-        stokes=atmosphere.forward(initial_stokes=initial_stokes),
+        stokes=delo_stokes,
         norm=StokesPlotter.Norm.BY_REFERENCE,
         stokes_reference=initial_stokes,
         label="DELO",
@@ -122,6 +123,12 @@ def main():
                 linewidth=0.5,
             )
 
+    fd_final = np.real(stokes[:, :, 0])  # [Nnu, 4]: I, Q, U, V after the finite-difference steps
+    delo_array = np.stack([delo_stokes.I, delo_stokes.Q, delo_stokes.U, delo_stokes.V], axis=1)
+    print(
+        f"DELO vs {n_steps}-step finite difference: max|FD - DELO| / max|DELO| = "
+        f"{float(np.max(np.abs(fd_final - delo_array)) / np.max(np.abs(delo_array))):.2e}"
+    )
     plotter.show()
 
 

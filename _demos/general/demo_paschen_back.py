@@ -7,13 +7,11 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
-    """
-    This demo shows the calculation of the Zeeman splitting for the 2p term of hydrogen,
-    spanning the linear Zeeman effect regime, the intermediate fields regime,
-    and the complete Paschen-Back regime.
+    r"""
+    Zeeman splitting of the hydrogen 2p term across the linear-Zeeman, intermediate, and complete
+    Paschen-Back regimes.
 
-    :return: the matplotlib Figure with the term-splitting diagram (not shown; the caller decides
-        whether to display it interactively or save it).
+    :return: matplotlib Figure.
     """
 
     setup_logging()
@@ -45,9 +43,8 @@ def main():
 
     fig, ax = plt.subplots()
     ax.plot(magnetic_fields, np.array(energies), "k")
-    ax.set_xlabel("Magnetic field (G)")
-    ax.set_ylabel("Energy (cm$^{-1}$)")
-    ax.set_title("Hydrogen 2p term splitting due to Zeeman and Paschen-Back effects")
+    ax.set_xlabel(r"$B$ (G)")
+    ax.set_ylabel(r"$E$ (cm$^{-1}$)")
     return fig
 
 

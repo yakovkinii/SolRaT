@@ -26,24 +26,18 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-# Fe I 5434-like construction. The second-order (Paschen-Back) Zeeman signal is made visible at only
-# a few kilogauss by using a high-spin term (S = 3/2, a 4P term) rather than a simple doublet: the
-# larger intra-term coupling means modest mixing -- as in the Fe I 5434 line, whose 4P-like term
-# levels are far apart yet mix appreciably by ~20 kG -- already reshapes the observed line by ~5 kG.
-# The observed line is 4P_5/2 -> 4S_3/2 (upper J = 5/2, so it can still carry alignment for the
-# scattering comparison). The 4P_5/2 level mixes with its 4P_3/2 and 4P_1/2 partners, kept a few
-# Doppler widths away so the fine-structure branches stay cleanly resolved.
-LOWER_ENERGY_CMM1 = 0.0  # 4S_3/2 lower level (single J)
-UPPER_P52_ENERGY_CMM1 = 20_000.0  # 4P_5/2 (observed branch)
-UPPER_P32_ENERGY_CMM1 = 20_001.0  # 4P_3/2 (satellite)
-UPPER_P12_ENERGY_CMM1 = 20_001.6  # 4P_1/2 (satellite)
+# Synthetic Fe I 5434-like quartet: observed 4P_5/2 -> 4S_3/2, with 4P_3/2 and 4P_1/2 satellites.
+LOWER_ENERGY_CMM1 = 0.0
+UPPER_P52_ENERGY_CMM1 = 20_000.0  # observed branch
+UPPER_P32_ENERGY_CMM1 = 20_001.0  # satellite
+UPPER_P12_ENERGY_CMM1 = 20_001.6  # satellite
 EINSTEIN_A_UL_SM1 = 1.0e7
 ATOMIC_MASS_AMU = 56.0
-TERM_SPIN = 1.5  # S = 3/2 (quartet terms): stronger J-mixing than a doublet
+TERM_SPIN = 1.5  # S = 3/2
 J_OBSERVED_UPPER = 2.5
 J_OBSERVED_LOWER = 1.5
-TEMPERATURE_K = 3000.0  # low T -> narrow thermal line so the Zeeman components are resolved
-DELTA_V_TURBULENT_CM_SM1 = 0.0  # no extra broadening: keep the components sharp to compare positions
+TEMPERATURE_K = 3000.0
+DELTA_V_TURBULENT_CM_SM1 = 0.0
 VOIGT_A = 0.01
 
 
@@ -149,8 +143,7 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
         delta_v_turbulent_cm_sm1=DELTA_V_TURBULENT_CM_SM1,
         voigt_a=VOIGT_A,
     )
-    # The LTE radiation tensor has no fill_* methods (the LTE SEE ignores the radiation field), so
-    # only fill it for the NLTE models; the bare LTE tensor is passed through unchanged.
+    # The LTE radiation tensor has no fill_* methods (LTE SEE ignores the radiation field).
     radiation_tensor = model.RadiationTensor.from_model_config(model.config)
     if anisotropic and hasattr(radiation_tensor, "fill_NLTE_n_w_parametrized"):
         radiation_tensor = radiation_tensor.fill_NLTE_n_w_parametrized(h_arcsec=30)
@@ -194,6 +187,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     field_values_gauss = [500.0, 1000.0, 2000.0]
     zoom_limits = (-5.0, 5.0)  # reduced-frequency window on the observed-line core (satellites excluded)
     fig, axes = plt.subplots(3, len(field_values_gauss), figsize=(12, 10), sharey="row")
+    worst_delta_v = 0.0
     for column, magnetic_field_gauss in enumerate(field_values_gauss):
         stokes_mt_full = synthesize(model_mt_full, nu, angles, magnetic_field_gauss, anisotropic=False)
         stokes_mt_constrained = synthesize(model_mt_constrained, nu, angles, magnetic_field_gauss, anisotropic=False)
@@ -202,7 +196,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         max_deltaV = np.max(
             np.abs(stokes_mt_constrained.V / np.max(stokes_mt_constrained.I) - stokes_ml.V / np.max(stokes_ml.I))
         )
-        print(f"  B = {magnetic_field_gauss:6.0f} G : max|Delta V/Imax| (constrained MT - ML) = {max_deltaV:.2e}")
+        worst_delta_v = max(worst_delta_v, float(max_deltaV))
 
         ax_intensity_full, ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column], axes[2, column]
         for stokes, lw, color, linestyle in (
@@ -222,17 +216,21 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         for ax in (ax_intensity_full, ax_intensity_zoom, ax_v_zoom):
             ax.axhline(0.0, color="0.7", lw=0.6)
             ax.grid(alpha=0.3)
-    axes[0, 0].set_ylabel(r"$I\,/\,\max I$ (full)")
-    axes[1, 0].set_ylabel(r"$I\,/\,\max I$ (zoom)")
-    axes[2, 0].set_ylabel(r"$V\,/\,\max I$ (zoom)")
+    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$ (full)")
+    axes[1, 0].set_ylabel(r"$I\,/\,I_{\max}$ (zoom)")
+    axes[2, 0].set_ylabel(r"$V\,/\,I_{\max}$ (zoom)")
     style_key = [
         Line2D([], [], color="#00FF00", lw=0.9, label="Multi-term, all branches"),
         Line2D([], [], color="#0000FF", lw=1.5, ls="--", label="Multi-term, $J$-constrained"),
         Line2D([], [], color="k", lw=2.2, ls=(0, (1, 1)), label="Multi-level (linear)"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
-    fig.suptitle(r"Second-order Zeeman: $^4P_{5/2}\to{}^4S_{3/2}$ observed branch, multi-term vs multi-level")
     fig.tight_layout()
+    print(
+        f"Second-order Zeeman (MT J-constrained vs ML): max|Delta V/I_max| = {worst_delta_v:.2e} "
+        f"over B = {[int(b) for b in field_values_gauss]} G (should grow from ~0 at low field into "
+        f"incomplete Paschen-Back)"
+    )
     return fig
 
 
@@ -245,7 +243,7 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     :return: the matplotlib Figure.
     """
     angles = Angles(chi=0.0, theta=np.pi / 3, gamma=0.0, chi_B=0.0, theta_B=0.0)
-    magnetic_field_gauss = 50.0  # weak field: scattering, not Zeeman, dominates the linear polarization
+    magnetic_field_gauss = 50.0
     model_ml = build_multi_level_branch(reference_lambda_A_air)
     model_mt_lte = build_multi_term_doublet(reference_lambda_A_air, lte=True)
     reduced_frequency = (nu - nu0) / delta_nu_D
@@ -254,19 +252,19 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     stokes_mt_lte = synthesize(model_mt_lte, nu, angles, magnetic_field_gauss, anisotropic=True)
     qi_ml = 100.0 * stokes_ml.Q / stokes_ml.I
     qi_mt_lte = 100.0 * stokes_mt_lte.Q / stokes_mt_lte.I
-    print(f"  weak field: max|Q/I| ML (NLTE) = {np.max(np.abs(qi_ml)):.3e} %, "
-          f"MT (LTE) = {np.max(np.abs(qi_mt_lte)):.3e} %")  # fmt: skip
-
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(reduced_frequency, qi_ml, lw=1.5, color="#1f77b4", label="Multi-level (NLTE scattering)")
     ax.plot(reduced_frequency, qi_mt_lte, lw=1.5, ls="--", color="#d62728", label="Multi-term (LTE, no scattering)")
     ax.axhline(0.0, color="0.7", lw=0.6)
     ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     ax.set_ylabel("$100\\,Q/I$")
-    ax.set_title(r"Weak-field scattering polarization the LTE multi-term atom misses")
     ax.grid(alpha=0.3)
     ax.legend()
     fig.tight_layout()
+    print(
+        f"Weak-field scattering Q/I: ML (NLTE) max|Q/I| = {np.max(np.abs(qi_ml)):.3e} %, "
+        f"MT (LTE) max|Q/I| = {np.max(np.abs(qi_mt_lte)):.3e} % (MT-LTE should be ~0)"
+    )
     return fig
 
 
@@ -304,9 +302,7 @@ def main():
     ).delta_v_thermal_cm_sm1  # fmt: skip
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
 
-    print("Part (a) second-order Zeeman (isotropic field, LTE):")
     second_order_zeeman = second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D)
-    print("Part (b) NLTE scattering (anisotropic field, weak field):")
     nlte_scattering = nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D)
     return second_order_zeeman, nlte_scattering
 

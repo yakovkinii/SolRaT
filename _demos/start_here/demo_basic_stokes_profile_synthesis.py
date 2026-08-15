@@ -59,7 +59,7 @@ def main():
         model_config=model.config,
         magnetic_field_gauss=1000,
         temperature_K=5000,
-        delta_v_turbulent_cm_sm1=0,  # non-thermal temperature for additional Gaussian broadening
+        delta_v_turbulent_cm_sm1=0,  # microturbulent velocity [cm/s]
         macroscopic_velocity_cm_sm1=0,  # Doppler shift, typically used when multiple emission components are modeled
         voigt_a=0,  # Voigt damping coefficient
     )
