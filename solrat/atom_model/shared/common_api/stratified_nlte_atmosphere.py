@@ -10,6 +10,7 @@ from solrat.atom_model.base_atom_model.object.rho import BaseRho
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.model_registry import Model
+from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import T_K_Q
 from solrat.atom_model.shared.object.stokes import Stokes
@@ -310,12 +311,38 @@ class NLTEStratifiedAtmosphere:
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
 
-    @log_method
-    def forward(self, initial_stokes: Stokes) -> Stokes:
+    @property
+    def model_signature(self) -> str:
         r"""
-        Run the NLTE loop and return the emergent Stokes vector along the observer ray.
+        Identifier of the atom model, stored in the :class:`NLTEState` and checked on warm start.
+        """
+        config_type = type(self.model.config)
+        return f"{config_type.__module__}.{config_type.__qualname__}"
 
-        :param initial_stokes:  Stokes incident at the lower boundary ``z[0]``.
+    def get_state(self) -> NLTEState:
+        r"""
+        The current density-matrix grid as a reusable :class:`NLTEState` (available after
+        :meth:`forward`).
+        """
+        assert self.rho_grid is not None, "forward() must run before get_state()."
+        return NLTEState.from_rho_grid(
+            height_cm=self.stratification.height_cm, rho_grid=self.rho_grid, model_signature=self.model_signature
+        )
+
+    @log_method
+    def forward(
+        self,
+        initial_stokes: Stokes,
+        initial_state: Optional[NLTEState] = None,
+        on_iteration: Optional[Callable[[int, Stokes], None]] = None,
+    ) -> Stokes:
+        r"""
+        Run the NLTE loop and return the emergent Stokes along the observer ray.
+
+        ``initial_state`` warm-starts from a previous :class:`NLTEState` instead of the LTE guess;
+        ``on_iteration(iteration, emergent)`` is called after each iteration with the current
+        emergent Stokes (e.g. to record a convergence history). Retrieve the final state with
+        :meth:`get_state`.
         """
         nu = initial_stokes.nu
         strat = self.stratification
@@ -365,6 +392,13 @@ class NLTEStratifiedAtmosphere:
                 radiation_tensor_in_magnetic_frame=rad_planck.rotate_to_magnetic_frame(angles=b_angles[i]),
             )
             rho_grid.append(see.get_solution())
+
+        # 1b. Warm start: overwrite the LTE guess with a previous solution (resampled to this grid).
+        # The isotropic-Planck solve above still runs so rho_grid carries the correct per-depth
+        # coherence structure; only the values are replaced.
+        if initial_state is not None:
+            initial_state.check_compatible(self.model_signature, coherence_keys=list(rho_grid[0].data))
+            initial_state.interpolate_to(z).apply_to_templates(rho_grid)
 
         # 2. Per-depth line-core opacity along the observer ray (absolute, includes N), used for
         #    the optical-depth diagnostic and, when no explicit k_c(z) is supplied, to scale the
@@ -436,6 +470,40 @@ class NLTEStratifiedAtmosphere:
         bottom_bc = initial_stokes
         top_bc = self.top_incident_stokes if self.top_incident_stokes is not None else Stokes.from_zeros(nu_sm1=nu)
 
+        # Emergent Stokes along the observer ray for a given rho grid (independent of rho apart from
+        # that grid). A tangential view (|mu| -> 0) is the Eddington-Barbier limit I(0) = S(tau=0);
+        # otherwise the ray is integrated. Reused for the per-iteration callback and the final value.
+        obs_params = [strat.atmosphere_parameters(i, self._project(v_vectors[i], omega_obs)) for i in range(n_z)]
+
+        def emergent_stokes_for(current_rho_grid: List[BaseRho]) -> Stokes:
+            if abs(mu_obs) < _MU_TANGENTIAL_THRESHOLD:
+                e = self._tangential_emergent(
+                    i_surface=n_z - 1,
+                    rte=rte,
+                    rho_grid=current_rho_grid,
+                    params_per_z=obs_params,
+                    angles_per_z=obs_angles,
+                    number_density=N,
+                    k_c_per_z=k_c_per_z,
+                    bp_per_z=bp_per_z,
+                )
+            else:
+                stokes_z = self._propagate_ray(
+                    rho_grid=current_rho_grid,
+                    z=z,
+                    mu_n=mu_obs,
+                    rte=rte,
+                    params_per_z=obs_params,
+                    angles_per_z=obs_angles,
+                    number_density=N,
+                    k_c_per_z=k_c_per_z,
+                    bp_per_z=bp_per_z,
+                    bottom_bc=bottom_bc,
+                    top_bc=top_bc,
+                )
+                e = stokes_z[-1] if mu_obs > 0 else stokes_z[0]
+            return Stokes(nu=nu, I=real(e[0]), Q=real(e[1]), U=real(e[2]), V=real(e[3]))
+
         # 4. Lambda-iteration: rho(old) -> formal solution for I along each ray -> reconstruct
         # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
         # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
@@ -480,38 +548,18 @@ class NLTEStratifiedAtmosphere:
             self.final_residual = residual
             self.residual_history.append(residual)
             logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
+            if on_iteration is not None:
+                on_iteration(iteration, emergent_stokes_for(rho_grid))
             if residual < self.tolerance:
                 break
 
         self.rho_grid = rho_grid
-
-        # 5. Final emergent Stokes along the observer ray. A tangential view (|mu| -> 0) is the
-        # Eddington-Barbier limit I(0) = S(tau=0) (the surface source function); otherwise integrate.
-        obs_params = [strat.atmosphere_parameters(i, self._project(v_vectors[i], omega_obs)) for i in range(n_z)]
-        if abs(mu_obs) < _MU_TANGENTIAL_THRESHOLD:
-            emergent = self._tangential_emergent(
-                i_surface=n_z - 1, rte=rte, rho_grid=rho_grid, params_per_z=obs_params,
-                angles_per_z=obs_angles, number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
-            )  # fmt: skip
-        else:
-            observer_stokes_z = self._propagate_ray(
-                rho_grid=rho_grid, z=z, mu_n=mu_obs, rte=rte,
-                params_per_z=obs_params, angles_per_z=obs_angles,
-                number_density=N, k_c_per_z=k_c_per_z, bp_per_z=bp_per_z,
-                bottom_bc=bottom_bc, top_bc=top_bc,
-            )  # fmt: skip
-            emergent = observer_stokes_z[-1] if mu_obs > 0 else observer_stokes_z[0]
+        emergent = emergent_stokes_for(rho_grid)
 
         if hasattr(rte, "clear_operator_cache"):
             rte.clear_operator_cache()
 
-        return Stokes(
-            nu=nu,
-            I=real(emergent[0]),
-            Q=real(emergent[1]),
-            U=real(emergent[2]),
-            V=real(emergent[3]),
-        )
+        return emergent
 
     # ------------------------------------------------------------------ geometry / velocity
 

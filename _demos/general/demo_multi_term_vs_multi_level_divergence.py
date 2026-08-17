@@ -297,9 +297,12 @@ def main():
     )
     scale_model = build_multi_level_branch(reference_lambda_A_air)
     delta_v_thermal_cm_sm1 = scale_model.AtmosphereParameters(
-        model_config=scale_model.config, magnetic_field_gauss=0.0, temperature_K=TEMPERATURE_K,
-        delta_v_turbulent_cm_sm1=DELTA_V_TURBULENT_CM_SM1, voigt_a=VOIGT_A,
-    ).delta_v_thermal_cm_sm1  # fmt: skip
+        model_config=scale_model.config,
+        magnetic_field_gauss=0.0,
+        temperature_K=TEMPERATURE_K,
+        delta_v_turbulent_cm_sm1=DELTA_V_TURBULENT_CM_SM1,
+        voigt_a=VOIGT_A,
+    ).delta_v_thermal_cm_sm1
     delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
 
     second_order_zeeman = second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D)

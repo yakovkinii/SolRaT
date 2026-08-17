@@ -156,9 +156,12 @@ def main():
     stokes_ml = synthesize(model_ml, nu, angles, magnetic_field_gauss)
 
     delta_v_thermal_cm_sm1 = model_mt.AtmosphereParameters(
-        model_config=model_mt.config, magnetic_field_gauss=magnetic_field_gauss, temperature_K=6000.0,
-        delta_v_turbulent_cm_sm1=2.0e5, voigt_a=0.05,
-    ).delta_v_thermal_cm_sm1  # fmt: skip
+        model_config=model_mt.config,
+        magnetic_field_gauss=magnetic_field_gauss,
+        temperature_K=6000.0,
+        delta_v_turbulent_cm_sm1=2.0e5,
+        voigt_a=0.05,
+    ).delta_v_thermal_cm_sm1
     reduced_frequency = (nu - nu0) / (nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1)
 
     panels = [

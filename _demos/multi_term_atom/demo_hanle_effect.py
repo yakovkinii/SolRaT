@@ -77,8 +77,14 @@ def main():
 
     fig, ax = plt.subplots(figsize=(6, 6), num="Hanle Effect")
     ax.plot(B_values, alignments_norm, lw=2, label=r"SolRaT $|\rho^2_2|\,/\,|\rho^2_2(B{=}0)|$")
-    ax.plot(B_values, analytic_hanle, lw=2.6, ls=(0, (1, 1)), color="k",
-            label=r"LL04 eq. (10.30): $1/\sqrt{1+(Q H_u)^2}$")  # fmt: skip
+    ax.plot(
+        B_values,
+        analytic_hanle,
+        lw=2.6,
+        ls=(0, (1, 1)),
+        color="k",
+        label=r"LL04 eq. (10.30): $1/\sqrt{1+(Q H_u)^2}$",
+    )
     ax.axhline(1 / np.sqrt(2), color="gray", linestyle="--", lw=1, label=r"$1/\sqrt{2}$ level")
     ax.set_xlabel(r"$B$ (G)")
     ax.set_ylabel(r"$|\rho^2_2|\,/\,|\rho^2_2|_{B=0}$")

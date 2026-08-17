@@ -1,5 +1,9 @@
 from typing import Dict
 
+from numpy import exp
+
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
+
 
 class ParametrizedCollisions:
     r"""
@@ -30,6 +34,17 @@ class ParametrizedCollisions:
         """
         assert rate_sm1 >= 0, "deexcitation rate must be non-negative."
         self._deexcitation_rate_sm1[transition_id] = float(rate_sm1)
+
+    def set_deexcitation_rate_from_epsilon(self, transition, epsilon: float, temperature_K: float) -> None:
+        r"""
+        Set :math:`C_{ul}` from a two-level photon destruction probability ``epsilon`` (LL04 Sec. 7.13;
+        TB1999 Sec. 2): :math:`C_{ul} = \frac{\epsilon}{1-\epsilon}\, A_{ul} / (1 - e^{-h\nu_0/kT})`.
+        """
+        assert 0.0 < epsilon < 1.0, "epsilon must be in (0, 1)."
+        delta_e_erg = (transition.level_upper.energy_cmm1 - transition.level_lower.energy_cmm1) * h_erg_s * c_cm_sm1
+        stimulated_correction = 1.0 - exp(-delta_e_erg / (kB_erg_Km1 * temperature_K))
+        rate_sm1 = epsilon / (1.0 - epsilon) * transition.einstein_a_ul / stimulated_correction
+        self.set_deexcitation_rate(transition.transition_id, rate_sm1)
 
     def set_depolarizing_rate(self, level_id: str, K: int, rate_sm1: float) -> None:
         r"""
