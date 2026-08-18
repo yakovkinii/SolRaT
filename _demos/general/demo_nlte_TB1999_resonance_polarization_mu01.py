@@ -5,6 +5,7 @@ import numpy as np
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
+from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
     NLTEStratifiedAtmosphere,
     StratifiedAtmosphere,
@@ -37,11 +38,11 @@ def main():
     params = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
     )
-    nu = frequencies_around_line_sm1(transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1)
+    nu = frequencies_around_line_sm1(transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.5)
 
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=height_grid_refined_at_observer_surface(1000e5, n_near_surface=50, n_interior=20),
+        height_cm=height_grid_refined_at_observer_surface(10000e6, n_near_surface=500, n_interior=300),
         temperature_K=temperature_K,
         number_density_cm3=1.0e11,
         magnetic_field_gauss=0.0,
@@ -56,14 +57,28 @@ def main():
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,
+        n_mu_quadrature=30,
         n_phi_quadrature=3,
-        max_iterations=1000,
+        max_iterations=100,
         tolerance=1e-10,
         ng_acceleration=True,
-        ng_damping=0.7,
+        ng_damping=0.5,
+        ng_period=10,
+        estimate_true_error=True,
     )
-    emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+
+    initial_state = NLTEState.load('tb99_q.npz')
+    emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
+    state = atmosphere.get_state()
+    state.save('tb99_q.npz')
+    # -3.059
+    # -3.192
+    # -3.214
+
+    # -3.188
+    # -3.227
+    # -3.227
+    # -3.237
 
     nu0 = transition.get_mean_transition_frequency_sm1()
     reduced_nu = reduced_frequency(nu, nu0, params.delta_v_thermal_cm_sm1)

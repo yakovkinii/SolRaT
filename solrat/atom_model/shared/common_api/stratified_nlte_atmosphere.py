@@ -33,6 +33,14 @@ _ERR_TANGENTIAL_MU = "Quadrature mu is too close to tangential (|mu| < 1e-6)."
 # so the diverging tangential path length is never integrated.
 _MU_TANGENTIAL_THRESHOLD = 1e-4
 
+# True-error estimation (opt-in): the residual r_k = max|Delta rho| is a step size, not the distance
+# to the fixed point; with contraction rate lambda the error is ~ r_k / (1 - lambda). lambda is read
+# from the geometric decay r_k / r_{k-1}. With Ng acceleration, only the "measure" iterations of each
+# period decay geometrically: [jump] - [relax] - [measure] - [jump]. These set that window.
+_NG_RELAX_ITERATIONS = 3  # iterations after an Ng jump discarded before the decay is clean
+_MIN_MEASURE_ITERATIONS = 3  # clean residuals needed for a rate estimate (>= 2 ratios)
+_LAMBDA_WINDOW = 8  # cap on residuals kept for the rate estimate
+
 
 def _sample_profile(value: Profile, z_cm: np.ndarray, name: str) -> np.ndarray:
     r"""
@@ -257,6 +265,12 @@ class NLTEStratifiedAtmosphere:
     :param ng_damping:  under-relaxation of the Ng step in (0, 1]: the accepted update is
         :math:`\rho_0 + \mathrm{ng\_damping}\,(\rho_{\rm Ng} - \rho_0)`. ``1.0`` is the full Ng step;
         lower it (e.g. ``0.5``) if the residual jumps up on the extrapolation iterations (overshoot).
+    :param transfer_scheme:  ``"delo_constant"`` (first order, piecewise-constant source per cell)
+        or ``"delo_linear"`` (second order, source linear across each cell).
+    :param estimate_true_error:  when ``True``, converge on the estimated distance to the fixed point
+        (residual divided by :math:`1-\lambda`, with :math:`\lambda` the measured contraction rate)
+        rather than on the raw residual; grid-robust. With Ng it needs ``ng_period`` large enough for
+        a clean measurement window per period.
     """
 
     def __init__(
@@ -274,6 +288,8 @@ class NLTEStratifiedAtmosphere:
         ng_acceleration: bool = False,
         ng_period: int = 4,
         ng_damping: float = 1.0,
+        transfer_scheme: str = "delo_constant",
+        estimate_true_error: bool = False,
     ):
         # A tangential observer (mu -> 0) is allowed: it is handled by the surface-source-function
         # (Eddington-Barbier) branch in forward(), so no |mu| lower bound is required here.
@@ -284,6 +300,16 @@ class NLTEStratifiedAtmosphere:
         )
         assert ng_period >= 1, "ng_period must be >= 1."
         assert 0.0 < ng_damping <= 1.0, "ng_damping must be in (0, 1]."
+        assert transfer_scheme in ("delo_constant", "delo_linear"), (
+            "transfer_scheme must be 'delo_constant' or 'delo_linear'."
+        )
+        if estimate_true_error and ng_acceleration:
+            min_period = _NG_RELAX_ITERATIONS + 1 + _MIN_MEASURE_ITERATIONS
+            assert ng_period >= min_period, (
+                f"estimate_true_error with ng_acceleration needs ng_period >= {min_period} "
+                f"({_NG_RELAX_ITERATIONS} relaxation + 1 jump + {_MIN_MEASURE_ITERATIONS} measurement "
+                f"iterations per period); got ng_period = {ng_period}."
+            )
 
         self.model = model
         self.stratification = stratification
@@ -298,6 +324,8 @@ class NLTEStratifiedAtmosphere:
         self.ng_acceleration = ng_acceleration
         self.ng_period = ng_period
         self.ng_damping = ng_damping
+        self.transfer_scheme = transfer_scheme
+        self.estimate_true_error = estimate_true_error
 
         # Diagnostics populated by forward()
         self.rho_grid: Optional[List[BaseRho]] = None
@@ -305,6 +333,8 @@ class NLTEStratifiedAtmosphere:
         self.iterations_used: Optional[int] = None
         self.final_residual: Optional[float] = None
         self.residual_history: List[float] = []
+        self.final_true_error: Optional[float] = None
+        self.lambda_estimate: Optional[float] = None
 
         # Transition ids and rest frequencies for the per-transition profile weights (set in
         # forward()); the profiles themselves are built per (ray, depth).
@@ -508,6 +538,7 @@ class NLTEStratifiedAtmosphere:
         # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
         # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
         rho_history: List[List[BaseRho]] = []  # last few iterates, for optional Ng acceleration
+        measure_residuals: List[float] = []  # clean-decay residuals, for optional true-error estimation
         for iteration in range(self.max_iterations):
             stokes_per_ray: List[np.ndarray] = []
             for r in range(len(rays)):
@@ -547,11 +578,35 @@ class NLTEStratifiedAtmosphere:
             self.iterations_used = iteration + 1
             self.final_residual = residual
             self.residual_history.append(residual)
-            logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
             if on_iteration is not None:
                 on_iteration(iteration, emergent_stokes_for(rho_grid))
-            if residual < self.tolerance:
-                break
+
+            if not self.estimate_true_error:
+                logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
+                if residual < self.tolerance:
+                    break
+                continue
+
+            # Stop on the estimated distance to the fixed point rather than on the step size. Only the
+            # clean-decay iterations feed the rate estimate: plain iterations always, or the measure
+            # window of each Ng period (past the jump and its relaxation).
+            in_measure_window = (
+                not self.ng_acceleration
+                or _NG_RELAX_ITERATIONS <= iteration % self.ng_period <= self.ng_period - 2
+            )
+            measure_residuals = (measure_residuals + [residual])[-_LAMBDA_WINDOW:] if in_measure_window else []
+            true_error, lambda_hat = self._estimate_true_error(measure_residuals)
+            self.final_true_error = true_error
+            self.lambda_estimate = lambda_hat
+            if true_error is None:
+                logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
+            else:
+                logging.info(
+                    "NLTE (stratified) iteration %d: residual = %.3e, estimated error = %.3e (lambda = %.3f)",
+                    iteration, residual, true_error, lambda_hat,
+                )
+                if true_error < self.tolerance:
+                    break
 
         self.rho_grid = rho_grid
         emergent = emergent_stokes_for(rho_grid)
@@ -734,16 +789,27 @@ class NLTEStratifiedAtmosphere:
             eps_per_z.append(eps)
 
         stokes = np.zeros((n_z, 4, n_nu), dtype=np.complex128)
+        linear = self.transfer_scheme == "delo_linear"
         if mu_n > 0:
             stokes[0] = np.stack([bottom_bc.I, bottom_bc.Q, bottom_bc.U, bottom_bc.V])
             for i in range(0, n_z - 1):
                 ds = (z[i + 1] - z[i]) / abs(mu_n)
-                stokes[i + 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
+                if linear:
+                    stokes[i + 1] = self._delo_linear_step(
+                        K_per_z[i], eps_per_z[i], K_per_z[i + 1], eps_per_z[i + 1], stokes[i], ds
+                    )
+                else:
+                    stokes[i + 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
         else:
             stokes[-1] = np.stack([top_bc.I, top_bc.Q, top_bc.U, top_bc.V])
             for i in range(n_z - 1, 0, -1):
                 ds = (z[i] - z[i - 1]) / abs(mu_n)
-                stokes[i - 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
+                if linear:
+                    stokes[i - 1] = self._delo_linear_step(
+                        K_per_z[i], eps_per_z[i], K_per_z[i - 1], eps_per_z[i - 1], stokes[i], ds
+                    )
+                else:
+                    stokes[i - 1] = self._delo_matrix_step(K_per_z[i], eps_per_z[i], stokes[i], ds)
         return stokes
 
     def _tangential_emergent(
@@ -824,6 +890,46 @@ class NLTEStratifiedAtmosphere:
 
         current = current_stokes.T[:, :, np.newaxis]  # [n_nu, 4, 1]
         new = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, current - S[:, :, np.newaxis])
+        return new[:, :, 0].T  # [4, n_nu]
+
+    @staticmethod
+    def _delo_linear_step(
+        K_up: np.ndarray,
+        eps_up: np.ndarray,
+        K_down: np.ndarray,
+        eps_down: np.ndarray,
+        current_stokes: np.ndarray,
+        ds: float,
+    ) -> np.ndarray:
+        r"""
+        One second-order DELO step over ``ds`` with the source varying linearly across the cell and
+        the evolution operator using the cell-mean opacity :math:`\bar K = \tfrac12(K_{\rm up}+K_{\rm down})`:
+
+        .. math::
+
+            \mathrm{Stokes}_{\rm out} = E\,\mathrm{Stokes}_{\rm in} + (P - E)\,S_{\rm up} + (I - P)\,S_{\rm down},
+            \quad E = e^{-\bar K\,ds},\; P = (\bar K\,ds)^{-1}(I - E),
+
+        with the local source functions :math:`S = K^{-1}\epsilon` at each node. Reduces to the
+        constant-source step when the two nodes coincide (Rees, Murphy & Durrant 1989, ApJ 339, 1093).
+        """
+        S_up = NLTEStratifiedAtmosphere._delo_source_function(K_up, eps_up)  # [n_nu, 4]
+        S_down = NLTEStratifiedAtmosphere._delo_source_function(K_down, eps_down)  # [n_nu, 4]
+
+        K_bar = 0.5 * (K_up + K_down)
+        lam, V = np.linalg.eig(-K_bar * ds)  # eigenvalues of -K_bar ds
+        V_inv = np.linalg.inv(V)
+        # E = e^{-K_bar ds} and P = (K_bar ds)^{-1}(I - E), each per eigenvalue: e^{lam} and
+        # g(lam) = (e^{lam} - 1)/lam (-> 1 as lam -> 0; small-|lam| Taylor avoids cancellation).
+        small = np.abs(lam) < 1e-6
+        g = np.where(small, 1.0 + lam * (0.5 + lam / 6.0), (np.exp(lam) - 1.0) / np.where(small, 1.0, lam))
+        E = np.real(V @ (np.exp(lam)[:, :, np.newaxis] * V_inv))  # [n_nu, 4, 4]
+        P = np.real(V @ (g[:, :, np.newaxis] * V_inv))  # [n_nu, 4, 4]
+
+        psi_up = P - E
+        psi_down = np.eye(4)[np.newaxis] - P
+        current = current_stokes.T[:, :, np.newaxis]  # [n_nu, 4, 1]
+        new = E @ current + psi_up @ S_up[:, :, np.newaxis] + psi_down @ S_down[:, :, np.newaxis]
         return new[:, :, 0].T  # [4, n_nu]
 
     # ------------------------------------------------------------------ radiation tensor
@@ -941,6 +1047,23 @@ class NLTEStratifiedAtmosphere:
                 if d > max_diff:
                     max_diff = d
         return float(max_diff)
+
+    @staticmethod
+    def _estimate_true_error(residuals: List[float]):
+        r"""
+        Estimate the remaining distance to the fixed point from the geometric decay of consecutive
+        residuals: with contraction rate :math:`\hat\lambda = \mathrm{median}(r_k/r_{k-1})`, the error
+        is :math:`\approx r_{\rm last}/(1 - \hat\lambda)`. Returns ``(None, None)`` until a decaying
+        rate can be measured.
+        """
+        if len(residuals) < _MIN_MEASURE_ITERATIONS:
+            return None, None
+        ratios = [residuals[i] / residuals[i - 1] for i in range(1, len(residuals)) if residuals[i - 1] > 0]
+        ratios = [ratio for ratio in ratios if 0.0 < ratio < 1.0]
+        if not ratios:
+            return None, None
+        lambda_hat = float(np.median(ratios))
+        return residuals[-1] / (1.0 - lambda_hat), lambda_hat
 
     @staticmethod
     def _ng_accelerate(history: List[List[BaseRho]], damping: float = 1.0) -> Optional[List[BaseRho]]:

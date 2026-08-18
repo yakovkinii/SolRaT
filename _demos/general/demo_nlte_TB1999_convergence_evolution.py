@@ -59,32 +59,65 @@ def save_convergence_animation(
     plt.close(figure)
 
 
+def slab_height_for_tau_total(model, temperature_K, number_density_cm3, los_theta, nu, target_tau_total):
+    r"""
+    Slab height [cm] giving ``target_tau_total`` line-integrated optical thickness (:math:`\tau` is
+    linear in the height at fixed number density, so one coarse probe fixes the scale).
+    """
+    probe_height_cm = 1.0e9
+    probe = NLTEStratifiedAtmosphere(
+        model=model,
+        stratification=StratifiedAtmosphere(
+            model=model,
+            height_cm=height_grid_refined_at_observer_surface(probe_height_cm, n_near_surface=10, n_interior=5),
+            temperature_K=temperature_K,
+            number_density_cm3=number_density_cm3,
+        ),
+        los_theta=los_theta,
+        n_mu_quadrature=2,
+        n_phi_quadrature=1,
+        max_iterations=1,
+        tolerance=1.0,
+    )
+    probe.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+    return probe_height_cm * target_tau_total / float(probe.tau_grid[-1])
+
+
 def main():
     r"""
-    Show how the emergent :math:`Q/I` profile of the TB1999 (:math:`\mu=0.1`) scattering line
-    converges, first on a coarse spectral sampling and then continued -- via the warm-start
-    :class:`NLTEState` API -- on a refined one, without restarting from the LTE guess.
+    Emergent :math:`Q/I` profile of the TB1999 (:math:`\mu=0.1`) scattering line, converged from the
+    saved :class:`NLTEState` of the previous run (warm-started, not from the LTE guess) and overlaid on
+    the digitized TB1999 Fig. 10.
     """
     setup_logging()
 
     temperature_K = 6000.0
+    epsilon = 1.0e-2
+    mu = 0.1
+    number_density_cm3 = 1.0e11
+    target_tau_total = 1.0e4  # >> thermalization depth 1/epsilon = 100, so the surface value is the semi-infinite limit
+    points_per_decade = 30  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
+    n_near_surface = 4 * points_per_decade  # the 1e-7..1e-3 surface segment spans 4 decades
+    n_interior = 3 * points_per_decade  # the 1e-3..1 interior segment spans 3 decades
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
-    collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=1e-2, temperature_K=temperature_K)
+    collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=epsilon, temperature_K=temperature_K)
 
     params = model.AtmosphereParameters(model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K)
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_v = params.delta_v_thermal_cm_sm1
-    nu_coarse = frequencies_around_line_sm1(nu0, delta_v, step_doppler=0.5)
-    nu_fine = frequencies_around_line_sm1(nu0, delta_v, step_doppler=0.2)
+    nu = frequencies_around_line_sm1(nu0, delta_v, half_width_doppler=5.0, step_doppler=0.1)
 
+    slab_height_cm = slab_height_for_tau_total(
+        model, temperature_K, number_density_cm3, float(np.arccos(mu)), nu, target_tau_total
+    )
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=height_grid_refined_at_observer_surface(1000e5, n_near_surface=200, n_interior=100),
+        height_cm=height_grid_refined_at_observer_surface(slab_height_cm, n_near_surface, n_interior),
         temperature_K=temperature_K,
-        number_density_cm3=1.0e11,
+        number_density_cm3=number_density_cm3,
         magnetic_field_gauss=0.0,
         velocity_cm_sm1=0.0,
         delta_v_turbulent_cm_sm1=0.0,
@@ -94,77 +127,45 @@ def main():
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=float(np.arccos(0.1)),  # mu
+        los_theta=float(np.arccos(mu)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,
+        n_mu_quadrature=100,
         n_phi_quadrature=3,
         max_iterations=2000,
         tolerance=1e-9,
         ng_acceleration=True,
         ng_damping=0.5,
         ng_period=10,
+        transfer_scheme="delo_linear",
+        estimate_true_error=True,
     )
-
-    atmosphere2 = NLTEStratifiedAtmosphere(
-        model=model,
-        stratification=stratification,
-        los_theta=float(np.arccos(0.1)),  # mu
-        los_chi=0.0,
-        los_gamma=0.0,
-        n_mu_quadrature=20,
-        n_phi_quadrature=3,
-        max_iterations=2000,
-        tolerance=1e-9,
-        ng_acceleration=True,
-        ng_damping=0.5,
-        ng_period=10,
-    )
-
 
     frames: List[dict] = []
+    reduced_nu = reduced_frequency(nu, nu0, delta_v)
 
-    def recorder(reduced_nu: np.ndarray, phase_label: str, iteration_offset: int):
-        def record(iteration: int, emergent: Stokes) -> None:
-            residual = atmosphere.final_residual
-            frames.append(
-                {
-                    "x": reduced_nu,
-                    "y": 100.0 * emergent.Q / emergent.I,
-                    "iteration": iteration_offset + iteration,
-                    "residual": residual,
-                    "title": rf"{phase_label}, $\Lambda$-iteration {iteration_offset + iteration} "
-                    rf"($\max|\Delta\rho|$={residual:.1e})",
-                }
-            )
-
-        return record
+    def record(iteration: int, emergent: Stokes) -> None:
+        residual = atmosphere.final_residual
+        frames.append(
+            {
+                "x": reduced_nu,
+                "y": 100.0 * emergent.Q / emergent.I,
+                "iteration": iteration + 1,
+                "residual": residual,
+                "title": rf"$\Lambda$-iteration {iteration + 1} ($\max|\Delta\rho|$={residual:.1e})",
+            }
+        )
 
     initial_state = NLTEState.load("converged_state.npz")
-    atmosphere.forward(
-        initial_stokes=Stokes.from_zeros(nu_sm1=nu_coarse),
-        initial_state=initial_state,
-        on_iteration=recorder(reduced_frequency(nu_coarse, nu0, delta_v), r"coarse (0.5 $\Delta\nu_D$)", 1),
-    )
-    n_coarse = len(frames)
-    state_coarse = atmosphere.get_state()
-
-    atmosphere2.forward(
-        initial_stokes=Stokes.from_zeros(nu_sm1=nu_fine),
-        initial_state=state_coarse,
-        on_iteration=recorder(reduced_frequency(nu_fine, nu0, delta_v), r"fine (0.1 $\Delta\nu_D$)", n_coarse + 1),
-    )
-    converged_state = atmosphere2.get_state()
-    converged_state.save("converged_state.npz")
+    atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state, on_iteration=record)
+    atmosphere.get_state().save("converged_state.npz")
     converged_y = frames[-1]["y"]
-    last_coarse_iteration = frames[n_coarse - 1]["iteration"]
 
     fig, ax = plt.subplots(figsize=(7, 5))
     colormap = plt.get_cmap("viridis")
     normalizer = Normalize(vmin=1, vmax=frames[-1]["iteration"])
     for frame in frames[:-1]:
-        style = "--" if frame["iteration"] <= last_coarse_iteration else "-"
-        ax.plot(frame["x"], frame["y"], lw=1.0, ls=style, color=colormap(normalizer(frame["iteration"])))
+        ax.plot(frame["x"], frame["y"], lw=1.0, color=colormap(normalizer(frame["iteration"])))
     ax.plot(frames[-1]["x"], converged_y, lw=2.6, color="k", label=f"converged (iteration {frames[-1]['iteration']})")
     ax.axhline(0.0, color="0.7", lw=0.6)
     ax.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
@@ -199,21 +200,19 @@ def main():
     ax.legend()
     fig.tight_layout()
 
-
-
-
-
-
-
     save_convergence_animation(
         frames, converged_y, pathlib.Path(__file__).with_name("tb1999_convergence_evolution.gif"), fps=10
     )
 
-    line_center = int(np.argmin(np.abs(reduced_frequency(nu_fine, nu0, delta_v))))
+    line_center = int(np.argmin(np.abs(reduced_nu)))
+    tb_on_solrat = np.interp(reduced_nu, tb_reduced_frequency_full, tb_qi_percent_full)
+    rms = float(np.sqrt(np.mean((converged_y - tb_on_solrat) ** 2)))
     print(
-        f"TB1999 mu=0.1 convergence evolution: coarse phase {n_coarse} iterations to "
-        f"{frames[n_coarse - 1]['residual']:.1e}, fine phase {len(frames) - n_coarse} iterations to "
-        f"{frames[-1]['residual']:.1e}; line-center 100 Q/I = {converged_y[line_center]:.3f}"
+        f"TB1999 mu=0.1 match: tau_total = {float(atmosphere.tau_grid[-1]):.3e} (target {target_tau_total:.0e}), "
+        f"n_mu = {atmosphere.n_mu_quadrature}, {points_per_decade} pts/decade; "
+        f"{atmosphere.iterations_used} iters (residual {frames[-1]['residual']:.1e}); "
+        f"line-center 100 Q/I = {converged_y[line_center]:.4f} vs TB1999 {tb_on_solrat[line_center]:.4f}; "
+        f"RMS(profile) = {rms:.4f}"
     )
     return fig
 

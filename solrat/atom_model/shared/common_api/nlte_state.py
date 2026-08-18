@@ -53,17 +53,25 @@ class NLTEState:
 
     def interpolate_to(self, height_cm: Sequence[float]) -> "NLTEState":
         r"""
-        Resample onto a new height grid by linear interpolation of each coherence; values outside the
-        original range are held at the nearest endpoint.
+        Resample onto a new height grid by linear interpolation of each coherence in log depth below
+        the observer surface (:math:`\rho` is smooth in log optical depth and the grids are
+        log-refined toward the surface). Values outside the original range are held at the endpoint.
         """
         z_new = np.asarray(height_cm, dtype=np.float64)
         if z_new.shape == self.height_cm.shape and np.allclose(z_new, self.height_cm):
             return self
+        # Depth below the observer surface z[-1] (0 at the surface); rho is smooth in its logarithm.
+        depth_old = self.height_cm[-1] - self.height_cm
+        positive = depth_old[depth_old > 0]
+        floor = 0.1 * float(positive.min()) if positive.size else 1.0  # keeps the surface node's log finite
+        xi_old = np.log10(np.maximum(depth_old, floor))
+        xi_new = np.log10(np.maximum(self.height_cm[-1] - z_new, floor))
+        order = np.argsort(xi_old)  # np.interp needs an ascending sample coordinate
         real = np.empty((len(z_new), len(self.coherence_keys)), dtype=np.float64)
         imag = np.empty_like(real)
         for j in range(len(self.coherence_keys)):
-            real[:, j] = np.interp(z_new, self.height_cm, self.values[:, j].real)
-            imag[:, j] = np.interp(z_new, self.height_cm, self.values[:, j].imag)
+            real[:, j] = np.interp(xi_new, xi_old[order], self.values[order, j].real)
+            imag[:, j] = np.interp(xi_new, xi_old[order], self.values[order, j].imag)
         return NLTEState(
             height_cm=z_new,
             coherence_keys=self.coherence_keys,
