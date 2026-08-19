@@ -249,7 +249,8 @@ class NLTEStratifiedAtmosphere:
         ``n_mu_quadrature // 2`` Gauss-Legendre points on each hemisphere ([-1, 0] and [0, 1]).
         Must be even (so the two hemispheres get equal orders and no node lands on the tangential
         :math:`\mu = 0`). Comparable to TB1999's ``n_mu``, which likewise counts points per hemisphere.
-    :param n_phi_quadrature:  number of uniform azimuthal samples.
+    :param n_phi_quadrature:  number of uniform azimuthal samples; must be >= 3 so the K = 2
+        radiation-field-tensor components (azimuthal orders |Q| up to 2) integrate correctly.
     :param max_iterations:  maximum number of iterations.
     :param tolerance:  convergence threshold on :math:`\max|\Delta\rho|`.
     :param top_incident_stokes:  Stokes incident from the observer-side boundary (defaults
@@ -293,10 +294,16 @@ class NLTEStratifiedAtmosphere:
     ):
         # A tangential observer (mu -> 0) is allowed: it is handled by the surface-source-function
         # (Eddington-Barbier) branch in forward(), so no |mu| lower bound is required here.
-        assert n_mu_quadrature >= 1 and n_phi_quadrature >= 1, "Need at least one mu and one phi quadrature point."
+        assert n_mu_quadrature >= 1, "Need at least one mu quadrature point."
         assert n_mu_quadrature % 2 == 0, (
             "n_mu_quadrature must be even: the double-Gauss rule splits it evenly between the two "
             "hemispheres ([-1, 0] and [0, 1]), and no node then lands on the tangential mu = 0."
+        )
+        assert n_phi_quadrature >= 3, (
+            "n_phi_quadrature must be >= 3: the radiation-field tensor has K = 2 components with e^{iQ phi} "
+            "azimuthal dependence (|Q| up to 2), and N uniform phi points integrate e^{iQ phi} to zero only "
+            "for |Q| < N. With fewer than three points the Q != 0 terms alias to a spurious J^2_{Q!=0} that "
+            "injects energy into the radiation field."
         )
         assert ng_period >= 1, "ng_period must be >= 1."
         assert 0.0 < ng_damping <= 1.0, "ng_damping must be in (0, 1]."
@@ -329,6 +336,7 @@ class NLTEStratifiedAtmosphere:
 
         # Diagnostics populated by forward()
         self.rho_grid: Optional[List[BaseRho]] = None
+        self.radiation_tensor_grid: Optional[List[BaseRadiationTensor]] = None
         self.tau_grid: Optional[np.ndarray] = None
         self.iterations_used: Optional[int] = None
         self.final_residual: Optional[float] = None
@@ -551,17 +559,20 @@ class NLTEStratifiedAtmosphere:
                 stokes_per_ray.append(stokes_z)
 
             new_rho_grid: List[BaseRho] = []
+            radiation_tensors: List[BaseRadiationTensor] = []
             for i in range(n_z):
                 radiation_tensor_i = self._reconstruct_radiation_tensor(
                     rays=rays, stokes_per_ray=stokes_per_ray,
                     profile_weights_per_ray=profile_weights_per_ray,
                     i_z=i, t_conj_per_ray=t_conj_per_ray,
                 )  # fmt: skip
+                radiation_tensors.append(radiation_tensor_i)
                 see.fill_all_equations(
                     atmosphere_parameters=see_params[i],
                     radiation_tensor_in_magnetic_frame=radiation_tensor_i.rotate_to_magnetic_frame(angles=b_angles[i]),
                 )
                 new_rho_grid.append(see.get_solution())
+            self.radiation_tensor_grid = radiation_tensors  # diagnostic: last iteration's J^K_Q per depth
 
             if self.ng_acceleration:
                 rho_history.append(new_rho_grid)

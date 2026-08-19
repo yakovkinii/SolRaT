@@ -75,7 +75,7 @@ def slab_height_for_tau_total(model, temperature_K, number_density_cm3, los_thet
         ),
         los_theta=los_theta,
         n_mu_quadrature=2,
-        n_phi_quadrature=1,
+        n_phi_quadrature=3,
         max_iterations=1,
         tolerance=1.0,
     )

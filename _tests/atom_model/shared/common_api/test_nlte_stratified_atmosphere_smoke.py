@@ -139,7 +139,7 @@ class TestStratifiedNLTEAtmosphereForwardSmoke(unittest.TestCase):
             los_theta=0.4,
             los_chi=0.1,
             n_mu_quadrature=2,
-            n_phi_quadrature=2,
+            n_phi_quadrature=3,
             max_iterations=2,
             tolerance=1e-3,
         )
@@ -177,7 +177,7 @@ class TestStratifiedNLTEAtmosphereForwardSmoke(unittest.TestCase):
             stratification=stratification,
             los_theta=0.3,
             n_mu_quadrature=2,
-            n_phi_quadrature=2,
+            n_phi_quadrature=3,
             max_iterations=1,
             tolerance=1.0,
         )
