@@ -96,7 +96,7 @@ def main():
     mu = 0.1
     number_density_cm3 = 1.0e11
     target_tau_total = 1.0e4  # >> thermalization depth 1/epsilon = 100, so the surface value is the semi-infinite limit
-    points_per_decade = 30  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
+    points_per_decade = 80  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
     n_near_surface = 4 * points_per_decade  # the 1e-7..1e-3 surface segment spans 4 decades
     n_interior = 3 * points_per_decade  # the 1e-3..1 interior segment spans 3 decades
 
