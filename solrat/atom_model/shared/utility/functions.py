@@ -105,7 +105,9 @@ def frequencies_around_line_sm1(
     """
     delta_nu_D = nu0_sm1 * delta_v_thermal_cm_sm1 / c_cm_sm1
     step = step_doppler * delta_nu_D
-    return np.arange(nu0_sm1 - half_width_doppler * delta_nu_D, nu0_sm1 + half_width_doppler * delta_nu_D + 0.5 * step, step)
+    return np.arange(
+        nu0_sm1 - half_width_doppler * delta_nu_D, nu0_sm1 + half_width_doppler * delta_nu_D + 0.5 * step, step
+    )
 
 
 def reduced_frequency(nu_sm1: np.ndarray, nu0_sm1: float, delta_v_thermal_cm_sm1: float) -> np.ndarray:

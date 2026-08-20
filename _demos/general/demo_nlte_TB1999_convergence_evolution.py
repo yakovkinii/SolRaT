@@ -96,7 +96,9 @@ def main():
     mu = 0.1
     number_density_cm3 = 1.0e11
     target_tau_total = 1.0e4  # >> thermalization depth 1/epsilon = 100, so the surface value is the semi-infinite limit
-    points_per_decade = 80  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
+    points_per_decade = (
+        80  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
+    )
     n_near_surface = 4 * points_per_decade  # the 1e-7..1e-3 surface segment spans 4 decades
     n_interior = 3 * points_per_decade  # the 1e-3..1 interior segment spans 3 decades
 
@@ -105,7 +107,9 @@ def main():
     transition = next(iter(model.config.transition_registry.transitions.values()))
     collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=epsilon, temperature_K=temperature_K)
 
-    params = model.AtmosphereParameters(model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K)
+    params = model.AtmosphereParameters(
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
+    )
     nu0 = transition.get_mean_transition_frequency_sm1()
     delta_v = params.delta_v_thermal_cm_sm1
     nu = frequencies_around_line_sm1(nu0, delta_v, half_width_doppler=5.0, step_doppler=0.1)
@@ -172,16 +176,64 @@ def main():
     ax.set_ylabel(r"$100\,Q/I$")
 
     # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
-    tb_reduced_frequency = np.array([
-        -5.00365, -4.75456, -4.39872, -4.05109, -3.71989, -3.37226, -3.07664, -2.84672, -2.63869,
-        -2.43066, -2.23905, -2.01734, -1.81752, -1.61496, -1.42336, -1.24818, -1.06752, -0.9115,
-        -0.82391, -0.62956, -0.48996, -0.4188, -0.30109, -0.23266, -0.02737,
-    ])
-    tb_qi_percent = np.array([
-        0.0, -0.00226, -0.00792, -0.00792, -0.00226, -0.01075, 0.01188, 0.0543, 0.13348, 0.28337,
-        0.50113, 0.77828, 0.86312, 0.6086, 0.04581, -0.65554, -1.39367, -1.93665, -2.29016, -2.7681,
-        -3.01697, -3.13292, -3.25735, -3.33371, -3.40158,
-    ])
+    tb_reduced_frequency = np.array(
+        [
+            -5.00365,
+            -4.75456,
+            -4.39872,
+            -4.05109,
+            -3.71989,
+            -3.37226,
+            -3.07664,
+            -2.84672,
+            -2.63869,
+            -2.43066,
+            -2.23905,
+            -2.01734,
+            -1.81752,
+            -1.61496,
+            -1.42336,
+            -1.24818,
+            -1.06752,
+            -0.9115,
+            -0.82391,
+            -0.62956,
+            -0.48996,
+            -0.4188,
+            -0.30109,
+            -0.23266,
+            -0.02737,
+        ]
+    )
+    tb_qi_percent = np.array(
+        [
+            0.0,
+            -0.00226,
+            -0.00792,
+            -0.00792,
+            -0.00226,
+            -0.01075,
+            0.01188,
+            0.0543,
+            0.13348,
+            0.28337,
+            0.50113,
+            0.77828,
+            0.86312,
+            0.6086,
+            0.04581,
+            -0.65554,
+            -1.39367,
+            -1.93665,
+            -2.29016,
+            -2.7681,
+            -3.01697,
+            -3.13292,
+            -3.25735,
+            -3.33371,
+            -3.40158,
+        ]
+    )
     tb_reduced_frequency_full = np.concatenate([tb_reduced_frequency, -tb_reduced_frequency[::-1]])
     tb_qi_percent_full = np.concatenate([tb_qi_percent, tb_qi_percent[::-1]])
 

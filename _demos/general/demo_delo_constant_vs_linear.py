@@ -31,11 +31,14 @@ def main():
     transition = next(iter(model.config.transition_registry.transitions.values()))
     collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=1e-2, temperature_K=temperature_K)
 
-    params = model.AtmosphereParameters(model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K)
+    params = model.AtmosphereParameters(
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
+    )
     nu0 = transition.get_mean_transition_frequency_sm1()
     nu = frequencies_around_line_sm1(nu0, params.delta_v_thermal_cm_sm1, step_doppler=0.1)
     line_center = int(np.argmin(np.abs(nu - nu0)))
     state = None
+
     def qi(n_near_surface, transfer_scheme):
         nonlocal state
         stratification = StratifiedAtmosphere(
@@ -58,8 +61,11 @@ def main():
             transfer_scheme=transfer_scheme,
             estimate_true_error=True,
         )
-        emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu),
-                                      initial_state=state if state is not None else None,)
+        emergent = atmosphere.forward(
+            initial_stokes=Stokes.from_zeros(nu_sm1=nu),
+            initial_state=state if state is not None else None,
+        )
+        state = atmosphere.get_state()
         assert atmosphere.iterations_used < atmosphere.max_iterations, (
             f"{transfer_scheme} at N={n_near_surface} did not reach the true-error tolerance in "
             f"{atmosphere.max_iterations} iterations (estimate {atmosphere.final_true_error})."

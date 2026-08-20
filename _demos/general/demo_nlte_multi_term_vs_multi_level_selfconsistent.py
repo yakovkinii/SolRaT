@@ -242,9 +242,7 @@ def main():
     )
 
     fig, (ax_align, ax_qi) = plt.subplots(1, 2, figsize=(11, 5))
-    ax_align.axhline(
-        tb1999_surface_alignment, color="k", ls="--", label=f"TB1999 surface = {tb1999_surface_alignment}"
-    )
+    ax_align.axhline(tb1999_surface_alignment, color="k", ls="--", label=f"TB1999 surface = {tb1999_surface_alignment}")
     ax_align.plot(optical_depth_from_surface[:-1], alignment_mt[:-1], lw=1.4, color="#1f77b4", label="multi-term")
     ax_align.plot(
         optical_depth_from_surface[:-1], alignment_ml[:-1], lw=3.0, ls=(0, (1, 1)), color="#d62728", label="multi-level"
@@ -276,7 +274,8 @@ def main():
     print(
         f"Multi-term self-consistent NLTE (S=0 line, epsilon={epsilon:.0e}): "
         f"surface rho^2_0/rho^0_0 = {surface_alignment_mt:.5f} "
-        f"(TB1999 {tb1999_surface_alignment:.5f}, rel err {abs(surface_alignment_mt / tb1999_surface_alignment - 1.0):.1%}); "
+        f"(TB1999 {tb1999_surface_alignment:.5f}, "
+        f"rel err {abs(surface_alignment_mt / tb1999_surface_alignment - 1.0):.1%}); "
         f"tangential Q/I = {qi_mt:.3f}% (TB1999 {tb1999_qi_percent_tangential:.3f}%). "
         f"Multi-term vs multi-level: max|Delta rho^2_0/rho^0_0| = {max_alignment_delta:.2e}, "
         f"max|Delta Stokes| = {max_stokes_delta:.2e}, Q/I {qi_mt:.4f}% vs {qi_ml:.4f}% "

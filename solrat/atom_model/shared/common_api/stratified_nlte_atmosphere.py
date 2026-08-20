@@ -307,9 +307,10 @@ class NLTEStratifiedAtmosphere:
         )
         assert ng_period >= 1, "ng_period must be >= 1."
         assert 0.0 < ng_damping <= 1.0, "ng_damping must be in (0, 1]."
-        assert transfer_scheme in ("delo_constant", "delo_linear"), (
-            "transfer_scheme must be 'delo_constant' or 'delo_linear'."
-        )
+        assert transfer_scheme in (
+            "delo_constant",
+            "delo_linear",
+        ), "transfer_scheme must be 'delo_constant' or 'delo_linear'."
         if estimate_true_error and ng_acceleration:
             min_period = _NG_RELAX_ITERATIONS + 1 + _MIN_MEASURE_ITERATIONS
             assert ng_period >= min_period, (
@@ -602,8 +603,7 @@ class NLTEStratifiedAtmosphere:
             # clean-decay iterations feed the rate estimate: plain iterations always, or the measure
             # window of each Ng period (past the jump and its relaxation).
             in_measure_window = (
-                not self.ng_acceleration
-                or _NG_RELAX_ITERATIONS <= iteration % self.ng_period <= self.ng_period - 2
+                not self.ng_acceleration or _NG_RELAX_ITERATIONS <= iteration % self.ng_period <= self.ng_period - 2
             )
             measure_residuals = (measure_residuals + [residual])[-_LAMBDA_WINDOW:] if in_measure_window else []
             true_error, lambda_hat = self._estimate_true_error(measure_residuals)
@@ -614,7 +614,10 @@ class NLTEStratifiedAtmosphere:
             else:
                 logging.info(
                     "NLTE (stratified) iteration %d: residual = %.3e, estimated error = %.3e (lambda = %.3f)",
-                    iteration, residual, true_error, lambda_hat,
+                    iteration,
+                    residual,
+                    true_error,
+                    lambda_hat,
                 )
                 if true_error < self.tolerance:
                     break

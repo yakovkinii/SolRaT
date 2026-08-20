@@ -38,7 +38,9 @@ def main():
     params = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
     )
-    nu = frequencies_around_line_sm1(transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.5)
+    nu = frequencies_around_line_sm1(
+        transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.5
+    )
 
     stratification = StratifiedAtmosphere(
         model=model,
@@ -67,10 +69,10 @@ def main():
         estimate_true_error=True,
     )
 
-    initial_state = NLTEState.load('tb99_q.npz')
+    initial_state = NLTEState.load("tb99_q.npz")
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
     state = atmosphere.get_state()
-    state.save('tb99_q.npz')
+    state.save("tb99_q.npz")
     # -3.059
     # -3.192
     # -3.214
@@ -93,16 +95,64 @@ def main():
     )
 
     # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
-    tb_reduced_frequency = np.array([
-        -5.00365, -4.75456, -4.39872, -4.05109, -3.71989, -3.37226, -3.07664, -2.84672, -2.63869,
-        -2.43066, -2.23905, -2.01734, -1.81752, -1.61496, -1.42336, -1.24818, -1.06752, -0.9115,
-        -0.82391, -0.62956, -0.48996, -0.4188, -0.30109, -0.23266, -0.02737,
-    ])
-    tb_qi_percent = np.array([
-        0.0, -0.00226, -0.00792, -0.00792, -0.00226, -0.01075, 0.01188, 0.0543, 0.13348, 0.28337,
-        0.50113, 0.77828, 0.86312, 0.6086, 0.04581, -0.65554, -1.39367, -1.93665, -2.29016, -2.7681,
-        -3.01697, -3.13292, -3.25735, -3.33371, -3.40158,
-    ])
+    tb_reduced_frequency = np.array(
+        [
+            -5.00365,
+            -4.75456,
+            -4.39872,
+            -4.05109,
+            -3.71989,
+            -3.37226,
+            -3.07664,
+            -2.84672,
+            -2.63869,
+            -2.43066,
+            -2.23905,
+            -2.01734,
+            -1.81752,
+            -1.61496,
+            -1.42336,
+            -1.24818,
+            -1.06752,
+            -0.9115,
+            -0.82391,
+            -0.62956,
+            -0.48996,
+            -0.4188,
+            -0.30109,
+            -0.23266,
+            -0.02737,
+        ]
+    )
+    tb_qi_percent = np.array(
+        [
+            0.0,
+            -0.00226,
+            -0.00792,
+            -0.00792,
+            -0.00226,
+            -0.01075,
+            0.01188,
+            0.0543,
+            0.13348,
+            0.28337,
+            0.50113,
+            0.77828,
+            0.86312,
+            0.6086,
+            0.04581,
+            -0.65554,
+            -1.39367,
+            -1.93665,
+            -2.29016,
+            -2.7681,
+            -3.01697,
+            -3.13292,
+            -3.25735,
+            -3.33371,
+            -3.40158,
+        ]
+    )
     tb_reduced_frequency_full = np.concatenate([tb_reduced_frequency, -tb_reduced_frequency[::-1]])
     tb_qi_percent_full = np.concatenate([tb_qi_percent, tb_qi_percent[::-1]])
 

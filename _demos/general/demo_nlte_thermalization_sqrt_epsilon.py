@@ -83,7 +83,9 @@ def main():
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
-    params = model.AtmosphereParameters(model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K)
+    params = model.AtmosphereParameters(
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
+    )
     nu0 = transition.get_mean_transition_frequency_sm1()
     nu = frequencies_around_line_sm1(nu0, params.delta_v_thermal_cm_sm1, half_width_doppler=5.0, step_doppler=0.25)
     line_center = int(np.argmin(np.abs(nu - nu0)))
@@ -93,7 +95,9 @@ def main():
 
     state = None
     for epsilon, color in zip(epsilon_values, colors):
-        collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=epsilon, temperature_K=temperature_K)
+        collisions.set_deexcitation_rate_from_epsilon(
+            transition=transition, epsilon=epsilon, temperature_K=temperature_K
+        )
         # Semi-infinite: total thickness >> the thermalization depth 1/epsilon, so the surface value
         # is the semi-infinite limit.
         slab_height_cm = slab_height_for_tau_total(
@@ -101,7 +105,9 @@ def main():
         )
         stratification = StratifiedAtmosphere(
             model=model,
-            height_cm=height_grid_refined_at_observer_surface(slab_height_cm, 4 * points_per_decade, 3 * points_per_decade),
+            height_cm=height_grid_refined_at_observer_surface(
+                slab_height_cm, 4 * points_per_decade, 3 * points_per_decade
+            ),
             temperature_K=temperature_K,
             number_density_cm3=number_density_cm3,
         )
@@ -120,9 +126,7 @@ def main():
         )
         # Thermalized (Planck) lower boundary: makes the slab semi-infinite, so only the observer
         # surface shows the sqrt-epsilon dip (a vacuum lower boundary would be a second free surface).
-        atmosphere.forward(
-            initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=temperature_K), initial_state=state
-        )
+        atmosphere.forward(initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=temperature_K), initial_state=state)
         state = atmosphere.get_state()
 
         # tau_grid is 0 at the lower boundary z[0] and tau_total at the observer surface z[-1]; the
@@ -135,14 +139,25 @@ def main():
         source_over_b = source / planck_plateau
         order = np.argsort(tau_from_surface)
 
-        eddington = 1.0 - (1.0 - epsilon) / (1.0 + np.sqrt(epsilon)) * np.exp(-np.sqrt(3.0 * epsilon) * tau_from_surface)
-        ax.loglog(tau_from_surface[order], source_over_b[order], color=color, lw=2.0, label=rf"SolRaT ($\epsilon={epsilon:.0e}$)")
+        eddington = 1.0 - (1.0 - epsilon) / (1.0 + np.sqrt(epsilon)) * np.exp(
+            -np.sqrt(3.0 * epsilon) * tau_from_surface
+        )
+        ax.loglog(
+            tau_from_surface[order],
+            source_over_b[order],
+            color=color,
+            lw=2.0,
+            label=rf"SolRaT ($\epsilon={epsilon:.0e}$)",
+        )
         ax.loglog(tau_from_surface[order], eddington[order], color=color, lw=1.2, ls=":")
 
         surface_value = float(source_over_b[np.argmin(tau_from_surface)])
         logging.info(
             "epsilon = %.0e: tau_total = %.2e, iterations = %d, residual = %.2e",
-            epsilon, float(atmosphere.tau_grid[-1]), atmosphere.iterations_used, atmosphere.final_residual,
+            epsilon,
+            float(atmosphere.tau_grid[-1]),
+            atmosphere.iterations_used,
+            atmosphere.final_residual,
         )
         print(
             f"epsilon = {epsilon:.0e}: S(0)/B = {surface_value:.4f} vs sqrt(epsilon) = {np.sqrt(epsilon):.4f} "

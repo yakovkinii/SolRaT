@@ -46,9 +46,7 @@ class NLTEState:
         z = np.asarray(height_cm, dtype=np.float64)
         assert len(rho_grid) == len(z), "rho_grid length must match the height grid."
         keys = sorted(rho_grid[0].data)
-        values = np.array(
-            [[complex(rho.data.get(key, 0.0)) for key in keys] for rho in rho_grid], dtype=np.complex128
-        )
+        values = np.array([[complex(rho.data.get(key, 0.0)) for key in keys] for rho in rho_grid], dtype=np.complex128)
         return cls(height_cm=z, coherence_keys=keys, values=values, model_signature=model_signature)
 
     def interpolate_to(self, height_cm: Sequence[float]) -> "NLTEState":
@@ -107,8 +105,7 @@ class NLTEState:
         Per-depth ``{coherence_key: value}`` dictionaries.
         """
         return [
-            {key: complex(self.values[i, j]) for j, key in enumerate(self.coherence_keys)}
-            for i in range(self.n_depth)
+            {key: complex(self.values[i, j]) for j, key in enumerate(self.coherence_keys)} for i in range(self.n_depth)
         ]
 
     def save(self, path: str) -> None:
