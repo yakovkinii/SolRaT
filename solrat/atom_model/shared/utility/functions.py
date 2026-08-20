@@ -94,3 +94,36 @@ def get_frequencies_from_air_wavelength_range(
     lambda_A_air = np.arange(lower_wavelength_A, upper_wavelength_A, step_A)
     lambda_A_vac = lambda_air_to_vacuum(lambda_A_air)
     return lambda_A_to_frequency_sm1(lambda_A_vac)
+
+
+def frequencies_around_line_sm1(
+    nu0_sm1: float, delta_v_thermal_cm_sm1: float, half_width_doppler: float = 4.0, step_doppler: float = 0.1
+) -> np.ndarray:
+    r"""
+    Frequency grid [1/s] spanning :math:`\pm` ``half_width_doppler`` Doppler widths around a line
+    center, sampled every ``step_doppler`` Doppler widths.
+    """
+    delta_nu_D = nu0_sm1 * delta_v_thermal_cm_sm1 / c_cm_sm1
+    step = step_doppler * delta_nu_D
+    return np.arange(
+        nu0_sm1 - half_width_doppler * delta_nu_D, nu0_sm1 + half_width_doppler * delta_nu_D + 0.5 * step, step
+    )
+
+
+def reduced_frequency(nu_sm1: np.ndarray, nu0_sm1: float, delta_v_thermal_cm_sm1: float) -> np.ndarray:
+    r"""
+    Frequency in Doppler-width units, :math:`(\nu - \nu_0)/\Delta\nu_D`.
+    """
+    return (nu_sm1 - nu0_sm1) / (nu0_sm1 * delta_v_thermal_cm_sm1 / c_cm_sm1)
+
+
+def height_grid_refined_at_observer_surface(thickness_cm: float, n_near_surface: int, n_interior: int) -> np.ndarray:
+    r"""
+    Geometric height grid packed near the observer surface and sparse in the interior. ``z[0]`` is the
+    lower boundary (deep, large optical depth); ``z[-1]`` is the observer surface (optical depth
+    :math:`\to 0`).
+    """
+    near_surface = np.logspace(np.log10(1e-7), np.log10(1e-3), n_near_surface, endpoint=False)
+    interior = np.logspace(np.log10(1e-3), 0.0, n_interior)
+    depth_below_surface = thickness_cm * np.concatenate([near_surface, interior])
+    return np.sort(thickness_cm - depth_below_surface)

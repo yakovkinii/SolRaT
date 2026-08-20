@@ -7,7 +7,7 @@ import pandas as pd
 from solrat.engine.generators.merge_frame import Frame, FrameFactor
 
 
-def _frame_to_csv(frame: Frame, path: str) -> None:
+def _frame_to_csv(frame: Frame, path: str) -> None:  # pragma: no cover
     """Save a Frame to CSV by evaluating all unmerged factors into a single 'coefficient' column."""
     f = frame.copy()
     # Merge any unmerged factors
@@ -71,7 +71,7 @@ class PrecomputedData:
     relaxation_s_frame: Frame
     coherence_decay_frame_n_1: Union[Frame, None] = field(default=None)
 
-    def save_to_directory(self, directory: str) -> None:
+    def save_to_directory(self, directory: str) -> None:  # pragma: no cover
         """Save all frames to CSV files in *directory*."""
         os.makedirs(directory, exist_ok=True)
         for attr, filename in _FILE_MAP.items():

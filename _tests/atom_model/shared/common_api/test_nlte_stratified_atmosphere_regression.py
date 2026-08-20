@@ -1,12 +1,4 @@
-r"""
-TEMPORARY fast smoke / runnability tests for the height-stratified NLTE atmosphere.
-
-These only check that the container and the self-consistent loop construct and run and produce
-finite, correctly-shaped output on a tiny problem. They are NOT a physics validation and are
-meant to be replaced by the TB1999 benchmark comparison (checklist B18) once parametrized
-collisions land. See the runtime warning emitted by NLTEStratifiedAtmosphere.
-"""
-
+import logging
 import unittest
 
 import numpy as np
@@ -26,9 +18,10 @@ from solrat.atom_model.shared.utility.functions import (
     lambda_vacuum_to_air,
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
+from solrat.engine.functions.special import pseudo_hash
 
 
-def _build_two_level_model():
+def build_two_level_model():
     r"""
     A J=0 -> J=1 resonance line as a multi-level atom.
     """
@@ -58,7 +51,7 @@ def _build_two_level_model():
     return model, reference_lambda_A_air
 
 
-def _tiny_nu(reference_lambda_A_air):
+def tiny_nu(reference_lambda_A_air):
     r"""
     Coarse frequency grid for a fast run.
     """
@@ -69,14 +62,18 @@ def _tiny_nu(reference_lambda_A_air):
     )
 
 
-class TestStratifiedAtmosphereContainerSmoke(unittest.TestCase):
+class TestStratifiedAtmosphereContainer(unittest.TestCase):
+    r"""
+    Sampling of scalar/array/callable profiles onto the depth grid and the per-depth getters.
+    """
+
     def test_construction_sampling_and_getters(self):
         r"""
         Scalar, array, and callable profiles are sampled onto the grid, and the per-depth getters
         return the expected shapes/types.
         """
         setup_logging()
-        model, _ = _build_two_level_model()
+        model = build_two_level_model()[0]
         z = np.linspace(0.0, 100e5, 4)
 
         strat = StratifiedAtmosphere(
@@ -106,21 +103,27 @@ class TestStratifiedAtmosphereContainerSmoke(unittest.TestCase):
         r"""
         Invalid user input trips the assertions.
         """
-        model, _ = _build_two_level_model()
+        model = build_two_level_model()[0]
         with self.assertRaises(AssertionError):
             StratifiedAtmosphere(model=model, height_cm=[0.0, 10.0, 5.0], temperature_K=6000.0, number_density_cm3=1e11)
         with self.assertRaises(AssertionError):
             StratifiedAtmosphere(model=model, height_cm=[0.0, 10.0], temperature_K=-1.0, number_density_cm3=1e11)
 
 
-class TestStratifiedNLTEAtmosphereForwardSmoke(unittest.TestCase):
-    def test_forward_runs_ratio_continuum(self):
+class TestStratifiedNLTEAtmosphereForwardRegression(unittest.TestCase):
+    r"""
+    A tiny self-consistent run reduced to a ``pseudo_hash`` of its emergent Stokes vector, locked
+    against a baseline. Each test logs the computed hash; on the first run (or after an intended
+    numerical change) copy the logged value into that test's ``last_run_hash``.
+    """
+
+    def test_forward_ratio_continuum(self):
         r"""
-        A tiny self-consistent run with the continuum-to-line ratio path produces finite output.
+        Regression: tiny self-consistent run with the continuum-to-line ratio path.
         """
         setup_logging()
-        model, reference_lambda_A_air = _build_two_level_model()
-        nu = _tiny_nu(reference_lambda_A_air)
+        model, reference_lambda_A_air = build_two_level_model()
+        nu = tiny_nu(reference_lambda_A_air)
 
         stratification = StratifiedAtmosphere(
             model=model,
@@ -139,27 +142,27 @@ class TestStratifiedNLTEAtmosphereForwardSmoke(unittest.TestCase):
             los_theta=0.4,
             los_chi=0.1,
             n_mu_quadrature=2,
-            n_phi_quadrature=2,
+            n_phi_quadrature=3,
             max_iterations=2,
             tolerance=1e-3,
         )
         emergent = atmosphere.forward(initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=5700))
+        assert atmosphere.tau_grid is not None and np.all(np.diff(atmosphere.tau_grid) >= 0)
 
-        assert emergent.I.shape == nu.shape
-        for arr in (emergent.I, emergent.Q, emergent.U, emergent.V):
-            assert np.all(np.isfinite(arr))
-        assert atmosphere.iterations_used is not None and atmosphere.iterations_used >= 1
-        assert atmosphere.tau_grid is not None and len(atmosphere.tau_grid) == 3
-        assert np.all(np.diff(atmosphere.tau_grid) >= 0)
+        new_hash = pseudo_hash(emergent.I, emergent.Q, emergent.U, emergent.V)
+        logging.info(f"\ntest_forward_ratio_continuum pseudo_hash = {new_hash!r}")
+        last_run_hash = 6.98600589400781e-05
+        assert np.isfinite(new_hash)
+        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-8
 
-    def test_forward_runs_explicit_continuum_and_velocity(self):
+    def test_forward_explicit_continuum_and_velocity(self):
         r"""
-        A tiny run with an explicit continuum-opacity profile and a bulk velocity produces finite
-        output (exercises the explicit-k_c branch and the per-ray velocity projection).
+        Regression: tiny run with an explicit continuum-opacity profile and a bulk velocity (exercises
+        the explicit-k_c branch and the per-ray velocity projection).
         """
         setup_logging()
-        model, reference_lambda_A_air = _build_two_level_model()
-        nu = _tiny_nu(reference_lambda_A_air)
+        model, reference_lambda_A_air = build_two_level_model()
+        nu = tiny_nu(reference_lambda_A_air)
 
         stratification = StratifiedAtmosphere(
             model=model,
@@ -177,13 +180,17 @@ class TestStratifiedNLTEAtmosphereForwardSmoke(unittest.TestCase):
             stratification=stratification,
             los_theta=0.3,
             n_mu_quadrature=2,
-            n_phi_quadrature=2,
+            n_phi_quadrature=3,
             max_iterations=1,
             tolerance=1.0,
         )
         emergent = atmosphere.forward(initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=5700))
-        assert np.all(np.isfinite(emergent.I))
-        assert atmosphere.final_residual is not None
+
+        new_hash = pseudo_hash(emergent.I, emergent.Q, emergent.U, emergent.V)
+        logging.info(f"\ntest_forward_explicit_continuum_and_velocity pseudo_hash = {new_hash!r}")
+        last_run_hash = 7.82804574476679e-05
+        assert np.isfinite(new_hash)
+        assert np.abs((last_run_hash - new_hash) / last_run_hash) < 1e-8
 
 
 if __name__ == "__main__":

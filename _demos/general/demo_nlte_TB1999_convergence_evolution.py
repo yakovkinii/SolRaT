@@ -1,224 +1,270 @@
 import logging
 import pathlib
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation, cm
 from matplotlib.colors import Normalize
-from numpy import exp
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
+from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
     NLTEStratifiedAtmosphere,
     StratifiedAtmosphere,
 )
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
+from solrat.atom_model.shared.utility.functions import (
+    frequencies_around_line_sm1,
+    height_grid_refined_at_observer_surface,
+    reduced_frequency,
+)
 from solrat.atom_model.shared.utility.log_setup import setup_logging
-
-TEMPERATURE_K = 6000.0  # isothermal slab, same benchmark as demo_nlte_TB1999_resonance_polarization_mu01
-EPSILON = 1.0e-2  # TB1999 photon destruction probability
-MU_OBSERVER = 0.1  # inclined line of sight (mu = 0.1), the emergent Q/I profile of TB1999 Fig. 10
-FRAME_ITERATIONS = tuple(range(2, 19, 2))  # Lambda-iterations captured as evolution frames: 2, 4, ..., 18
-CONVERGED_ITERATION = 20  # this many plain iterations is taken as the converged reference profile
-
-
-def c_ul_for_epsilon(epsilon: float, transition, temperature_K: float) -> float:
-    r"""
-    Collisional de-excitation rate :math:`C_{ul}` [1/s] that yields a two-level-atom photon
-    destruction probability ``epsilon`` (LL04 Sec. 7.13; Mihalas 1978; TB1999 Sec. 2):
-    :math:`C_{ul} = \frac{\epsilon}{1-\epsilon}\, A_{ul} / (1 - e^{-h\nu_0/kT})`.
-
-    :param epsilon: photon destruction probability in (0, 1) [dimensionless].
-    :param transition: the radiative transition (carries the Einstein A and level energies).
-    :param temperature_K: local temperature [K].
-    :return: collisional de-excitation rate [1/s].
-    """
-    assert 0.0 < epsilon < 1.0, "epsilon must be in (0, 1)."
-    delta_e_erg = (transition.level_upper.energy_cmm1 - transition.level_lower.energy_cmm1) * h_erg_s * c_cm_sm1
-    stimulated_correction = 1.0 - exp(-delta_e_erg / (kB_erg_Km1 * temperature_K))
-    return epsilon / (1.0 - epsilon) * transition.einstein_a_ul / stimulated_correction
-
-
-def surface_refined_depth_grid(z_max_cm: float, n_surface: int, n_deep: int) -> np.ndarray:
-    r"""
-    Depth grid concentrated near the observer surface (where the inclined-ray line core forms), with
-    a sparse thermalized interior. ``z[0]`` is the lower boundary, ``z[-1]`` the observer surface.
-
-    :param z_max_cm: slab thickness [cm].
-    :param n_surface: number of logarithmically packed surface points.
-    :param n_deep: number of sparse interior points.
-    :return: sorted height grid [cm].
-    """
-    surface = np.logspace(np.log10(1e-7), np.log10(1e-3), n_surface, endpoint=False)
-    deep = np.logspace(np.log10(1e-3), 0.0, n_deep)
-    depth_below_surface = z_max_cm * np.concatenate([surface, deep])
-    return np.sort(z_max_cm - depth_below_surface)
-
-
-def build_frequency_grid(transition, delta_v_thermal_cm_sm1: float) -> np.ndarray:
-    r"""
-    Frequency grid at ~10 points per Doppler width over +-4 Doppler widths.
-
-    :param transition: the radiative transition.
-    :param delta_v_thermal_cm_sm1: thermal+turbulent Doppler velocity [cm/s].
-    :return: frequency grid [1/s].
-    """
-    nu0 = transition.get_mean_transition_frequency_sm1()
-    delta_nu_D = nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1
-    step = 0.1 * delta_nu_D
-    return np.arange(nu0 - 4.0 * delta_nu_D, nu0 + 4.0 * delta_nu_D + 0.5 * step, step)
-
-
-def emergent_qi_after_k_iterations(atmosphere: NLTEStratifiedAtmosphere, nu: np.ndarray, k: int) -> np.ndarray:
-    r"""
-    Emergent line-of-sight ``100 Q/I`` profile after exactly ``k`` plain Lambda-iterations.
-
-    ``forward`` always restarts from the same isotropic-Planck guess and (with the tolerance set
-    effectively to zero) runs the full ``max_iterations``, so setting ``max_iterations = k`` and
-    re-running gives the deterministic k-th iterate without touching the solver internals.
-
-    :param atmosphere: the NLTE atmosphere (Ng disabled, tolerance ~ 0 so it never stops early).
-    :param nu: frequency grid [1/s].
-    :param k: number of Lambda-iterations.
-    :return: ``100 Q/I`` over the frequency grid.
-    """
-    atmosphere.max_iterations = k
-    emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
-    return 100.0 * emergent.Q / emergent.I
 
 
 def save_convergence_animation(
-    reduced_frequency: np.ndarray,
-    frame_profiles: list,
-    frame_titles: list,
-    qi_converged: np.ndarray,
-    output_path: pathlib.Path,
+    frames: List[dict], converged_y: np.ndarray, output_path: pathlib.Path, fps: int
 ) -> None:
     r"""
-    Best-effort: render the ``100 Q/I`` profiles as a GIF at ``output_path``. Skipped with a log
-    message if no Matplotlib animation writer (e.g. Pillow) is available.
-
-    :param reduced_frequency: reduced-frequency axis ``(nu - nu0)/Delta nu_D``.
-    :param frame_profiles: list of ``100 Q/I`` arrays, one per animation frame (in display order).
-    :param frame_titles: per-frame titles, same length as ``frame_profiles``.
-    :param qi_converged: converged ``100 Q/I`` array (drawn as a fixed dashed reference).
-    :param output_path: GIF destination.
+    Best-effort: render the recorded ``100 Q/I`` frames as a GIF at ``fps`` frames per second. Skipped
+    with a log message if no Matplotlib animation writer (e.g. Pillow) is available.
     """
     figure, axis = plt.subplots(figsize=(7, 5))
     axis.axhline(0.0, color="0.7", lw=0.6)
-    axis.plot(reduced_frequency, qi_converged, lw=2.0, ls="--", color="0.6", label="converged")
+    axis.plot(frames[-1]["x"], converged_y, lw=2.0, ls="--", color="0.6", label="converged")
     (line,) = axis.plot([], [], lw=2.0, color="k")
-    axis.set_xlim(float(reduced_frequency.min()), float(reduced_frequency.max()))
-    y_all = np.concatenate(list(frame_profiles) + [qi_converged])
+    x_all = np.concatenate([frame["x"] for frame in frames])
+    y_all = np.concatenate([frame["y"] for frame in frames] + [converged_y])
+    axis.set_xlim(float(x_all.min()), float(x_all.max()))
     axis.set_ylim(float(y_all.min()) - 0.2, float(y_all.max()) + 0.2)
     axis.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     axis.set_ylabel(r"$100\,Q/I$")
     axis.legend(loc="upper right")
 
+    hold = [frames[-1]] * 10
+
     def update(frame_index):
-        line.set_data(reduced_frequency, frame_profiles[frame_index])
-        # The per-frame title is the dynamic iteration counter (the point of the animation), not a
-        # static figure title.
-        axis.set_title(frame_titles[frame_index])
+        frame = (frames + hold)[frame_index]
+        line.set_data(frame["x"], frame["y"])
+        axis.set_title(frame["title"])
         return (line,)
 
-    anim = animation.FuncAnimation(figure, update, frames=len(frame_profiles), blit=False)
+    anim = animation.FuncAnimation(figure, update, frames=len(frames) + len(hold), blit=False)
     try:
-        anim.save(str(output_path), writer=animation.PillowWriter(fps=2))
+        anim.save(str(output_path), writer=animation.PillowWriter(fps=fps))
         logging.info("Saved convergence animation to %s", output_path)
     except Exception as exc:  # pragma: no cover - animation-writer availability is environment-dependent
         logging.warning("Could not save convergence animation (%s); the static figure is still produced.", exc)
     plt.close(figure)
 
 
+def slab_height_for_tau_total(model, temperature_K, number_density_cm3, los_theta, nu, target_tau_total):
+    r"""
+    Slab height [cm] giving ``target_tau_total`` line-integrated optical thickness (:math:`\tau` is
+    linear in the height at fixed number density, so one coarse probe fixes the scale).
+    """
+    probe_height_cm = 1.0e9
+    probe = NLTEStratifiedAtmosphere(
+        model=model,
+        stratification=StratifiedAtmosphere(
+            model=model,
+            height_cm=height_grid_refined_at_observer_surface(probe_height_cm, n_near_surface=10, n_interior=5),
+            temperature_K=temperature_K,
+            number_density_cm3=number_density_cm3,
+        ),
+        los_theta=los_theta,
+        n_mu_quadrature=2,
+        n_phi_quadrature=3,
+        max_iterations=1,
+        tolerance=1.0,
+    )
+    probe.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+    return probe_height_cm * target_tau_total / float(probe.tau_grid[-1])
+
+
 def main():
     r"""
-    Show how the emergent :math:`Q/I` profile of the TB1999 (:math:`\mu=0.1`) scattering line evolves
-    as the self-consistent NLTE loop converges. Companion of
-    ``demo_nlte_TB1999_resonance_polarization_mu01``, which shows only the final profile.
-
-    :return: matplotlib Figure.
+    Emergent :math:`Q/I` profile of the TB1999 (:math:`\mu=0.1`) scattering line, converged from the
+    saved :class:`NLTEState` of the previous run (warm-started, not from the LTE guess) and overlaid on
+    the digitized TB1999 Fig. 10.
     """
     setup_logging()
+
+    temperature_K = 6000.0
+    epsilon = 1.0e-2
+    mu = 0.1
+    number_density_cm3 = 1.0e11
+    target_tau_total = 1.0e4  # >> thermalization depth 1/epsilon = 100, so the surface value is the semi-infinite limit
+    points_per_decade = (
+        80  # TB1999 converge their grids at ~23-46 points per decade of optical depth (their Tables 1-3)
+    )
+    n_near_surface = 4 * points_per_decade  # the 1e-7..1e-3 surface segment spans 4 decades
+    n_interior = 3 * points_per_decade  # the 1e-3..1 interior segment spans 3 decades
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
-    collisions.set_deexcitation_rate(transition.transition_id, c_ul_for_epsilon(EPSILON, transition, TEMPERATURE_K))
+    collisions.set_deexcitation_rate_from_epsilon(transition=transition, epsilon=epsilon, temperature_K=temperature_K)
 
     params = model.AtmosphereParameters(
-        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=TEMPERATURE_K
+        model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
     )
-    nu = build_frequency_grid(transition, params.delta_v_thermal_cm_sm1)
     nu0 = transition.get_mean_transition_frequency_sm1()
-    reduced_frequency = (nu - nu0) / (nu0 * params.delta_v_thermal_cm_sm1 / c_cm_sm1)
+    delta_v = params.delta_v_thermal_cm_sm1
+    nu = frequencies_around_line_sm1(nu0, delta_v, half_width_doppler=5.0, step_doppler=0.1)
 
-    # Same grid/quadrature as the mu01 demo (a coarser rule diverges to Q = -I). The k-th iterate is
-    # captured by re-running forward() from scratch with max_iterations = k, so cost is quadratic.
+    slab_height_cm = slab_height_for_tau_total(
+        model, temperature_K, number_density_cm3, float(np.arccos(mu)), nu, target_tau_total
+    )
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=surface_refined_depth_grid(1000e5, n_surface=80, n_deep=30),
-        temperature_K=TEMPERATURE_K,
-        number_density_cm3=1.0e11,
+        height_cm=height_grid_refined_at_observer_surface(slab_height_cm, n_near_surface, n_interior),
+        temperature_K=temperature_K,
+        number_density_cm3=number_density_cm3,
         magnetic_field_gauss=0.0,
         velocity_cm_sm1=0.0,
         delta_v_turbulent_cm_sm1=0.0,
         voigt_a=0.0,
         continuum_to_line_ratio=0.0,
     )
-
-    frame_atmosphere = NLTEStratifiedAtmosphere(
+    atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
-        los_theta=float(np.arccos(MU_OBSERVER)),
+        los_theta=float(np.arccos(mu)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,
+        n_mu_quadrature=100,
         n_phi_quadrature=3,
-        max_iterations=1,
-        tolerance=1e-30,  # effectively zero: never stop early, so max_iterations = k runs exactly k steps
-        ng_acceleration=False,
+        max_iterations=2000,
+        tolerance=1e-9,
+        ng_acceleration=True,
+        ng_damping=0.5,
+        ng_period=10,
+        transfer_scheme="delo_linear",
+        estimate_true_error=True,
     )
-    qi_frames = [emergent_qi_after_k_iterations(frame_atmosphere, nu, k) for k in FRAME_ITERATIONS]
-    qi_converged = emergent_qi_after_k_iterations(frame_atmosphere, nu, CONVERGED_ITERATION)
+
+    frames: List[dict] = []
+    reduced_nu = reduced_frequency(nu, nu0, delta_v)
+
+    def record(iteration: int, emergent: Stokes) -> None:
+        residual = atmosphere.final_residual
+        frames.append(
+            {
+                "x": reduced_nu,
+                "y": 100.0 * emergent.Q / emergent.I,
+                "iteration": iteration + 1,
+                "residual": residual,
+                "title": rf"$\Lambda$-iteration {iteration + 1} ($\max|\Delta\rho|$={residual:.1e})",
+            }
+        )
+
+    initial_state = NLTEState.load("converged_state.npz")
+    atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state, on_iteration=record)
+    atmosphere.get_state().save("converged_state.npz")
+    converged_y = frames[-1]["y"]
 
     fig, ax = plt.subplots(figsize=(7, 5))
     colormap = plt.get_cmap("viridis")
-    normalizer = Normalize(vmin=FRAME_ITERATIONS[0], vmax=FRAME_ITERATIONS[-1])
-    for k, qi in zip(FRAME_ITERATIONS, qi_frames):
-        ax.plot(reduced_frequency, qi, lw=1.0, color=colormap(normalizer(k)))
-    ax.plot(reduced_frequency, qi_converged, lw=2.6, color="k", label=f"converged (iteration {CONVERGED_ITERATION})")
+    normalizer = Normalize(vmin=1, vmax=frames[-1]["iteration"])
+    for frame in frames[:-1]:
+        ax.plot(frame["x"], frame["y"], lw=1.0, color=colormap(normalizer(frame["iteration"])))
+    ax.plot(frames[-1]["x"], converged_y, lw=2.6, color="k", label=f"converged (iteration {frames[-1]['iteration']})")
     ax.axhline(0.0, color="0.7", lw=0.6)
     ax.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     ax.set_ylabel(r"$100\,Q/I$")
+
+    # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
+    tb_reduced_frequency = np.array(
+        [
+            -5.00365,
+            -4.75456,
+            -4.39872,
+            -4.05109,
+            -3.71989,
+            -3.37226,
+            -3.07664,
+            -2.84672,
+            -2.63869,
+            -2.43066,
+            -2.23905,
+            -2.01734,
+            -1.81752,
+            -1.61496,
+            -1.42336,
+            -1.24818,
+            -1.06752,
+            -0.9115,
+            -0.82391,
+            -0.62956,
+            -0.48996,
+            -0.4188,
+            -0.30109,
+            -0.23266,
+            -0.02737,
+        ]
+    )
+    tb_qi_percent = np.array(
+        [
+            0.0,
+            -0.00226,
+            -0.00792,
+            -0.00792,
+            -0.00226,
+            -0.01075,
+            0.01188,
+            0.0543,
+            0.13348,
+            0.28337,
+            0.50113,
+            0.77828,
+            0.86312,
+            0.6086,
+            0.04581,
+            -0.65554,
+            -1.39367,
+            -1.93665,
+            -2.29016,
+            -2.7681,
+            -3.01697,
+            -3.13292,
+            -3.25735,
+            -3.33371,
+            -3.40158,
+        ]
+    )
+    tb_reduced_frequency_full = np.concatenate([tb_reduced_frequency, -tb_reduced_frequency[::-1]])
+    tb_qi_percent_full = np.concatenate([tb_qi_percent, tb_qi_percent[::-1]])
+
+    ax.plot(
+        tb_reduced_frequency_full,
+        tb_qi_percent_full,
+        linestyle="none",
+        marker="x",
+        color="k",
+        label="TB1999 Fig. 10 (digitized)",
+    )
+
     scalar_mappable = cm.ScalarMappable(norm=normalizer, cmap=colormap)
     scalar_mappable.set_array([])
     fig.colorbar(scalar_mappable, ax=ax, label=r"$\Lambda$-iteration")
     ax.legend()
     fig.tight_layout()
 
-    # Animation frame sequence: the step-2 iterates, then the converged profile, with the last frame
-    # duplicated so the GIF holds on the converged state for a moment before looping.
-    animation_profiles = list(qi_frames) + [qi_converged, qi_converged]
-    animation_titles = [rf"$\Lambda$-iteration {k}" for k in FRAME_ITERATIONS] + [
-        f"converged (iteration {CONVERGED_ITERATION})",
-        f"converged (iteration {CONVERGED_ITERATION})",
-    ]
     save_convergence_animation(
-        reduced_frequency,
-        animation_profiles,
-        animation_titles,
-        qi_converged,
-        pathlib.Path(__file__).with_name("tb1999_convergence_evolution.gif"),
+        frames, converged_y, pathlib.Path(__file__).with_name("tb1999_convergence_evolution.gif"), fps=10
     )
 
-    line_center = int(np.argmin(np.abs(reduced_frequency)))
+    line_center = int(np.argmin(np.abs(reduced_nu)))
+    tb_on_solrat = np.interp(reduced_nu, tb_reduced_frequency_full, tb_qi_percent_full)
+    rms = float(np.sqrt(np.mean((converged_y - tb_on_solrat) ** 2)))
     print(
-        f"TB1999 mu=0.1 convergence evolution (iterations {FRAME_ITERATIONS[0]}..{FRAME_ITERATIONS[-1]} "
-        f"step 2): line-center 100 Q/I grows from {qi_frames[0][line_center]:.3f} to "
-        f"{qi_converged[line_center]:.3f} (converged, iteration {CONVERGED_ITERATION})"
+        f"TB1999 mu=0.1 match: tau_total = {float(atmosphere.tau_grid[-1]):.3e} (target {target_tau_total:.0e}), "
+        f"n_mu = {atmosphere.n_mu_quadrature}, {points_per_decade} pts/decade; "
+        f"{atmosphere.iterations_used} iters (residual {frames[-1]['residual']:.1e}); "
+        f"line-center 100 Q/I = {converged_y[line_center]:.4f} vs TB1999 {tb_on_solrat[line_center]:.4f}; "
+        f"RMS(profile) = {rms:.4f}"
     )
     return fig
 

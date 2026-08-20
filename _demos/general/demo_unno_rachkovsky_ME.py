@@ -208,9 +208,17 @@ def main():
         v = (nu - nu0) / delta_nu_D
         v_B = float(nu_larmor(np.array(magnetic_field_gauss))) / delta_nu_D  # g_u = 1 for ^1P_1
         stokes_I_a, stokes_Q_a, stokes_U_a, stokes_V_a = unno_rachkovsky_emergent_stokes(
-            v=v, a=voigt_a, v_B=v_B, theta_B=theta_B, chi_B=chi_B, eta_0=eta_0, mu=1.0,
-            source_0=source_0, source_1=source_1, normalization="max",
-        )  # fmt: skip
+            v=v,
+            a=voigt_a,
+            v_B=v_B,
+            theta_B=theta_B,
+            chi_B=chi_B,
+            eta_0=eta_0,
+            mu=1.0,
+            source_0=source_0,
+            source_1=source_1,
+            normalization="max",
+        )
 
         rtc = slab.rtc
         eta_I = rtc.get_eta_I()

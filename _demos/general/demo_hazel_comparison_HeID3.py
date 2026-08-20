@@ -86,8 +86,11 @@ def load_hazel_reference():
     table = np.genfromtxt(HAZEL_REFERENCE_CSV, delimiter=",", names=True)
     return {
         "delta_lambda_A": table["wavelength_A"] - LINE_CENTER_A,
-        "I": table["I"], "Q": table["Q"], "U": table["U"], "V": table["V"],
-    }  # fmt: skip
+        "I": table["I"],
+        "Q": table["Q"],
+        "U": table["U"],
+        "V": table["V"],
+    }
 
 
 def main():
