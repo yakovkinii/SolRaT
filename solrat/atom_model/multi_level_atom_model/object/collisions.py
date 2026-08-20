@@ -2,7 +2,7 @@ from typing import Dict
 
 from numpy import exp
 
-from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
+from solrat.atom_model.shared.utility.constants import h_erg_s, kB_erg_Km1
 
 
 class ParametrizedCollisions:
@@ -39,9 +39,13 @@ class ParametrizedCollisions:
         r"""
         Set :math:`C_{ul}` from a two-level photon destruction probability ``epsilon`` (LL04 Sec. 7.13;
         TB1999 Sec. 2): :math:`C_{ul} = \frac{\epsilon}{1-\epsilon}\, A_{ul} / (1 - e^{-h\nu_0/kT})`.
+
+        Works for both the multi-level and the multi-term ``transition`` objects: the transition
+        (central) frequency, Einstein coefficient, and id are read through the interface shared by
+        both (``get_mean_transition_frequency_sm1``, ``einstein_a_ul``, ``transition_id``).
         """
         assert 0.0 < epsilon < 1.0, "epsilon must be in (0, 1)."
-        delta_e_erg = (transition.level_upper.energy_cmm1 - transition.level_lower.energy_cmm1) * h_erg_s * c_cm_sm1
+        delta_e_erg = h_erg_s * transition.get_mean_transition_frequency_sm1()
         stimulated_correction = 1.0 - exp(-delta_e_erg / (kB_erg_Km1 * temperature_K))
         rate_sm1 = epsilon / (1.0 - epsilon) * transition.einstein_a_ul / stimulated_correction
         self.set_deexcitation_rate(transition.transition_id, rate_sm1)

@@ -36,6 +36,7 @@ class MultiTermAtomConfig(BaseConfig):
         precomputed_data: Union[PrecomputedData, None] = None,
         custom_delta_nu_cutoff: Union[float, None] = None,
         N: float = 1.0,
+        collisions=None,
     ):
         self.level_registry = level_registry
         self.transition_registry = transition_registry
@@ -43,6 +44,9 @@ class MultiTermAtomConfig(BaseConfig):
         self.j_constrained = j_constrained
         self.atomic_mass_amu = atomic_mass_amu
         self.disable_r_s = disable_r_s
+        # Optional parametrized collisional rates (ParametrizedCollisions); None means collisionless
+        # (pure scattering). Supported for one-J-per-term transitions; see SEE.add_collisions.
+        self.collisions = collisions
         # DEPRECATED: disable_r_s is scheduled for removal. It gates only R_S (not T_S or the RTE
         # stimulated-emission opacity), so it is not a consistent way to switch stimulated emission off.
         if disable_r_s:

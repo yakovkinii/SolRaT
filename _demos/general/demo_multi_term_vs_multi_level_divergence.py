@@ -164,17 +164,15 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
 
 def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     r"""
-    Part (a): isolate second-order Zeeman. Three rows per field (columns): normalized Stokes I over
-    the full multiplet, the same I zoomed to the observed-line core (reduced frequency in [-5, 5]),
-    and V/max(I) over that same core. Each panel overlays three atomic descriptions of the observed
-    line under an isotropic field, scanning B from the linear regime into the incomplete Paschen-Back
-    regime: the multi-term atom with the radiative-transfer branch constrained to J = 5/2 (full
-    intra-term J-mixing), the
-    same multi-term atom without the constraint (all fine-structure branches radiated, showing the
-    4P_3/2 and 4P_1/2 satellites the constraint removes), and the multi-level atom (strictly linear in
-    B). With thin lines the fine-structure branches are spectrally resolved, so isolating one branch
-    with the J constraint is physically meaningful. The constrained multi-term and the multi-level
-    agree at low B and diverge as the field mixes the 4P term.
+    Part (a): isolate second-order Zeeman. Two rows per field (columns): normalized Stokes I zoomed to
+    the observed-line core (reduced frequency in [-5, 5]) and V/max(I) over that same core. Each panel
+    overlays three atomic descriptions of the observed line under an isotropic field, scanning B from
+    the linear regime into the incomplete Paschen-Back regime: the multi-term atom with the
+    radiative-transfer branch constrained to J = 5/2 (full intra-term J-mixing), the same multi-term
+    atom without the constraint (all fine-structure branches radiated; the 4P_3/2 and 4P_1/2 satellites
+    the constraint removes lie outside the core window), and the multi-level atom (strictly linear in
+    B). The constrained multi-term and the multi-level agree at low B and diverge as the field mixes
+    the 4P term.
 
     :return: the matplotlib Figure.
     """
@@ -186,7 +184,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
     field_values_gauss = [500.0, 1000.0, 2000.0]
     zoom_limits = (-5.0, 5.0)  # reduced-frequency window on the observed-line core (satellites excluded)
-    fig, axes = plt.subplots(3, len(field_values_gauss), figsize=(12, 10), sharey="row")
+    fig, axes = plt.subplots(2, len(field_values_gauss), figsize=(12, 7), sharey="row")
     worst_delta_v = 0.0
     for column, magnetic_field_gauss in enumerate(field_values_gauss):
         stokes_mt_full = synthesize(model_mt_full, nu, angles, magnetic_field_gauss, anisotropic=False)
@@ -198,7 +196,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         )
         worst_delta_v = max(worst_delta_v, float(max_deltaV))
 
-        ax_intensity_full, ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column], axes[2, column]
+        ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column]
         for stokes, lw, color, linestyle in (
             (stokes_mt_full, 0.9, "#00FF00", "-"),
             (stokes_mt_constrained, 1.5, "#0000FF", "--"),
@@ -206,19 +204,17 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         ):
             intensity = stokes.I / np.max(stokes.I)
             v_over_imax = stokes.V / np.max(stokes.I)
-            ax_intensity_full.plot(reduced_frequency, intensity, lw=lw, color=color, ls=linestyle)
             ax_intensity_zoom.plot(reduced_frequency, intensity, lw=lw, color=color, ls=linestyle)
             ax_v_zoom.plot(reduced_frequency, v_over_imax, lw=lw, color=color, ls=linestyle)
-        ax_intensity_full.set_title(f"B = {magnetic_field_gauss:.0f} G")
+        ax_intensity_zoom.set_title(f"B = {magnetic_field_gauss:.0f} G")
         ax_intensity_zoom.set_xlim(zoom_limits)
         ax_v_zoom.set_xlim(zoom_limits)
         ax_v_zoom.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
-        for ax in (ax_intensity_full, ax_intensity_zoom, ax_v_zoom):
+        for ax in (ax_intensity_zoom, ax_v_zoom):
             ax.axhline(0.0, color="0.7", lw=0.6)
             ax.grid(alpha=0.3)
-    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$ (full)")
-    axes[1, 0].set_ylabel(r"$I\,/\,I_{\max}$ (zoom)")
-    axes[2, 0].set_ylabel(r"$V\,/\,I_{\max}$ (zoom)")
+    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
+    axes[1, 0].set_ylabel(r"$V\,/\,I_{\max}$")
     style_key = [
         Line2D([], [], color="#00FF00", lw=0.9, label="Multi-term, all branches"),
         Line2D([], [], color="#0000FF", lw=1.5, ls="--", label="Multi-term, $J$-constrained"),

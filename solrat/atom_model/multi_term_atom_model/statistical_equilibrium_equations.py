@@ -8,7 +8,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from numpy import pi, sqrt
+from numpy import exp, pi, sqrt
 
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.multi_term_atom_model.object.atmosphere_parameters import AtmosphereParameters
@@ -17,6 +17,7 @@ from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config impor
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
 from solrat.atom_model.multi_term_atom_model.object.rho_matrix_builder import Rho, RhoMatrixBuilder
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, kB_erg_Km1
 from solrat.atom_model.shared.utility.functions import energy_cmm1_to_frequency_sm1
 from solrat.atom_model.shared.utility.wigner_3j_6j_9j import wigner_3j, wigner_6j, wigner_9j
 from solrat.engine.functions.decorators import log_method
@@ -51,12 +52,16 @@ class MultiTermAtomSEE(BaseSEE):
         level_registry: LevelRegistry,
         transition_registry: TransitionRegistry,
         disable_r_s: bool = False,
+        collisions=None,
     ):
         self.level_registry: LevelRegistry = level_registry
         self.transition_registry: TransitionRegistry = transition_registry
         self.matrix_builder: RhoMatrixBuilder = RhoMatrixBuilder(terms=list(self.level_registry.terms.values()))
 
         self.disable_r_s = disable_r_s
+        # Optional ParametrizedCollisions (duck-typed; shared with the multi-level atom). None means
+        # collisionless (pure scattering).
+        self.collisions = collisions
 
         # Precomputed frames:
         self.coherence_decay_frame_n_0: Union[Frame, None] = None
@@ -75,17 +80,20 @@ class MultiTermAtomSEE(BaseSEE):
         """
         logging.info("Constructing MultiTermAtomSEE instance")
 
+        collisions = getattr(config, "collisions", None)
         if config.precomputed_data is None:
             return cls(
                 level_registry=config.level_registry,
                 transition_registry=config.transition_registry,
                 disable_r_s=config.disable_r_s,
+                collisions=collisions,
             )
 
         see = cls(
             level_registry=config.level_registry,
             transition_registry=config.transition_registry,
             disable_r_s=config.disable_r_s,
+            collisions=collisions,
         )
         see.coherence_decay_frame_n_0 = config.precomputed_data.coherence_decay_frame
         see.coherence_decay_frame_n_1 = config.precomputed_data.coherence_decay_frame_n_1
@@ -222,6 +230,79 @@ class MultiTermAtomSEE(BaseSEE):
         self.add_relaxation_e()
         self.add_relaxation_a(radiation_tensor=radiation_tensor_in_magnetic_frame)
         self.add_relaxation_s(radiation_tensor=radiation_tensor_in_magnetic_frame)
+        if self.collisions is not None:
+            self.add_collisions(atmosphere_parameters=atmosphere_parameters)
+
+    @log_method
+    def add_collisions(self, atmosphere_parameters: AtmosphereParameters):
+        r"""
+        Add the parametrized inelastic/superelastic and elastic (depolarizing) collisional rates
+        to the multi-term SEE, so that the line can be thermalized toward LTE through a two-level
+        photon-destruction probability (as in the multi-level atom, LL04 Sec. 7.13).
+
+        This is the single-coefficient parametrization, not the full irreducible-tensor multi-term
+        collisional rates (LL04 App. 4). It is therefore implemented only for transitions whose upper
+        and lower terms each carry a single :math:`J` level (one-J-per-term), where the multi-term and
+        multi-level collisional rates coincide; a multi-J term with collisions configured raises
+        :class:`NotImplementedError`. The rates couple only equal :math:`(K, Q)` and act on the
+        diagonal :math:`J=J'` population/alignment tensors: per transition the user supplies the
+        superelastic de-excitation rate :math:`C_{ul}`, the inelastic :math:`C_{lu}` follows from
+        Einstein-Milne detailed balance (LL04 eq. 7.98), and per level the elastic depolarizing rate
+        :math:`D^{(K)}` (:math:`K\ge1`, LL04 eq. 7.102) relaxes the alignment. Collisional rates add
+        to the radiative rates (LL04 Sec. 7.13.e).
+        """
+        assert self.collisions is not None, "add_collisions called without configured collisions."
+        temperature_K = atmosphere_parameters.temperature_K
+
+        for transition in self.transition_registry.transitions.values():
+            c_ul = self.collisions.deexcitation_rate_sm1(transition.transition_id)
+            if c_ul <= 0:
+                continue
+            term_u = transition.term_upper
+            term_l = transition.term_lower
+            if len(term_u.levels) != 1 or len(term_l.levels) != 1:
+                raise NotImplementedError(
+                    "Parametrized collisions for the multi-term atom are implemented only for "
+                    "one-J-per-term transitions (the two-level parametrization). Multi-J multi-term "
+                    "collisional rates require the full irreducible-tensor treatment (LL04 App. 4)."
+                )
+            level_u = term_u.levels[0]
+            level_l = term_l.levels[0]
+            Ju = level_u.J
+            Jl = level_l.J
+            delta_e_erg = (level_u.energy_cmm1 - level_l.energy_cmm1) * h_erg_s * c_cm_sm1
+            c_lu = (2 * Ju + 1) / (2 * Jl + 1) * exp(-delta_e_erg / (kB_erg_Km1 * temperature_K)) * c_ul
+            factor_into_upper = sqrt((2 * Jl + 1) / (2 * Ju + 1)) * c_lu
+            factor_into_lower = sqrt((2 * Ju + 1) / (2 * Jl + 1)) * c_ul
+
+            # Transfer (diagonal in K, Q; K valid for both levels), LL04 (7.101).
+            for K in range(0, int(2 * min(Ju, Jl)) + 1):
+                for Q in range(-K, K + 1):
+                    self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
+                    self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(factor_into_upper))
+                    self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
+                    self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(factor_into_lower))
+
+            # Relaxation (loss) of each level to its transition partner, LL04 (7.101).
+            for K in range(0, int(2 * Ju) + 1):
+                for Q in range(-K, K + 1):
+                    self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
+                    self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(-c_ul))
+            for K in range(0, int(2 * Jl) + 1):
+                for Q in range(-K, K + 1):
+                    self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
+                    self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(-c_lu))
+
+        # Elastic depolarizing loss D^(K), K >= 1, per level, LL04 (7.102).
+        for term in self.level_registry.terms.values():
+            for level in term.levels:
+                for K in range(1, int(2 * level.J) + 1):
+                    d_k = self.collisions.depolarizing_rate_sm1(level.level_id, K)
+                    if d_k <= 0:
+                        continue
+                    for Q in range(-K, K + 1):
+                        self.matrix_builder.select_equation(term, K, Q, level.J, level.J)
+                        self.matrix_builder.add_coefficient(term, K, Q, level.J, level.J, complex(-d_k))
 
     @log_method
     def add_coherence_decay(self, atmosphere_parameters: AtmosphereParameters):
