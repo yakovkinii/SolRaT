@@ -88,6 +88,10 @@ addopts = "-q"
 [tool.coverage.run]
 source = ["solrat"]
 branch = true
+omit = [
+    # Pure matplotlib rendering helper (no scientific logic); exercised by the demos, not unit-tested.
+    "solrat/atom_model/shared/utility/plot_stokes_profiles.py",
+]
 
 [tool.coverage.report]
 fail_under = 85
