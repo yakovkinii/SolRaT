@@ -45,7 +45,7 @@ class MultiTermAtomConfig(BaseConfig):
         self.atomic_mass_amu = atomic_mass_amu
         self.disable_r_s = disable_r_s
         # Optional parametrized collisional rates (ParametrizedCollisions); None means collisionless
-        # (pure scattering). Supported for one-J-per-term transitions; see SEE.add_collisions.
+        # (pure scattering). Supports terms with any number of J levels; see SEE.add_collisions.
         self.collisions = collisions
         # DEPRECATED: disable_r_s is scheduled for removal. It gates only R_S (not T_S or the RTE
         # stimulated-emission opacity), so it is not a consistent way to switch stimulated emission off.

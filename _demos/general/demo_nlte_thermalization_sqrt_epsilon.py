@@ -78,7 +78,7 @@ def main():
     temperature_K = 6000.0
     number_density_cm3 = 1.0e11
     epsilon_values = [1e-2, 1e-3]  # the second warm-starts from the first
-    points_per_decade = 15
+    points_per_decade = 30
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -112,7 +112,7 @@ def main():
             n_mu_quadrature=8,
             n_phi_quadrature=3,
             max_iterations=20000,
-            tolerance=1e-15,
+            tolerance=1e-12,
             ng_acceleration=True,
             ng_damping=0.5,
             ng_period=10,

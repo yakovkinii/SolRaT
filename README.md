@@ -49,8 +49,8 @@ Pre-configured lines: He I D3, Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, Fe I 54
 #### Scope and limitations
 SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default,
 so scattering-polarization amplitudes are then upper limits; an optional
-parametrized-collision extension for the multi-level atom adds inelastic (transfer) and elastic
-(depolarizing) rates that bridge the scattering limit to LTE. Line formation assumes complete
+parametrized-collision extension (for both the multi-level and the multi-term atom) adds inelastic
+(transfer) and elastic (depolarizing) rates that bridge the scattering limit to LTE. Line formation assumes complete
 frequency redistribution (CRD). Physical
 collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out
 of scope for the current version.

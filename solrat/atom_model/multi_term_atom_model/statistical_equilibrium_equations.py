@@ -241,57 +241,62 @@ class MultiTermAtomSEE(BaseSEE):
         photon-destruction probability (as in the multi-level atom, LL04 Sec. 7.13).
 
         This is the single-coefficient parametrization, not the full irreducible-tensor multi-term
-        collisional rates (LL04 App. 4). It is therefore implemented only for transitions whose upper
-        and lower terms each carry a single :math:`J` level (one-J-per-term), where the multi-term and
-        multi-level collisional rates coincide; a multi-J term with collisions configured raises
-        :class:`NotImplementedError`. The rates couple only equal :math:`(K, Q)` and act on the
-        diagonal :math:`J=J'` population/alignment tensors: per transition the user supplies the
-        superelastic de-excitation rate :math:`C_{ul}`, the inelastic :math:`C_{lu}` follows from
-        Einstein-Milne detailed balance (LL04 eq. 7.98), and per level the elastic depolarizing rate
-        :math:`D^{(K)}` (:math:`K\ge1`, LL04 eq. 7.102) relaxes the alignment. Collisional rates add
-        to the radiative rates (LL04 Sec. 7.13.e).
+        collisional rates (LL04 App. 4); it is defined for an arbitrary number of terms, each with an
+        arbitrary number of :math:`J` levels. The superelastic de-excitation rate
+        :math:`C_{ul}(J_u\!\to\! J_l)` is read per fine-structure component from the configured
+        :class:`ParametrizedCollisions` (set per component with
+        ``set_deexcitation_rate_from_epsilon(..., J_upper, J_lower)``, or spread a single multiplet
+        ``epsilon`` over all components with ``fill_deexcitation_from_epsilon``). The inelastic
+        :math:`C_{lu}(J_l\!\to\! J_u)` follows per component from Einstein-Milne detailed balance
+        (LL04 eq. 7.98), so every population relaxes to its Boltzmann value in the collision-dominated
+        limit for any number of levels. Per level the elastic depolarizing rate :math:`D^{(K)}`
+        (:math:`K\ge1`, LL04 eq. 7.102) relaxes the alignment. Collisional rates add to the radiative
+        rates (LL04 Sec. 7.13.e).
+
+        The rates couple only equal :math:`(K, Q)` and act on the diagonal :math:`J=J'`
+        population/alignment tensors; the transfer multipole components are taken :math:`K`-independent
+        (:math:`C^{(K)}=C^{(0)}`), and the inter-:math:`J` coherences :math:`\rho^K_Q(J,J')`,
+        :math:`J\ne J'`, are relaxed only radiatively -- both documented approximations of the
+        single-coefficient parametrization, exact in the one-:math:`J`-per-term limit where this
+        reduces to the multi-level rates.
         """
         assert self.collisions is not None, "add_collisions called without configured collisions."
         temperature_K = atmosphere_parameters.temperature_K
 
         for transition in self.transition_registry.transitions.values():
-            c_ul = self.collisions.deexcitation_rate_sm1(transition.transition_id)
-            if c_ul <= 0:
-                continue
             term_u = transition.term_upper
             term_l = transition.term_lower
-            if len(term_u.levels) != 1 or len(term_l.levels) != 1:
-                raise NotImplementedError(
-                    "Parametrized collisions for the multi-term atom are implemented only for "
-                    "one-J-per-term transitions (the two-level parametrization). Multi-J multi-term "
-                    "collisional rates require the full irreducible-tensor treatment (LL04 App. 4)."
-                )
-            level_u = term_u.levels[0]
-            level_l = term_l.levels[0]
-            Ju = level_u.J
-            Jl = level_l.J
-            delta_e_erg = (level_u.energy_cmm1 - level_l.energy_cmm1) * h_erg_s * c_cm_sm1
-            c_lu = (2 * Ju + 1) / (2 * Jl + 1) * exp(-delta_e_erg / (kB_erg_Km1 * temperature_K)) * c_ul
-            factor_into_upper = sqrt((2 * Jl + 1) / (2 * Ju + 1)) * c_lu
-            factor_into_lower = sqrt((2 * Ju + 1) / (2 * Jl + 1)) * c_ul
+            for level_u in term_u.levels:
+                for level_l in term_l.levels:
+                    c_ul = self.collisions.deexcitation_rate_sm1(
+                        self.collisions.component_key(transition.transition_id, level_u.J, level_l.J)
+                    )
+                    if c_ul <= 0:
+                        continue
+                    Ju = level_u.J
+                    Jl = level_l.J
+                    delta_e_erg = (level_u.energy_cmm1 - level_l.energy_cmm1) * h_erg_s * c_cm_sm1
+                    c_lu = (2 * Ju + 1) / (2 * Jl + 1) * exp(-delta_e_erg / (kB_erg_Km1 * temperature_K)) * c_ul
+                    factor_into_upper = sqrt((2 * Jl + 1) / (2 * Ju + 1)) * c_lu
+                    factor_into_lower = sqrt((2 * Ju + 1) / (2 * Jl + 1)) * c_ul
 
-            # Transfer (diagonal in K, Q; K valid for both levels), LL04 (7.101).
-            for K in range(0, int(2 * min(Ju, Jl)) + 1):
-                for Q in range(-K, K + 1):
-                    self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
-                    self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(factor_into_upper))
-                    self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
-                    self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(factor_into_lower))
+                    # Transfer (diagonal in K, Q; K valid for both levels), LL04 (7.101).
+                    for K in range(0, int(2 * min(Ju, Jl)) + 1):
+                        for Q in range(-K, K + 1):
+                            self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
+                            self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(factor_into_upper))
+                            self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
+                            self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(factor_into_lower))
 
-            # Relaxation (loss) of each level to its transition partner, LL04 (7.101).
-            for K in range(0, int(2 * Ju) + 1):
-                for Q in range(-K, K + 1):
-                    self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
-                    self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(-c_ul))
-            for K in range(0, int(2 * Jl) + 1):
-                for Q in range(-K, K + 1):
-                    self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
-                    self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(-c_lu))
+                    # Relaxation (loss) of each level to its transition partner, LL04 (7.101).
+                    for K in range(0, int(2 * Ju) + 1):
+                        for Q in range(-K, K + 1):
+                            self.matrix_builder.select_equation(term_u, K, Q, Ju, Ju)
+                            self.matrix_builder.add_coefficient(term_u, K, Q, Ju, Ju, complex(-c_ul))
+                    for K in range(0, int(2 * Jl) + 1):
+                        for Q in range(-K, K + 1):
+                            self.matrix_builder.select_equation(term_l, K, Q, Jl, Jl)
+                            self.matrix_builder.add_coefficient(term_l, K, Q, Jl, Jl, complex(-c_lu))
 
         # Elastic depolarizing loss D^(K), K >= 1, per level, LL04 (7.102).
         for term in self.level_registry.terms.values():

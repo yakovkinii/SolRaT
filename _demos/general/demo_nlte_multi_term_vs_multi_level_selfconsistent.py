@@ -198,7 +198,10 @@ def main():
 
     mt_transition = next(iter(model_mt.config.transition_registry.transitions.values()))
     ml_transition = next(iter(model_ml.config.transition_registry.transitions.values()))
-    collisions_mt.set_deexcitation_rate_from_epsilon(mt_transition, epsilon, temperature_K)
+    # Multi-term: spread a single multiplet epsilon over the (one, here) fine-structure component.
+    # Multi-level: epsilon is set per transition (a single component). For a one-J-per-term line both
+    # give the same C_ul, so the two self-consistent solutions must still match to machine precision.
+    collisions_mt.fill_deexcitation_from_epsilon(mt_transition, epsilon, temperature_K)
     collisions_ml.set_deexcitation_rate_from_epsilon(ml_transition, epsilon, temperature_K)
     upper_term_id = mt_transition.term_upper.term_id
     upper_level_id = ml_transition.level_upper.level_id
