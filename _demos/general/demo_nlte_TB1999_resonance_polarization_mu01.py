@@ -5,7 +5,6 @@ import numpy as np
 
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
-from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
     NLTEStratifiedAtmosphere,
     StratifiedAtmosphere,
@@ -17,6 +16,14 @@ from solrat.atom_model.shared.utility.functions import (
     reduced_frequency,
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
+
+try:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+except ImportError:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+
+WARM_START = True
+WARM_START_ITERATIONS = 2
 
 
 def main():
@@ -53,6 +60,7 @@ def main():
         voigt_a=0.0,
         continuum_to_line_ratio=0.0,
     )
+    initial_state = load_warm_state(__file__, WARM_START)
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
@@ -61,26 +69,15 @@ def main():
         los_gamma=0.0,
         n_mu_quadrature=30,
         n_phi_quadrature=3,
-        max_iterations=100,
+        max_iterations=WARM_START_ITERATIONS if initial_state is not None else 100,
         tolerance=1e-10,
         ng_acceleration=True,
         ng_damping=0.5,
         ng_period=10,
         estimate_true_error=True,
     )
-
-    initial_state = NLTEState.load("tb99_q.npz")
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
-    state = atmosphere.get_state()
-    state.save("tb99_q.npz")
-    # -3.059
-    # -3.192
-    # -3.214
-
-    # -3.188
-    # -3.227
-    # -3.227
-    # -3.237
+    save_warm_state(__file__, atmosphere)
 
     nu0 = transition.get_mean_transition_frequency_sm1()
     reduced_nu = reduced_frequency(nu, nu0, params.delta_v_thermal_cm_sm1)

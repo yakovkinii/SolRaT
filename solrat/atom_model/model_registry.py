@@ -22,6 +22,7 @@ from solrat.atom_model.multi_level_atom_model.object.radiation_tensor import (
 )
 from solrat.atom_model.multi_level_atom_model.radiative_transfer_equations import MultiLevelAtomRTE
 from solrat.atom_model.multi_level_atom_model.statistical_equilibrium_equations import MultiLevelAtomSEE
+from solrat.atom_model.multi_level_atom_model_lte.statistical_equilibrium_equations import MultiLevelAtomSEELTE
 from solrat.atom_model.multi_term_atom_model.data.FeI import get_Fe_I_5434_config
 from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
 from solrat.atom_model.multi_term_atom_model.data.MnI import get_Mn_I_5432_config
@@ -140,6 +141,24 @@ class Models:
             Config=MultiTermAtomConfig,
         )
 
+    @staticmethod
+    def multi_level_atom_lte():
+        logging.info("Creating Multi-Level Atom LTE model")
+
+        return Model[
+            MultiLevelAtomSEELTE,
+            MultiLevelAtomRTE,
+            RadiationTensorLTE,
+            MultiLevelAtmosphereParameters,
+            MultiLevelAtomConfig,
+        ](
+            StatisticalEquilibriumEquations=MultiLevelAtomSEELTE,
+            RadiativeTransferEquations=MultiLevelAtomRTE,
+            RadiationTensor=RadiationTensorLTE,
+            AtmosphereParameters=MultiLevelAtmosphereParameters,
+            Config=MultiLevelAtomConfig,
+        )
+
 
 class PreconfiguredModels:
     @staticmethod
@@ -153,6 +172,10 @@ class PreconfiguredModels:
     @staticmethod
     def multi_level_atom_mock(collisions: Optional[ParametrizedCollisions] = None):
         return Models.multi_level_atom().configure(config=get_mock_multi_level_atom_config(collisions=collisions))
+
+    @staticmethod
+    def multi_level_atom_mock_lte():
+        return Models.multi_level_atom_lte().configure(config=get_mock_multi_level_atom_config())
 
     @staticmethod
     def multi_term_atom_mock_nofs():

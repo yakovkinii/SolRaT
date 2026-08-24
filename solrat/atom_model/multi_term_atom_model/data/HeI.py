@@ -102,25 +102,30 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
 
     # Transitions
     transition_registry = TransitionRegistry()
+    # einstein_a_ul_sm1 is the LL04 term coefficient A(beta L S) -- the spontaneous rate of a single
+    # upper sublevel, i.e. the sum over lower J for one upper J (equivalently, the tabulated multiplet
+    # A). It is NOT the sum over all fine-structure component lines, which over-counts by the number of
+    # upper-term J levels.
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="2p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
-        einstein_a_ul_sm1=3 * 1.022e7,
+        einstein_a_ul_sm1=1.022e7,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
-        einstein_a_ul_sm1=3 * 9.478e6,
+        einstein_a_ul_sm1=9.478e6,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3s3", L=0, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
-        einstein_a_ul_sm1=3.080e6 + 9.259e6 + 1.540e7,
+        # einstein_a_ul_sm1=3.080e6 + 9.259e6 + 1.540e7,  # upper term 3s3S has one J, so this sum is the term A
+        einstein_a_ul_sm1=2.780e7,  # This one is from HAZEL
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3d3", L=2, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
-        einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,
+        einstein_a_ul_sm1=7.060e7,
     )
     precomputed_data = PrecomputedData.load_from_directory(str(_PRECOMPUTED_DIR)) if _PRECOMPUTED_DIR.exists() else None
     return MultiTermAtomConfig(

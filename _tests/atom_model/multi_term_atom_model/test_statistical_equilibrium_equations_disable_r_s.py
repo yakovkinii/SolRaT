@@ -66,7 +66,7 @@ class TestStatisticalEquilibriumEquationsDisableRs(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        radiation_tensor = base_model.RadiationTensor.from_model_config(base_model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = base_model.RadiationTensor.from_model_config(base_model.config).fill_NLTE_n_w_allen(
             h_arcsec=30
         )
         radiation_tensor_mag = radiation_tensor.rotate_to_magnetic_frame(angles=angles)

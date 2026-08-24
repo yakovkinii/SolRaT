@@ -38,6 +38,6 @@ def get_mock_atom_config(  # pragma: no cover
         level_registry=level_registry,
         transition_registry=transition_registry,
         atomic_mass_amu=4.0,
-        reference_lambda_A_air=np.nan,  # UV line (~1667 A): air wavelength is undefined below the n_fit range
+        reference_lambda_A_air=np.nan,  # UV line (~1667 A): air wavelength is undefined for this range
         collisions=collisions,
     )

@@ -69,7 +69,7 @@ def main():
     field_frame_angles = Angles(chi=0.0, theta=0.0, gamma=0.0, chi_B=0.0, theta_B=0.0)
     radiation_tensor = (
         model.RadiationTensor.from_model_config(model.config)
-        .fill_NLTE_n_w_parametrized(h_arcsec=30)
+        .fill_NLTE_n_w_allen(h_arcsec=30)
         .rotate_to_magnetic_frame(angles=field_frame_angles)
     )
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)

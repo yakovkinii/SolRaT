@@ -50,7 +50,7 @@ class TestMultiLevelRadiationTensor(unittest.TestCase):
         self.assertGreater(len(tensor.df), 0)  # triggers construct_df
 
     def test_anisotropic_has_alignment(self):
-        tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_allen(h_arcsec=30)
         self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
         self.assertNotAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
         self.assertGreater(len(tensor.df), 0)

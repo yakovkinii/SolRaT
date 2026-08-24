@@ -93,12 +93,14 @@ def build_multi_term_doublet(reference_lambda_A_air: float, lte: bool, j_constra
     return model.configure(config=config)
 
 
-def build_multi_level_branch(reference_lambda_A_air: float):
+def build_multi_level_branch(reference_lambda_A_air: float, lte: bool = False):
     r"""
     The observed 4P_5/2 -> 4S_3/2 line as an isolated multi-level transition. Each J is an independent
     level, so the line is strictly linear in B (no intra-term J-mixing).
 
     :param reference_lambda_A_air: air reference wavelength [Angstrom].
+    :param lte: if True use the LTE multi-level model (thermal populations, no scattering), else the
+        NLTE one. Built by strict analogy with the multi-term LTE branch.
     :return: configured multi-level Model.
     """
     lande_upper = 1.0 + (J_OBSERVED_UPPER * (J_OBSERVED_UPPER + 1) + TERM_SPIN * (TERM_SPIN + 1) - 1 * (1 + 1)) / (
@@ -120,7 +122,8 @@ def build_multi_level_branch(reference_lambda_A_air: float):
         reference_lambda_A_air=reference_lambda_A_air,
         collisions=None,
     )
-    return Models.multi_level_atom().configure(config=config)
+    model = Models.multi_level_atom_lte() if lte else Models.multi_level_atom()
+    return model.configure(config=config)
 
 
 def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: float, anisotropic: bool) -> Stokes:
@@ -145,8 +148,8 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
     )
     # The LTE radiation tensor has no fill_* methods (LTE SEE ignores the radiation field).
     radiation_tensor = model.RadiationTensor.from_model_config(model.config)
-    if anisotropic and hasattr(radiation_tensor, "fill_NLTE_n_w_parametrized"):
-        radiation_tensor = radiation_tensor.fill_NLTE_n_w_parametrized(h_arcsec=30)
+    if anisotropic and hasattr(radiation_tensor, "fill_NLTE_n_w_allen"):
+        radiation_tensor = radiation_tensor.fill_NLTE_n_w_allen(h_arcsec=30)
     elif not anisotropic and hasattr(radiation_tensor, "fill_planck"):
         radiation_tensor = radiation_tensor.fill_planck(temperature_K=TEMPERATURE_K)
     atmosphere = MultiSlabAtmosphere(
@@ -232,25 +235,31 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
 def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     r"""
-    Part (b): isolate NLTE scattering. At weak field and under an anisotropic radiation field, the
-    multi-level atom develops a scattering-polarization Q/I from the self-consistent upper-level
-    alignment, while the LTE multi-term atom (thermal populations, no alignment) does not.
+    Part (b): isolate NLTE scattering, for both atomic models at once. At weak field and under an
+    anisotropic radiation field the two non-LTE atoms build a self-consistent upper-level alignment and
+    hence a scattering-polarization Q/I, while their LTE counterparts (thermal populations, no
+    alignment) sit at Q/I = 0. Colour marks the atomic model, line style the population treatment.
 
     :return: the matplotlib Figure.
     """
     angles = Angles(chi=0.0, theta=np.pi / 3, gamma=0.0, chi_B=0.0, theta_B=0.0)
     magnetic_field_gauss = 50.0
-    model_ml = build_multi_level_branch(reference_lambda_A_air)
-    model_mt_lte = build_multi_term_doublet(reference_lambda_A_air, lte=True)
     reduced_frequency = (nu - nu0) / delta_nu_D
 
-    stokes_ml = synthesize(model_ml, nu, angles, magnetic_field_gauss, anisotropic=True)
-    stokes_mt_lte = synthesize(model_mt_lte, nu, angles, magnetic_field_gauss, anisotropic=True)
-    qi_ml = 100.0 * stokes_ml.Q / stokes_ml.I
-    qi_mt_lte = 100.0 * stokes_mt_lte.Q / stokes_mt_lte.I
+    curves = (
+        ("Multi-term (non-LTE)", build_multi_term_doublet(reference_lambda_A_air, lte=False), "#d62728", "-"),
+        ("Multi-term (LTE)", build_multi_term_doublet(reference_lambda_A_air, lte=True), "#d62728", "--"),
+        ("Multi-level (non-LTE)", build_multi_level_branch(reference_lambda_A_air, lte=False), "#1f77b4", "-"),
+        ("Multi-level (LTE)", build_multi_level_branch(reference_lambda_A_air, lte=True), "#1f77b4", "--"),
+    )
+
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(reduced_frequency, qi_ml, lw=1.5, color="#1f77b4", label="Multi-level (NLTE scattering)")
-    ax.plot(reduced_frequency, qi_mt_lte, lw=1.5, ls="--", color="#d62728", label="Multi-term (LTE, no scattering)")
+    peak_qi = {}
+    for label, model, color, linestyle in curves:
+        stokes = synthesize(model, nu, angles, magnetic_field_gauss, anisotropic=True)
+        qi = 100.0 * stokes.Q / stokes.I
+        peak_qi[label] = float(np.max(np.abs(qi)))
+        ax.plot(reduced_frequency, qi, lw=1.6, color=color, ls=linestyle, label=label)
     ax.axhline(0.0, color="0.7", lw=0.6)
     ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     ax.set_ylabel("$100\\,Q/I$")
@@ -258,8 +267,9 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     ax.legend()
     fig.tight_layout()
     print(
-        f"Weak-field scattering Q/I: ML (NLTE) max|Q/I| = {np.max(np.abs(qi_ml)):.3e} %, "
-        f"MT (LTE) max|Q/I| = {np.max(np.abs(qi_mt_lte)):.3e} % (MT-LTE should be ~0)"
+        "Weak-field scattering max|Q/I| [%]: "
+        + ", ".join(f"{label} = {peak_qi[label]:.3e}" for label, *_ in curves)
+        + " (both LTE curves should be ~0)"
     )
     return fig
 
@@ -276,9 +286,10 @@ def main():
     isotropic field the two Stokes V/I profiles agree at low field and diverge as the field enters the
     incomplete-Paschen-Back regime.
 
-    Part (b) isolates NLTE scattering: at weak field and anisotropic illumination the multi-level atom
-    builds a self-consistent upper-level alignment and hence a scattering Q/I, which the LTE multi-term
-    atom (thermal populations) does not reproduce.
+    Part (b) isolates NLTE scattering, for both atomic models at once: at weak field and anisotropic
+    illumination the non-LTE multi-term and multi-level atoms each build a self-consistent upper-level
+    alignment and hence a scattering Q/I, while their LTE counterparts (thermal populations) sit at
+    Q/I = 0. The effect is a property of the population treatment, not of the atomic model.
 
     :return: a tuple ``(second_order_zeeman_figure, nlte_scattering_figure)`` (neither shown; the
         caller decides whether to display or save them; they are separate manuscript figures).

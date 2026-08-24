@@ -13,6 +13,14 @@ from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.functions import frequencies_around_line_sm1
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
+try:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+except ImportError:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+
+WARM_START = True
+WARM_START_ITERATIONS = 2
+
 
 def log_depth_grid(z_max_cm: float, n_depth: int, min_fraction: float = 1e-9) -> np.ndarray:
     r"""
@@ -45,7 +53,7 @@ def main():
 
     Plots the upper-level alignment :math:`\rho^2_0/\rho^0_0` versus optical depth from the surface
     against the tabulated surface value, and logs the tangential (:math:`\mu=0`) line-center Q/I
-    against TB1999 Table 4. A second figure shows the convergence history.
+    against TB1999 Table 4.
     """
     setup_logging()
 
@@ -80,6 +88,7 @@ def main():
         voigt_a=0.0,
         continuum_to_line_ratio=0.0,
     )
+    initial_state = load_warm_state(__file__, WARM_START)
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
@@ -88,12 +97,13 @@ def main():
         los_gamma=0.0,
         n_mu_quadrature=10,
         n_phi_quadrature=3,
-        max_iterations=1000,
+        max_iterations=WARM_START_ITERATIONS if initial_state is not None else 1000,
         tolerance=1e-8,
         ng_acceleration=True,
         ng_damping=0.7,
     )
-    emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+    emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
+    save_warm_state(__file__, atmosphere)
 
     vertical_tau = atmosphere.tau_grid
     optical_depth_from_surface = vertical_tau[-1] - vertical_tau
@@ -130,49 +140,14 @@ def main():
     ax_alignment.legend()
     fig_alignment.tight_layout()
 
-    atmosphere_plain = NLTEStratifiedAtmosphere(
-        model=model,
-        stratification=stratification,
-        los_theta=float(np.arccos(mu_observer)),
-        los_chi=0.0,
-        los_gamma=0.0,
-        n_mu_quadrature=10,
-        n_phi_quadrature=3,
-        max_iterations=2000,
-        tolerance=1e-8,
-        ng_acceleration=False,
-    )
-    atmosphere_plain.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
-
-    fig_convergence, ax_convergence = plt.subplots(figsize=(7, 5))
-    ax_convergence.semilogy(
-        np.arange(1, len(atmosphere_plain.residual_history) + 1),
-        atmosphere_plain.residual_history,
-        marker=".",
-        label=r"plain $\Lambda$-iteration",
-    )
-    ax_convergence.semilogy(
-        np.arange(1, len(atmosphere.residual_history) + 1),
-        atmosphere.residual_history,
-        marker=".",
-        label="Ng accelerated",
-    )
-    ax_convergence.axhline(
-        atmosphere.tolerance, color="k", linestyle="--", label=f"tolerance = {atmosphere.tolerance:.0e}"
-    )
-    ax_convergence.set_xlabel("iteration")
-    ax_convergence.set_ylabel(r"convergence residual  $\max|\Delta\rho|$")
-    ax_convergence.legend()
-    fig_convergence.tight_layout()
-
     print(
         f"TB1999 (epsilon={epsilon:.0e}): surface rho^2_0/rho^0_0 = {surface_alignment:.5f} "
         f"(TB1999 {tb1999_surface_alignment:.5f}, rel err "
         f"{abs(surface_alignment / tb1999_surface_alignment - 1.0):.1%}); tangential Q/I = "
         f"{emergent_qi_percent:.3f}% (TB1999 {tb1999_qi_percent_tangential:.3f}%); "
-        f"Ng iterations = {atmosphere.iterations_used}, plain iterations = {atmosphere_plain.iterations_used}"
+        f"iterations = {atmosphere.iterations_used}"
     )
-    return fig_alignment, fig_convergence
+    return fig_alignment
 
 
 if __name__ == "__main__":

@@ -1,0 +1,53 @@
+{
+  "doppler_velocity_km_s": 8.0,
+  "profiles": [
+    {
+      "field_gauss": 8000.0,
+      "incl_deg": 80.0,
+      "azim_deg": 45.0,
+      "los_deg": 60.0,
+      "height_arcsec": 10.0,
+      "optical_depth": 1.0,
+      "profile": 0,
+      "n": 0.006815748869369514,
+      "w": 0.176214425099691,
+      "field_bx_by_bz_gauss": [
+        5570.913922560151,
+        5570.91392256015,
+        1389.1854213354434
+      ]
+    },
+    {
+      "field_gauss": 1000.0,
+      "incl_deg": 30.0,
+      "azim_deg": 20.0,
+      "los_deg": 90.0,
+      "height_arcsec": 20.0,
+      "optical_depth": 1.0,
+      "profile": 1,
+      "n": 0.00644697112749421,
+      "w": 0.20889492987926023,
+      "field_bx_by_bz_gauss": [
+        469.84631039295414,
+        171.01007166283435,
+        866.0254037844387
+      ]
+    },
+    {
+      "field_gauss": 3000.0,
+      "incl_deg": 120.0,
+      "azim_deg": 70.0,
+      "los_deg": 40.0,
+      "height_arcsec": 3.0,
+      "optical_depth": 0.5,
+      "profile": 2,
+      "n": 0.007187979441807678,
+      "w": 0.14454734936989114,
+      "field_bx_by_bz_gauss": [
+        888.5943981780717,
+        2441.393044048121,
+        -1499.9999999999993
+      ]
+    }
+  ]
+}

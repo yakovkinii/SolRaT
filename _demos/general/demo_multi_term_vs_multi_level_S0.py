@@ -117,7 +117,7 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
         delta_v_turbulent_cm_sm1=2.0e5,
         voigt_a=0.05,
     )
-    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
     atmosphere = MultiSlabAtmosphere(
         ConstantPropertySlabAtmosphere(
             model=model,

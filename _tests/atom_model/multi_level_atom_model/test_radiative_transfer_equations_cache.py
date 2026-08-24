@@ -47,7 +47,7 @@ class TestRadiativeTransferEquationsOperatorCache(unittest.TestCase):
         nu = np.arange(nu0 - 4 * delta_nu_D, nu0 + 4 * delta_nu_D, 0.5 * delta_nu_D)
         angles = Angles(chi=pi / 5, theta=pi / 7, gamma=pi / 9, chi_B=pi / 3, theta_B=pi / 5)
 
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
         see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
         see.fill_all_equations(
             atmosphere_parameters=atmosphere_parameters,

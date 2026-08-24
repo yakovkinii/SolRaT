@@ -28,7 +28,7 @@ def main():
 
     radiation_tensor_mag = (
         model.RadiationTensor.from_model_config(model.config)
-        .fill_NLTE_n_w_parametrized(h_arcsec=30)
+        .fill_NLTE_n_w_allen(h_arcsec=30)
         .rotate_to_magnetic_frame(angles=angles)
     )
 
@@ -75,7 +75,7 @@ def main():
     hanle_H = 2.0 * np.pi * nu_larmor(B_values) * g_upper / transition.einstein_a_ul
     analytic_hanle = 1.0 / np.sqrt(1.0 + (2.0 * hanle_H) ** 2)
 
-    fig, ax = plt.subplots(figsize=(6, 6), num="Hanle Effect")
+    fig, ax = plt.subplots(figsize=(9, 4.5), num="Hanle Effect")
     ax.plot(B_values, alignments_norm, lw=2, label=r"SolRaT $|\rho^2_2|\,/\,|\rho^2_2(B{=}0)|$")
     ax.plot(
         B_values,

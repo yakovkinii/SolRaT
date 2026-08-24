@@ -35,7 +35,7 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
         # Fill the radiation tensor with anisotropic radiation field 10 arcsec from the Sun's apparent surface
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
             h_arcsec=10,
         )
 

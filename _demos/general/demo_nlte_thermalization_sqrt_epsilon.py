@@ -17,6 +17,14 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
+try:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+except ImportError:
+    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+
+WARM_START = True
+WARM_START_ITERATIONS = 2
+
 
 def slab_height_for_tau_total(model, temperature_K, number_density_cm3, nu, target_tau_total):
     r"""
@@ -66,9 +74,12 @@ def line_center_source_function(atmosphere, nu, line_center):
 def main():
     r"""
     Line source function :math:`S(\tau)/B` of a finite-:math:`\epsilon`, isothermal, semi-infinite
-    two-level atom versus the exact :math:`\sqrt\epsilon` thermalization law: the surface value
-    :math:`S(0)/B=\sqrt\epsilon` and the Eddington-approximation profile
-    :math:`S(\tau)/B = 1-\tfrac{1-\epsilon}{1+\sqrt\epsilon}\,e^{-\sqrt{3\epsilon}\,\tau}`.
+    two-level atom versus the :math:`\sqrt\epsilon` thermalization law: it rises from the surface value
+    :math:`S(0)/B=\sqrt\epsilon` (dotted) to :math:`B` in the deep interior. This is a Doppler line in
+    complete redistribution, so it thermalizes over the Doppler-line depth scale
+    :math:`\tau\sim1/\epsilon` in line-center optical depth (photons escape through the low-opacity
+    wings), not over the monochromatic :math:`1/\sqrt{3\epsilon}`; only the surface value and the deep
+    limit are profile independent, and both are what the law fixes.
 
     :math:`B` is read as the thermalized interior value of :math:`S` itself (many thermalization
     depths below the observer surface), so the test is independent of the absolute intensity units.
@@ -78,7 +89,7 @@ def main():
     temperature_K = 6000.0
     number_density_cm3 = 1.0e11
     epsilon_values = [1e-2, 1e-3]  # the second warm-starts from the first
-    points_per_decade = 30
+    points_per_decade = 15
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -93,7 +104,8 @@ def main():
     fig, ax = plt.subplots(figsize=(7, 5))
     colors = plt.get_cmap("viridis")(np.linspace(0.15, 0.7, len(epsilon_values)))
 
-    state = None
+    warm_state = load_warm_state(__file__, WARM_START)
+    state = warm_state
     for epsilon, color in zip(epsilon_values, colors):
         collisions.set_deexcitation_rate_from_epsilon(
             transition=transition, epsilon=epsilon, temperature_K=temperature_K
@@ -117,7 +129,7 @@ def main():
             los_theta=0.0,
             n_mu_quadrature=8,
             n_phi_quadrature=3,
-            max_iterations=20000,
+            max_iterations=WARM_START_ITERATIONS if warm_state is not None else 20000,
             tolerance=1e-12,
             ng_acceleration=True,
             ng_damping=0.5,
@@ -139,9 +151,6 @@ def main():
         source_over_b = source / planck_plateau
         order = np.argsort(tau_from_surface)
 
-        eddington = 1.0 - (1.0 - epsilon) / (1.0 + np.sqrt(epsilon)) * np.exp(
-            -np.sqrt(3.0 * epsilon) * tau_from_surface
-        )
         ax.loglog(
             tau_from_surface[order],
             source_over_b[order],
@@ -149,7 +158,9 @@ def main():
             lw=2.0,
             label=rf"SolRaT ($\epsilon={epsilon:.0e}$)",
         )
-        ax.loglog(tau_from_surface[order], eddington[order], color=color, lw=1.2, ls=":")
+        # sqrt(epsilon) surface asymptote (the law's profile-independent content); the Doppler line
+        # thermalizes to B over tau ~ 1/epsilon, not the monochromatic Eddington 1/sqrt(3 epsilon).
+        ax.axhline(np.sqrt(epsilon), color=color, lw=1.2, ls=":")
 
         surface_value = float(source_over_b[np.argmin(tau_from_surface)])
         logging.info(
@@ -164,9 +175,11 @@ def main():
             f"(ratio {surface_value / np.sqrt(epsilon):.3f})"
         )
 
+    save_warm_state(__file__, atmosphere)
+
     ax.set_xlabel(r"optical depth from the surface  $\tau$")
     ax.set_ylabel(r"$S(\tau)\,/\,B$")
-    ax.set_title(r"$\sqrt{\epsilon}$ thermalization law (dotted = Eddington analytic)")
+    ax.set_title(r"$\sqrt{\epsilon}$ thermalization law (dotted = $\sqrt{\epsilon}$ surface value)")
     ax.legend()
     fig.tight_layout()
     return fig
