@@ -33,7 +33,7 @@ def get_Ni_I_5435_config() -> MultiTermAtomConfig:  # pragma: no cover
         term_upper=level_registry.get_term(beta="3D", L=2, S=1),
         lower_J_constraint=[0],  # Only compute J=1->J=0 in RTE (if j_constrained=True)
         upper_J_constraint=[1],
-        einstein_a_ul_sm1=1.9e05 + 1.2e5 + 1.1e5 + 2.5e4 + 2.2e5,
+        einstein_a_ul_sm1=(1.9e05 + 1.2e5 + 1.1e5 + 2.5e4 + 2.2e5) / 3,
     )
 
     return MultiTermAtomConfig(

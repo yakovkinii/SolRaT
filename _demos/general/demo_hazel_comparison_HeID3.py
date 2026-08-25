@@ -78,9 +78,7 @@ def synthesize_solrat(field_gauss, incl_deg, azim_deg, los_deg, height_arcsec, l
         temperature_K=TEMPERATURE_K,
         delta_v_turbulent_cm_sm1=DELTA_V_TURBULENT_CM_SM1,
     )
-    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
-        h_arcsec=height_arcsec
-    )
+    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=height_arcsec)
     radiation_tensor = apply_nbar_reduction(
         radiation_tensor=radiation_tensor,
         upper_beta="3p3",
@@ -166,8 +164,7 @@ def main():
         )
         color = colors[index % len(colors)]
         label = (
-            f"profile {profile['id']}: "
-            f"$|B|$={profile['field_gauss']:.0f} G, LOS={profile['los_deg']:.0f}$^\\circ$"
+            f"profile {profile['id']}: " f"$|B|$={profile['field_gauss']:.0f} G, LOS={profile['los_deg']:.0f}$^\\circ$"
         )
         solrat_curves = [solrat.I / solrat.I[0], solrat.Q / solrat.I, solrat.U / solrat.I, solrat.V / solrat.I]
         hazel_curves = [
@@ -194,7 +191,9 @@ def main():
             hazel_on_solrat = np.interp(delta_lambda_a, profile["delta_lambda_A"], hazel_fraction)
             peak = float(np.max(np.abs(solrat_fraction)))
             rms = float(np.sqrt(np.mean((solrat_fraction - hazel_on_solrat) ** 2)))
-            agreement.append(f"profile {profile['id']} {name}: peak={peak:.2e} RMS={rms:.2e} rel={rms / max(peak, 1e-30):.1%}")
+            agreement.append(
+                f"profile {profile['id']} {name}: peak={peak:.2e} RMS={rms:.2e} rel={rms / max(peak, 1e-30):.1%}"
+            )
 
     axes[0].legend(fontsize=8, ncol=2, loc="best")
     axes[-1].set_xlabel(r"$\lambda - %.1f$ ($\AA$)" % LINE_CENTER_A)

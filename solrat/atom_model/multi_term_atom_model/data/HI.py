@@ -80,12 +80,12 @@ def get_H_I_alpha_config() -> MultiTermAtomConfig:  # pragma: no cover
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3d2", L=2, S=0.5),
         term_lower=level_registry.get_term(beta="2p2", L=1, S=0.5),
-        einstein_a_ul_sm1=5.3877e07 + 6.4651e07 + 1.0775e07,
+        einstein_a_ul_sm1=(5.3877e07 + 6.4651e07 + 1.0775e07) / 2,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3p2", L=1, S=0.5),
         term_lower=level_registry.get_term(beta="2s2", L=0, S=0.5),
-        einstein_a_ul_sm1=2.2448e07 + 2.2449e07,
+        einstein_a_ul_sm1=(2.2448e07 + 2.2449e07) / 2,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3s2", L=0, S=0.5),

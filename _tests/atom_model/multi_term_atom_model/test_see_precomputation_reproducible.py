@@ -4,7 +4,9 @@ import numpy as np
 
 from solrat.atom_model.model_registry import Models, PreconfiguredModels
 from solrat.atom_model.multi_term_atom_model.data.HeI import _PRECOMPUTED_DIR, get_He_I_D3_config
+from solrat.atom_model.multi_term_atom_model.object import precomputed_data
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
+from solrat.atom_model.multi_term_atom_model.object.precomputed_data import PrecomputedData
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR
@@ -69,6 +71,18 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
             radiation_tensor_in_magnetic_frame=rad_fresh,
         )
         rho_fresh = see_fresh.get_solution()
+
+        # precomputed_data = PrecomputedData(
+        #     absorption_frame=see_fresh.absorption_frame,
+        #     emission_e_frame=see_fresh.emission_e_frame,
+        #     emission_s_frame=see_fresh.emission_s_frame,
+        #     relaxation_a_frame=see_fresh.relaxation_a_frame,
+        #     relaxation_e_frame=see_fresh.relaxation_e_frame,
+        #     relaxation_s_frame=see_fresh.relaxation_s_frame,
+        #     coherence_decay_frame=see_fresh.coherence_decay_frame_n_0,
+        #     coherence_decay_frame_n_1=see_fresh.coherence_decay_frame_n_1,
+        # )
+        # precomputed_data.save_to_directory(directory=_PRECOMPUTED_DIR)
 
         see_disk = model_disk.StatisticalEquilibriumEquations.from_model_config(model_disk.config)
         see_disk.fill_all_equations(

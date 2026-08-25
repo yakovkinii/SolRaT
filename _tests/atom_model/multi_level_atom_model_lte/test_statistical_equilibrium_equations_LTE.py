@@ -35,7 +35,9 @@ class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
         )
 
         see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
-        see.fill_all_equations(atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor)
+        see.fill_all_equations(
+            atmosphere_parameters=atmosphere_parameters, radiation_tensor_in_magnetic_frame=radiation_tensor
+        )
         rho = see.get_solution()
 
         see_lte = model_lte.StatisticalEquilibriumEquations.from_model_config(model_lte.config)

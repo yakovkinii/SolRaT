@@ -46,18 +46,21 @@ def get_Fe_I_5434_config() -> MultiTermAtomConfig:  # pragma: no cover
         term_upper=level_registry.get_term(beta="z5Do", L=2, S=2),
         lower_J_constraint=[1],  # Only compute J=0->J=1 in RTE (if j_constrained=True)
         upper_J_constraint=[0],
-        einstein_a_ul_sm1=1.70e6
-        + 1.27e06
-        + 1.15e06
-        + 2.58e05
-        + 1.05e06
-        + 4.27e05
-        + 2.20e04
-        + 1.09e06
-        + 5.48e05
-        + 5.01e04
-        + 6.05e05
-        + 6.25e04,
+        einstein_a_ul_sm1=(
+            1.70e6
+            + 1.27e06
+            + 1.15e06
+            + 2.58e05
+            + 1.05e06
+            + 4.27e05
+            + 2.20e04
+            + 1.09e06
+            + 5.48e05
+            + 5.01e04
+            + 6.05e05
+            + 6.25e04
+        )
+        / 5,
     )
 
     return MultiTermAtomConfig(

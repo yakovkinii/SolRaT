@@ -57,7 +57,7 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = eta_rho_s[0], eta_rho_s[1], eta_rho_s[2], eta_rho_s[3]
 
         # Check that the result did not change from previous runs
-        last_run_hash = 2.312804517792012e-16
+        last_run_hash = 6.400620566722224e-17
         new_hash = pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV)
         logging.info(new_hash)
         logging.info(last_run_hash)

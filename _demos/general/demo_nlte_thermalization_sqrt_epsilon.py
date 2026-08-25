@@ -130,7 +130,7 @@ def main():
             n_mu_quadrature=8,
             n_phi_quadrature=3,
             max_iterations=WARM_START_ITERATIONS if warm_state is not None else 20000,
-            tolerance=1e-12,
+            tolerance=1e-10,
             ng_acceleration=True,
             ng_damping=0.5,
             ng_period=10,
