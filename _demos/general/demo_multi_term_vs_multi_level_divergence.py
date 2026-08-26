@@ -303,7 +303,8 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         ax.set_ylim(*ylim)
         ax.set_title(panel_label)
         ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
-        ax.legend(loc="best", fontsize=9)
+        if panel_label == "non-LTE":
+            ax.legend(loc="best", fontsize=9)
     axes[1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     fig.align_ylabels(axes)
     fig.tight_layout()
