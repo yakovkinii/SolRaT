@@ -15,6 +15,8 @@ and radiative-transfer expression reads close to the equation it implements. The
 model that is transparent enough to inspect and verify, and flexible enough to adapt to a
 specific line or context rather than used as a black box.
 
+Manuscript figure and benchmark demos are mapped in [README_MANUSCRIPT.md](README_MANUSCRIPT.md).
+
 #### Physical model
 - **Density-matrix formalism** in the irreducible spherical statistical tensors $\rho^K_Q$,
 with atomic level polarization fully included [[LL04](#References)].

@@ -175,11 +175,11 @@ def main():
         ]
         for row in range(4):
             axis = axes[row]
-            axis.plot(delta_lambda_a, solrat_curves[row], lw=1.6, color=color, label=f"{label} SolRaT")
+            axis.plot(delta_lambda_a, solrat_curves[row], lw=0.9, color=color, label=f"{label} SolRaT")
             axis.plot(
                 profile["delta_lambda_A"],
                 hazel_curves[row],
-                lw=2.2,
+                lw=2.4,
                 ls=(0, (1, 1)),
                 color=color,
                 label=f"{label} Hazel",

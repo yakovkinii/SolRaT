@@ -255,8 +255,8 @@ def main(warm_start=True):
     ax.semilogx(
         tau_from_surface[order],
         source_over_b[order],
-        color="#d62728",
-        lw=2.0,
+        color="k",
+        lw=1.4,
         label=rf"SolRaT ($\epsilon={epsilon:.0e}$)",
     )
     rms = benchmark_rms(tau_from_surface, source_over_b, AH65_FIG2_EPSILON_1EM2_TAU, AH65_FIG2_EPSILON_1EM2_SOURCE)
@@ -272,7 +272,14 @@ def main(warm_start=True):
     )
     # sqrt(epsilon) surface asymptote (the law's profile-independent content); the Doppler line
     # thermalizes to B over tau ~ 1/epsilon, not the monochromatic Eddington 1/sqrt(3 epsilon).
-    ax.axhline(np.sqrt(epsilon), color="#d62728", lw=1.4, ls=(0, (1, 1)))
+    ax.axhline(
+        np.sqrt(epsilon),
+        color="k",
+        lw=1,
+        ls='--',
+        dash_capstyle="round",
+        label=rf"$S(0)/B=\sqrt{{\epsilon}}$",
+    )
 
     surface_value = float(source_over_b[np.argmin(tau_from_surface)])
     logging.info(

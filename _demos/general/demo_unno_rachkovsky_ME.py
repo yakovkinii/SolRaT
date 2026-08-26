@@ -237,8 +237,10 @@ def main():
                 ratio_residual(rtc.get_rho_V(), rho_V_a),
             ]
         )
+        solrat_i_norm = solrat_stokes.I / np.max(solrat_stokes.I)
+        analytic_i_norm = stokes_I_a / np.max(stokes_I_a)
         panels = [
-            (solrat_stokes.I, stokes_I_a),
+            (solrat_i_norm, analytic_i_norm),
             (solrat_stokes.Q / solrat_stokes.I, stokes_Q_a / stokes_I_a),
             (solrat_stokes.U / solrat_stokes.I, stokes_U_a / stokes_I_a),
             (solrat_stokes.V / solrat_stokes.I, stokes_V_a / stokes_I_a),
@@ -246,7 +248,7 @@ def main():
         for solrat_curve, analytic_curve in panels:
             stokes_residuals.append(float(np.mean((solrat_curve - analytic_curve) ** 2)))
         for ax, (solrat_curve, analytic_curve) in zip(axes.ravel(), panels):
-            ax.plot(v, solrat_curve, lw=1.6, color=color)
+            ax.plot(v, solrat_curve, lw=0.9, color=color)
             ax.plot(v, analytic_curve, lw=2.4, ls=(0, (1, 1)), color=color)
 
     for ax, label in zip(axes.ravel(), axis_labels):
@@ -255,8 +257,9 @@ def main():
         ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
     for ax in axes[1]:
         ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
+    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
     style_key = [
-        Line2D([], [], color="k", lw=1.6, label="SolRaT"),
+        Line2D([], [], color="k", lw=0.9, label="SolRaT"),
         Line2D([], [], color="k", lw=2.4, ls=(0, (1, 1)), label="Unno-Rachkovsky"),
     ]
     field_key = [

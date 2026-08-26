@@ -202,8 +202,8 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
         ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column]
         for stokes, lw, color, linestyle in (
-            (stokes_mt_full, 1.6, "k", "-"),
-            (stokes_mt_constrained, 2.4, "#d62728", (0, (1, 1))),
+            (stokes_mt_full, 0.9, "k", "-"),
+            (stokes_mt_constrained, 2.6, "#d62728", (0, (1, 1))),
             (stokes_ml, 1.6, "#2ca02c", (0, (3, 2))),
         ):
             intensity = stokes.I / np.max(stokes.I)
@@ -220,8 +220,8 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
     axes[1, 0].set_ylabel(r"$V\,/\,I_{\max}$")
     style_key = [
-        Line2D([], [], color="k", lw=1.6, label="Multi-term, all branches"),
-        Line2D([], [], color="#d62728", lw=2.4, ls=(0, (1, 1)), label="Multi-term, $J$-constrained"),
+        Line2D([], [], color="k", lw=0.9, label="Multi-term, all branches"),
+        Line2D([], [], color="#d62728", lw=2.6, ls=(0, (1, 1)), label="Multi-term, $J$-constrained"),
         Line2D([], [], color="#2ca02c", lw=1.6, ls=(0, (3, 2)), label="Multi-level"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
@@ -249,67 +249,79 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     magnetic_field_gauss = 50.0
     reduced_frequency = (nu - nu0) / delta_nu_D
 
-    curves = (
+    nlte_curves = (
         (
-            "Multi-term, all branches (non-LTE)",
+            "MT all branches",
             build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=False),
             "k",
             "-",
         ),
         (
-            "Multi-term, $J$-constrained (non-LTE)",
+            r"MT $J$-constrained",
             build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=True),
-            "r",
-            (0, (3, 2)),
+            "#d62728",
+            (0, (1, 1)),
         ),
-        ("Multi-level (non-LTE)", build_multi_level_branch(reference_lambda_A_air, lte=False), "g", "--"),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=False), "#2ca02c", (0, (3, 2))),
+    )
+    lte_curves = (
         (
-            "Multi-term, all branches (LTE)",
+            "MT all branches",
             build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=False),
-            "b",
+            "k",
             "-",
         ),
         (
-            "Multi-term, $J$-constrained (LTE)",
+            r"MT $J$-constrained",
             build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=True),
-            "r",
-            (0, (3, 1)),
+            "#d62728",
+            (0, (1, 1)),
         ),
-        ("Multi-level (LTE)", build_multi_level_branch(reference_lambda_A_air, lte=True), "g", ":"),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=True), "#2ca02c", (0, (3, 2))),
     )
 
-    fig, ax = plt.subplots(figsize=(7, 5))
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(7, 7),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.5, 9.0]},
+    )
     qi_by_label = {}
-    for label, model, color, linestyle in curves:
-        stokes = synthesize(model, nu, angles, magnetic_field_gauss, anisotropic=True)
-        qi = 100.0 * stokes.Q / stokes.I
-        qi_by_label[label] = qi
-        # linewidth = 2.2 if label.endswith("(LTE)") else 1.6
-        linewidth = 1.6
-        if isinstance(linestyle, tuple):
-            linewidth += 0.6
-        ax.plot(reduced_frequency, qi, lw=linewidth, color=color, ls=linestyle, label=label)
-    ax.axhline(0.0, color="0.7", lw=0.6)
-    ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
-    ax.set_ylabel("$100\\,Q/I$")
-    ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
-    ax.legend(loc="best")
+    for ax, curves, panel_label, ylim in (
+        (axes[0], lte_curves, "LTE", (-1.0, 0.5)),
+        (axes[1], nlte_curves, "non-LTE", (-8.5, 0.5)),
+    ):
+        for label, model, color, linestyle in curves:
+            stokes = synthesize(model, nu, angles, magnetic_field_gauss, anisotropic=True)
+            qi = 100.0 * stokes.Q / stokes.I
+            qi_by_label[(panel_label, label)] = qi
+            linewidth = 0.9 if linestyle == "-" else 2.2
+            ax.plot(reduced_frequency, qi, lw=linewidth, color=color, ls=linestyle, label=label)
+        ax.axhline(0.0, color="0.7", lw=0.6)
+        ax.set_ylabel("$100\\,Q/I$")
+        ax.set_ylim(*ylim)
+        ax.set_title(panel_label)
+        ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
+        ax.legend(loc="best", fontsize=9)
+    axes[1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
+    fig.align_ylabels(axes)
     fig.tight_layout()
 
-    nlte_reference = qi_by_label["Multi-level (non-LTE)"]
-    lte_reference = qi_by_label["Multi-level (LTE)"]
+    nlte_reference = qi_by_label[("non-LTE", "ML")]
+    lte_reference = qi_by_label[("LTE", "ML")]
     nlte_rms = [
-        float(np.sqrt(np.mean((qi_by_label[label] - nlte_reference) ** 2)))
+        float(np.sqrt(np.mean((qi_by_label[("non-LTE", label)] - nlte_reference) ** 2)))
         for label in (
-            "Multi-term, $J$-constrained (non-LTE)",
-            "Multi-term, all branches (non-LTE)",
+            r"MT $J$-constrained",
+            "MT all branches",
         )
     ]
     lte_rms = [
-        float(np.sqrt(np.mean((qi_by_label[label] - lte_reference) ** 2)))
+        float(np.sqrt(np.mean((qi_by_label[("LTE", label)] - lte_reference) ** 2)))
         for label in (
-            "Multi-term, $J$-constrained (LTE)",
-            "Multi-term, all branches (LTE)",
+            r"MT $J$-constrained",
+            "MT all branches",
         )
     ]
     print(

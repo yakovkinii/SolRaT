@@ -156,12 +156,11 @@ def main(warm_start=True):
         color="k",
         label="TB99",
     )
-    ax_qi.plot(reduced_nu, qi_profile_percent, "r-", label="SolRaT")
+    ax_qi.plot(reduced_nu, qi_profile_percent, "k-", label="SolRaT")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     ax_qi.set_ylabel(r"$100\,Q/I$")
     ax_qi.legend()
     fig_qi.tight_layout()
-    line_center_index = int(np.argmin(np.abs(reduced_nu)))
     print(
         f"TM99 Fig. 10, mu=0.1: RMS Q/I = {rms:.3e} "
         f"(iterations={atmosphere.iterations_used}, final residual={atmosphere.final_residual:.2e})"

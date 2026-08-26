@@ -165,7 +165,7 @@ def main():
     reduced_frequency = (nu - nu0) / (nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1)
 
     panels = [
-        ("$I$", stokes_mt.I, stokes_ml.I),
+        ("$I\\,/\\,I_{\\max}$", stokes_mt.I / np.max(stokes_mt.I), stokes_ml.I / np.max(stokes_ml.I)),
         ("$Q/I$", stokes_mt.Q / stokes_mt.I, stokes_ml.Q / stokes_ml.I),
         ("$U/I$", stokes_mt.U / stokes_mt.I, stokes_ml.U / stokes_ml.I),
         ("$V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
@@ -175,7 +175,7 @@ def main():
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     for ax, (label, mt_curve, ml_curve) in zip(axes.ravel(), panels):
-        ax.plot(reduced_frequency, mt_curve, lw=1.6, color="k")
+        ax.plot(reduced_frequency, mt_curve, lw=0.9, color="k")
         ax.plot(reduced_frequency, ml_curve, lw=2.4, ls=(0, (3, 2)), color="#d62728")
         ax.set_ylabel(label)
         ax.axhline(0.0, color="0.7", lw=0.6)
@@ -183,7 +183,7 @@ def main():
     for ax in axes[1]:
         ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     style_key = [
-        Line2D([], [], color="k", lw=1.6, label="Multi-term"),
+        Line2D([], [], color="k", lw=0.9, label="Multi-term"),
         Line2D([], [], color="#d62728", lw=2.4, ls=(0, (3, 2)), label="Multi-level"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
