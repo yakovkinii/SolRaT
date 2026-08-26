@@ -194,10 +194,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         stokes_mt_constrained = synthesize(model_mt_constrained, nu, angles, magnetic_field_gauss, anisotropic=False)
         stokes_ml = synthesize(model_ml, nu, angles, magnetic_field_gauss, anisotropic=False)
 
-        delta_v = (
-            stokes_mt_constrained.V / np.max(stokes_mt_constrained.I)
-            - stokes_ml.V / np.max(stokes_ml.I)
-        )
+        delta_v = stokes_mt_constrained.V / np.max(stokes_mt_constrained.I) - stokes_ml.V / np.max(stokes_ml.I)
         v_rms_by_field.append(float(np.sqrt(np.mean(delta_v**2))))
 
         ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column]

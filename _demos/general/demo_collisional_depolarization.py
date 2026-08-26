@@ -50,9 +50,7 @@ def surface_alignment(depolarizing_rate_over_a_ul: float, warm_start: bool) -> f
     )
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=height_grid_refined_at_observer_surface(
-            SLAB_THICKNESS_CM, n_near_surface=50, n_interior=15
-        ),
+        height_cm=height_grid_refined_at_observer_surface(SLAB_THICKNESS_CM, n_near_surface=50, n_interior=15),
         temperature_K=TEMPERATURE_K,
         number_density_cm3=NUMBER_DENSITY_CM3,
         magnetic_field_gauss=0.0,

@@ -4,9 +4,7 @@ import numpy as np
 
 from solrat.atom_model.model_registry import Models, PreconfiguredModels
 from solrat.atom_model.multi_term_atom_model.data.HeI import _PRECOMPUTED_DIR, get_He_I_D3_config
-from solrat.atom_model.multi_term_atom_model.object import precomputed_data
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
-from solrat.atom_model.multi_term_atom_model.object.precomputed_data import PrecomputedData
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 from solrat.engine.functions.looping import PROJECTION, TRIANGULAR

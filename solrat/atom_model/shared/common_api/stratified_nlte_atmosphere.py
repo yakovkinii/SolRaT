@@ -603,8 +603,7 @@ class NLTEStratifiedAtmosphere:
                 if residual < self.tolerance:
                     converged = True
                     logging.info(
-                        "NLTE (stratified) converged after %d iterations "
-                        "(final residual=%.3e, tolerance=%.3e)",
+                        "NLTE (stratified) converged after %d iterations " "(final residual=%.3e, tolerance=%.3e)",
                         self.iterations_used,
                         residual,
                         self.tolerance,
