@@ -18,7 +18,9 @@ def log_depth_grid(z_max_cm: float, n_depth: int, min_fraction: float = 1e-9) ->
     r"""
     Height grid with the depth below the observer surface logarithmically spaced.
     """
-    depth_below_surface = np.logspace(np.log10(z_max_cm * min_fraction), np.log10(z_max_cm), n_depth)
+    depth_below_surface = np.concatenate(
+        ([0.0], np.logspace(np.log10(z_max_cm * min_fraction), np.log10(z_max_cm), n_depth - 1))
+    )
     return np.sort(z_max_cm - depth_below_surface)
 
 
@@ -26,27 +28,31 @@ def build_atmosphere(model, stratification, mu_observer, ng_acceleration, max_it
     r"""
     A TB1999 self-consistent atmosphere with or without Ng acceleration (all other settings shared).
     """
+    n_mu_tb1999 = 5
     return NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,
+        n_mu_quadrature=2 * n_mu_tb1999,
         n_phi_quadrature=3,
         max_iterations=max_iterations,
         tolerance=1e-8,
         ng_acceleration=ng_acceleration,
+        ng_period=10,
         ng_damping=0.7,
+        transfer_scheme="delo_linear",
+        estimate_true_error=True,
     )
 
 
 def main():
     r"""
     Convergence history of the TB1999 :math:`J=0 \to 1` resonance-line solve: the per-iteration
-    residual :math:`\max|\Delta\rho|` of a plain :math:`\Lambda`-iteration against the Ng-accelerated
-    one, both cold-started from the LTE guess. This is a solver diagnostic, not a physics benchmark;
-    it is deliberately not used as a manuscript figure, and it must run cold, so it does not warm-start.
+    estimated true error of a plain :math:`\Lambda`-iteration against the Ng-accelerated one, both
+    cold-started from the LTE guess. This is a solver diagnostic, not a physics benchmark; it is
+    deliberately not used as a manuscript figure, and it must run cold, so it does not warm-start.
     """
     setup_logging()
 
@@ -63,12 +69,12 @@ def main():
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
     )
     nu = frequencies_around_line_sm1(
-        transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.5
+        transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.1
     )
 
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=log_depth_grid(1000e5, 80),
+        height_cm=log_depth_grid(1000e6, 130),
         temperature_K=temperature_K,
         number_density_cm3=1.0e11,
         magnetic_field_gauss=0.0,
@@ -78,8 +84,8 @@ def main():
         continuum_to_line_ratio=0.0,
     )
 
-    atmosphere_ng = build_atmosphere(model, stratification, mu_observer, ng_acceleration=True, max_iterations=1000)
-    atmosphere_plain = build_atmosphere(model, stratification, mu_observer, ng_acceleration=False, max_iterations=2000)
+    atmosphere_ng = build_atmosphere(model, stratification, mu_observer, ng_acceleration=True, max_iterations=100)
+    atmosphere_plain = build_atmosphere(model, stratification, mu_observer, ng_acceleration=False, max_iterations=100)
     atmosphere_ng.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
     atmosphere_plain.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
 
@@ -98,7 +104,7 @@ def main():
     )
     ax.axhline(atmosphere_ng.tolerance, color="k", linestyle="--", label=f"tolerance = {atmosphere_ng.tolerance:.0e}")
     ax.set_xlabel("iteration")
-    ax.set_ylabel(r"convergence residual  $\max|\Delta\rho|$")
+    ax.set_ylabel("estimated true error")
     ax.legend()
     fig.tight_layout()
 

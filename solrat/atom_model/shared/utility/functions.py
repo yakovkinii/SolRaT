@@ -117,13 +117,20 @@ def reduced_frequency(nu_sm1: np.ndarray, nu0_sm1: float, delta_v_thermal_cm_sm1
     return (nu_sm1 - nu0_sm1) / (nu0_sm1 * delta_v_thermal_cm_sm1 / c_cm_sm1)
 
 
-def height_grid_refined_at_observer_surface(thickness_cm: float, n_near_surface: int, n_interior: int) -> np.ndarray:
+def height_grid_refined_at_observer_surface(
+    thickness_cm: float, n_near_surface: int, n_interior: int, min_surface_fraction: float = 1e-7
+) -> np.ndarray:
     r"""
     Geometric height grid packed near the observer surface and sparse in the interior. ``z[0]`` is the
     lower boundary (deep, large optical depth); ``z[-1]`` is the observer surface (optical depth
-    :math:`\to 0`).
+    :math:`0`).
     """
-    near_surface = np.logspace(np.log10(1e-7), np.log10(1e-3), n_near_surface, endpoint=False)
+    near_surface = np.concatenate(
+        (
+            [0.0],
+            np.logspace(np.log10(min_surface_fraction), np.log10(1e-3), n_near_surface - 1, endpoint=False),
+        )
+    )
     interior = np.logspace(np.log10(1e-3), 0.0, n_interior)
     depth_below_surface = thickness_cm * np.concatenate([near_surface, interior])
     return np.sort(thickness_cm - depth_below_surface)

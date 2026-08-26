@@ -44,7 +44,7 @@ class PlotterBase:  # pragma: no cover
     def __init__(
         self, title, use_air_wavelengths, reference_lambda_A_air, n_axes, y_labels, figsize=(8, 8), x_label=None
     ):
-        self.colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        self.colors = ["k", "#d62728", "#2ca02c", *plt.rcParams["axes.prop_cycle"].by_key()["color"]]
         self.next_color_index = 0
         self.vacuum_to_air = use_air_wavelengths
         self.reference_lambda_A_air = reference_lambda_A_air
@@ -70,9 +70,9 @@ class PlotterBase:  # pragma: no cover
     @log_method
     def finalize(self, legend=True):
         for ax in self.axs:
-            ax.grid(True)
+            ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
             if legend:
-                ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), fontsize="x-small")
+                ax.legend(loc="best", fontsize="x-small")
         self.axs[-1].set_xlabel(self._wavelength_label or r"$\lambda_\mathrm{vac}$ ($\AA$)")
 
     @log_method

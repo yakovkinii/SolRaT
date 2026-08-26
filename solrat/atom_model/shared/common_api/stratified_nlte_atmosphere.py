@@ -389,7 +389,11 @@ class NLTEStratifiedAtmosphere:
         z = strat.height_cm
         mu_obs = float(np.cos(self.los_theta))
 
+        self.iterations_used = None
+        self.final_residual = None
         self.residual_history = []
+        self.final_true_error = None
+        self.lambda_estimate = None
 
         see: BaseSEE = self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
         rte: BaseRTE = self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
@@ -548,6 +552,7 @@ class NLTEStratifiedAtmosphere:
         # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
         rho_history: List[List[BaseRho]] = []  # last few iterates, for optional Ng acceleration
         measure_residuals: List[float] = []  # clean-decay residuals, for optional true-error estimation
+        converged = False
         for iteration in range(self.max_iterations):
             stokes_per_ray: List[np.ndarray] = []
             for r in range(len(rays)):
@@ -596,6 +601,14 @@ class NLTEStratifiedAtmosphere:
             if not self.estimate_true_error:
                 logging.info(f"NLTE (stratified) iteration {iteration}: residual = {residual:.3e}")
                 if residual < self.tolerance:
+                    converged = True
+                    logging.info(
+                        "NLTE (stratified) converged after %d iterations "
+                        "(final residual=%.3e, tolerance=%.3e)",
+                        self.iterations_used,
+                        residual,
+                        self.tolerance,
+                    )
                     break
                 continue
 
@@ -620,7 +633,26 @@ class NLTEStratifiedAtmosphere:
                     lambda_hat,
                 )
                 if true_error < self.tolerance:
+                    converged = True
+                    logging.info(
+                        "NLTE (stratified) converged after %d iterations "
+                        "(final residual=%.3e, estimated error=%.3e, tolerance=%.3e)",
+                        self.iterations_used,
+                        residual,
+                        true_error,
+                        self.tolerance,
+                    )
                     break
+
+        if not converged:
+            logging.warning(
+                "NLTE (stratified) stopped after max_iterations=%d before meeting tolerance=%.3e "
+                "(final residual=%s, estimated error=%s)",
+                self.max_iterations,
+                self.tolerance,
+                "None" if self.final_residual is None else f"{self.final_residual:.3e}",
+                "None" if self.final_true_error is None else f"{self.final_true_error:.3e}",
+            )
 
         self.rho_grid = rho_grid
         emergent = emergent_stokes_for(rho_grid)

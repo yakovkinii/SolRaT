@@ -181,9 +181,9 @@ def main():
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     axis_labels = ["$I$", "$Q/I$", "$U/I$", "$V/I$"]
     field_values_gauss = [500.0, 1500.0, 3000.0]
-    colors = ["#1f77b4", "#d62728", "#2ca02c"]
-    worst_ratio_residual = 0.0
-    worst_stokes_delta = 0.0
+    colors = ["k", "#d62728", "#2ca02c"]
+    ratio_residuals = []
+    stokes_residuals = []
 
     for magnetic_field_gauss, color in zip(field_values_gauss, colors):
         atmosphere_parameters = model.AtmosphereParameters(
@@ -226,15 +226,16 @@ def main():
         eta_I_line_a, eta_Q_a, _, eta_V_a, _, _, rho_V_a = zeeman_triplet_line_coefficients(
             v, voigt_a, v_B, theta_B, chi_B
         )
-        ratio_residual = lambda solrat_num, analytic_num: np.max(  # noqa: E731
-            np.abs(solrat_num[core] / eta_I[core] - analytic_num[core] / eta_I_line_a[core])
+        ratio_residual = lambda solrat_num, analytic_num: np.sqrt(  # noqa: E731
+            np.mean((solrat_num[core] / eta_I[core] - analytic_num[core] / eta_I_line_a[core]) ** 2)
         )
 
-        worst_ratio_residual = max(
-            worst_ratio_residual,
-            ratio_residual(rtc.get_eta_Q(), eta_Q_a),
-            ratio_residual(rtc.get_eta_V(), eta_V_a),
-            ratio_residual(rtc.get_rho_V(), rho_V_a),
+        ratio_residuals.extend(
+            [
+                ratio_residual(rtc.get_eta_Q(), eta_Q_a),
+                ratio_residual(rtc.get_eta_V(), eta_V_a),
+                ratio_residual(rtc.get_rho_V(), rho_V_a),
+            ]
         )
         panels = [
             (solrat_stokes.I, stokes_I_a),
@@ -243,30 +244,33 @@ def main():
             (solrat_stokes.V / solrat_stokes.I, stokes_V_a / stokes_I_a),
         ]
         for solrat_curve, analytic_curve in panels:
-            worst_stokes_delta = max(worst_stokes_delta, float(np.max(np.abs(solrat_curve - analytic_curve))))
+            stokes_residuals.append(float(np.mean((solrat_curve - analytic_curve) ** 2)))
         for ax, (solrat_curve, analytic_curve) in zip(axes.ravel(), panels):
-            ax.plot(v, solrat_curve, lw=1.2, color=color)
-            ax.plot(v, analytic_curve, lw=2.8, ls=(0, (1, 1)), color=color)
+            ax.plot(v, solrat_curve, lw=1.6, color=color)
+            ax.plot(v, analytic_curve, lw=2.4, ls=(0, (1, 1)), color=color)
 
     for ax, label in zip(axes.ravel(), axis_labels):
         ax.set_ylabel(label)
         ax.axhline(0.0, color="0.7", lw=0.6)
-        ax.grid(alpha=0.3)
+        ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
     for ax in axes[1]:
-        ax.set_xlabel(r"reduced frequency $v = (\nu - \nu_0)/\Delta\nu_D$")
+        ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     style_key = [
-        Line2D([], [], color="k", lw=1.2, label="SolRaT (ME slab)"),
-        Line2D([], [], color="k", lw=2.8, ls=(0, (1, 1)), label="Unno-Rachkovsky (analytic)"),
+        Line2D([], [], color="k", lw=1.6, label="SolRaT"),
+        Line2D([], [], color="k", lw=2.4, ls=(0, (1, 1)), label="Unno-Rachkovsky"),
     ]
     field_key = [
         Line2D([], [], color=color, lw=2.4, label=f"B = {b:.0f} G") for b, color in zip(field_values_gauss, colors)
     ]
     axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
     axes[0, 1].legend(handles=field_key, fontsize=11, loc="best")
+    fig.align_ylabels(axes.ravel())
     fig.tight_layout()
     print(
-        f"Unno-Rachkovsky (ME) vs analytic: max ratio residual = {worst_ratio_residual:.2e}, "
-        f"max|Delta Stokes| = {worst_stokes_delta:.2e} (over B = {[int(b) for b in field_values_gauss]} G)"
+        f"Unno-Rachkovsky (ME) vs analytic: RMS coefficient ratio residual = "
+        f"{float(np.sqrt(np.mean(np.array(ratio_residuals) ** 2))):.2e}, "
+        f"RMS Delta Stokes = {float(np.sqrt(np.mean(stokes_residuals))):.2e} "
+        f"(over B = {[int(b) for b in field_values_gauss]} G)"
     )
     return fig
 

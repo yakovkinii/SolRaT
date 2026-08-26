@@ -151,7 +151,7 @@ def main():
 
     fig, axes = plt.subplots(4, 1, figsize=(8.0, 8.8), sharex=True)
     agreement = []
-    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    colors = ["k", "#d62728", "#2ca02c"]
     for index, profile in enumerate(profiles):
         tau_multiplier = TAU_MULTIPLIERS[index] if index < len(TAU_MULTIPLIERS) else 1.0
         delta_lambda_a, solrat = synthesize_solrat(
@@ -175,28 +175,27 @@ def main():
         ]
         for row in range(4):
             axis = axes[row]
-            axis.plot(delta_lambda_a, solrat_curves[row], lw=1.4, color=color, label=f"{label} SolRaT")
+            axis.plot(delta_lambda_a, solrat_curves[row], lw=1.6, color=color, label=f"{label} SolRaT")
             axis.plot(
                 profile["delta_lambda_A"],
                 hazel_curves[row],
-                lw=2.0,
+                lw=2.2,
                 ls=(0, (1, 1)),
                 color=color,
                 label=f"{label} Hazel",
             )
             axis.axhline(0.0, color="0.7", lw=0.6)
-            axis.grid(alpha=0.3)
+            axis.grid(color="0.88", linewidth=0.5, alpha=0.7)
             axis.set_ylabel(stokes_labels[row])
+            axis.set_xlim(-1.0, 0.5)
         for name, solrat_fraction, hazel_fraction in zip(["Q/I", "U/I", "V/I"], solrat_curves[1:], hazel_curves[1:]):
             hazel_on_solrat = np.interp(delta_lambda_a, profile["delta_lambda_A"], hazel_fraction)
-            peak = float(np.max(np.abs(solrat_fraction)))
             rms = float(np.sqrt(np.mean((solrat_fraction - hazel_on_solrat) ** 2)))
-            agreement.append(
-                f"profile {profile['id']} {name}: peak={peak:.2e} RMS={rms:.2e} rel={rms / max(peak, 1e-30):.1%}"
-            )
+            agreement.append(f"profile {profile['id']} {name}: RMS={rms:.2e}")
 
     axes[0].legend(fontsize=8, ncol=2, loc="best")
     axes[-1].set_xlabel(r"$\lambda - %.1f$ ($\AA$)" % LINE_CENTER_A)
+    fig.align_ylabels(axes)
     fig.tight_layout()
     print("SolRaT vs Hazel (He I D3):")
     for line in agreement:

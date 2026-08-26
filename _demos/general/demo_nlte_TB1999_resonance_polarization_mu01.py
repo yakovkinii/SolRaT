@@ -22,11 +22,14 @@ try:
 except ImportError:
     from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
-WARM_START = True
-WARM_START_ITERATIONS = 2
+
+def benchmark_rms(reduced_nu, qi_profile_percent, benchmark_reduced_nu, benchmark_qi_percent):
+    order = np.argsort(reduced_nu)
+    model_at_benchmark = np.interp(benchmark_reduced_nu, reduced_nu[order], qi_profile_percent[order])
+    return float(np.sqrt(np.mean((model_at_benchmark - benchmark_qi_percent) ** 2)))
 
 
-def main():
+def main(warm_start=True):
     r"""
     Emergent :math:`Q/I` profile of the TB1999 :math:`J=0 \to 1` scattering line at an inclined line
     of sight (:math:`\mu=0.1`), overlaid on the digitized TB1999 (ApJ 516, 436) Fig. 10.
@@ -36,6 +39,7 @@ def main():
     temperature_K = 6000.0
     epsilon = 1.0e-2
     mu_observer = 0.1
+    n_mu_tb1999 = 15
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -46,12 +50,12 @@ def main():
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
     )
     nu = frequencies_around_line_sm1(
-        transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.5
+        transition.get_mean_transition_frequency_sm1(), params.delta_v_thermal_cm_sm1, step_doppler=0.1
     )
 
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=height_grid_refined_at_observer_surface(10000e6, n_near_surface=500, n_interior=300),
+        height_cm=height_grid_refined_at_observer_surface(1000e6, n_near_surface=100, n_interior=30),
         temperature_K=temperature_K,
         number_density_cm3=1.0e11,
         magnetic_field_gauss=0.0,
@@ -60,20 +64,21 @@ def main():
         voigt_a=0.0,
         continuum_to_line_ratio=0.0,
     )
-    initial_state = load_warm_state(__file__, WARM_START)
+    initial_state = load_warm_state(__file__, warm_start)
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=30,
+        n_mu_quadrature=2 * n_mu_tb1999,
         n_phi_quadrature=3,
-        max_iterations=WARM_START_ITERATIONS if initial_state is not None else 100,
-        tolerance=1e-10,
+        max_iterations=100,
+        tolerance=1e-8,
         ng_acceleration=True,
         ng_damping=0.5,
-        ng_period=10,
+        ng_period=7,
+        transfer_scheme="delo_linear",
         estimate_true_error=True,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
@@ -92,89 +97,74 @@ def main():
     )
 
     # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
-    tb_reduced_frequency = np.array(
+    tb_rf = np.array(np.arange(-5, 1e-4, 0.15))
+    tb_qi_dig = np.array(
         [
-            -5.00365,
-            -4.75456,
-            -4.39872,
-            -4.05109,
-            -3.71989,
-            -3.37226,
-            -3.07664,
-            -2.84672,
-            -2.63869,
-            -2.43066,
-            -2.23905,
-            -2.01734,
-            -1.81752,
-            -1.61496,
-            -1.42336,
-            -1.24818,
-            -1.06752,
-            -0.9115,
-            -0.82391,
-            -0.62956,
-            -0.48996,
-            -0.4188,
-            -0.30109,
-            -0.23266,
-            -0.02737,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.00,
+            0.02,
+            0.03,
+            0.09,
+            0.16,
+            0.29,
+            0.43,
+            0.62,
+            0.77,
+            0.85,
+            0.73,
+            0.43,
+            -0.04,
+            -0.62,
+            -1.21,
+            -1.77,
+            -2.26,
+            -2.68,
+            -2.97,
+            -3.19,
+            -3.33,
+            -3.38,
         ]
     )
-    tb_qi_percent = np.array(
-        [
-            0.0,
-            -0.00226,
-            -0.00792,
-            -0.00792,
-            -0.00226,
-            -0.01075,
-            0.01188,
-            0.0543,
-            0.13348,
-            0.28337,
-            0.50113,
-            0.77828,
-            0.86312,
-            0.6086,
-            0.04581,
-            -0.65554,
-            -1.39367,
-            -1.93665,
-            -2.29016,
-            -2.7681,
-            -3.01697,
-            -3.13292,
-            -3.25735,
-            -3.33371,
-            -3.40158,
-        ]
-    )
-    tb_reduced_frequency_full = np.concatenate([tb_reduced_frequency, -tb_reduced_frequency[::-1]])
-    tb_qi_percent_full = np.concatenate([tb_qi_percent, tb_qi_percent[::-1]])
+
+    tb_reduced_frequency_full2 = np.concatenate([tb_rf, -tb_rf[::-1]])
+    tb_qi_percent_full2 = np.concatenate([tb_qi_dig, tb_qi_dig[::-1]])
+    rms_percent = benchmark_rms(reduced_nu, qi_profile_percent, tb_reduced_frequency_full2, tb_qi_percent_full2)
+    rms = rms_percent / 100.0
 
     fig_qi, ax_qi = plt.subplots(figsize=(7, 5))
 
     # Emergent Q/I profile at mu = 0.1 (TB1999 Fig. 10, delta2 = 0).
     ax_qi.axhline(0.0, color="k", linewidth=0.8)
     ax_qi.plot(
-        tb_reduced_frequency_full,
-        tb_qi_percent_full,
+        tb_reduced_frequency_full2,
+        tb_qi_percent_full2,
         linestyle="none",
         marker="x",
+        markersize=5.5,
+        markeredgewidth=1.3,
         color="k",
-        label="TB1999 Fig. 10 (digitized)",
+        label="TB99",
     )
-    ax_qi.plot(reduced_nu, qi_profile_percent, marker=".", label=r"SolRaT ($\mu = 0.1$)")
+    ax_qi.plot(reduced_nu, qi_profile_percent, "r-", label="SolRaT")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
     ax_qi.set_ylabel(r"$100\,Q/I$")
     ax_qi.legend()
     fig_qi.tight_layout()
     line_center_index = int(np.argmin(np.abs(reduced_nu)))
     print(
-        f"TB1999 Fig. 10 (mu=0.1): iterations = {atmosphere.iterations_used}, final residual = "
-        f"{atmosphere.final_residual:.2e}, line-center 100 Q/I = {qi_profile_percent[line_center_index]:.3f} "
-        f"(TBD: re-run at better convergence for the final figure -- see final-review flag FR9)"
+        f"TM99 Fig. 10, mu=0.1: RMS Q/I = {rms:.3e} "
+        f"(iterations={atmosphere.iterations_used}, final residual={atmosphere.final_residual:.2e})"
     )
     return fig_qi
 

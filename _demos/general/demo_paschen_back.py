@@ -43,6 +43,8 @@ def main():
 
     fig, ax = plt.subplots()
     ax.plot(magnetic_fields, np.array(energies), "k")
+    ax.set_xlim(0, 20000)
+    ax.set_xticks([0, 5000, 10000, 15000, 20000])
     ax.set_xlabel(r"$B$ (G)")
     ax.set_ylabel(r"$E$ (cm$^{-1}$)")
     return fig

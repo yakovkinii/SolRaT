@@ -171,26 +171,27 @@ def main():
         ("$V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
     ]
 
-    max_stokes_delta = max(float(np.max(np.abs(mt_curve - ml_curve))) for _, mt_curve, ml_curve in panels)
+    stokes_rms = float(np.sqrt(np.mean([np.mean((mt_curve - ml_curve) ** 2) for _, mt_curve, ml_curve in panels])))
 
     fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
     for ax, (label, mt_curve, ml_curve) in zip(axes.ravel(), panels):
-        ax.plot(reduced_frequency, mt_curve, lw=1.2, color="#1f77b4")
-        ax.plot(reduced_frequency, ml_curve, lw=2.8, ls=(0, (1, 1)), color="#d62728")
+        ax.plot(reduced_frequency, mt_curve, lw=1.6, color="k")
+        ax.plot(reduced_frequency, ml_curve, lw=2.4, ls=(0, (3, 2)), color="#d62728")
         ax.set_ylabel(label)
         ax.axhline(0.0, color="0.7", lw=0.6)
-        ax.grid(alpha=0.3)
+        ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
     for ax in axes[1]:
-        ax.set_xlabel(r"reduced frequency $v = (\nu - \nu_0)/\Delta\nu_D$")
+        ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     style_key = [
-        Line2D([], [], color="#1f77b4", lw=1.2, label="Multi-term atom"),
-        Line2D([], [], color="#d62728", lw=2.8, ls=(0, (1, 1)), label="Multi-level atom"),
+        Line2D([], [], color="k", lw=1.6, label="Multi-term"),
+        Line2D([], [], color="#d62728", lw=2.4, ls=(0, (3, 2)), label="Multi-level"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
+    fig.align_ylabels(axes.ravel())
     fig.tight_layout()
     print(
         f"Multi-term vs multi-level (S=0 line, B = {magnetic_field_gauss:.0f} G): "
-        f"max|Delta Stokes| = {max_stokes_delta:.2e} (should be ~machine precision)"
+        f"RMS Delta Stokes = {stokes_rms:.2e} (should be ~machine precision)"
     )
     return fig
 

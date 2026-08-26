@@ -10,31 +10,20 @@ from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
     StratifiedAtmosphere,
 )
 from solrat.atom_model.shared.object.stokes import Stokes
-from solrat.atom_model.shared.utility.functions import frequencies_around_line_sm1
+from solrat.atom_model.shared.utility.functions import (
+    frequencies_around_line_sm1,
+    height_grid_refined_at_observer_surface,
+)
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-try:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
-except ImportError:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
-WARM_START = True
-WARM_START_ITERATIONS = 2
-
-
-def log_depth_grid(z_max_cm: float, n_depth: int, min_fraction: float = 1e-9) -> np.ndarray:
-    r"""
-    Height grid with the depth below the observer surface logarithmically spaced. ``z[0]`` is the
-    lower boundary (deep), ``z[-1]`` the observer surface (optical depth :math:`\to 0`).
-    """
-    depth_below_surface = np.logspace(np.log10(z_max_cm * min_fraction), np.log10(z_max_cm), n_depth)
-    return np.sort(z_max_cm - depth_below_surface)
+from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
 
 def upper_level_alignment(atmosphere: NLTEStratifiedAtmosphere, upper_level_id: str) -> np.ndarray:
     r"""
     Fractional atomic alignment :math:`\rho^2_0 / \rho^0_0` of the upper level over the depth grid
-    (TB1999 Fig. 1).
+    (TB1999 Fig. 8).
     """
     sigma = []
     for rho in atmosphere.rho_grid:
@@ -44,30 +33,29 @@ def upper_level_alignment(atmosphere: NLTEStratifiedAtmosphere, upper_level_id: 
     return np.array(sigma)
 
 
-def main():
-    r"""
-    Reproduce the Trujillo Bueno & Manso Sainz (1999), ApJ 516, 436, resonance-line-polarization
-    benchmark: a :math:`J=0 \to 1` two-level atom in an isothermal, self-emitting, plane-parallel
-    slab, with the photon destruction probability set through the parametrized collisional
-    de-excitation rate.
+def benchmark_rms(tau, alignment, benchmark_tau, benchmark_alignment):
+    mask = tau > 0.0
+    order = np.argsort(tau[mask])
+    model_at_benchmark = np.interp(
+        np.log10(benchmark_tau),
+        np.log10(tau[mask][order]),
+        alignment[mask][order],
+    )
+    return float(np.sqrt(np.mean((model_at_benchmark - benchmark_alignment) ** 2)))
 
-    Plots the upper-level alignment :math:`\rho^2_0/\rho^0_0` versus optical depth from the surface
-    against the tabulated surface value, and logs the tangential (:math:`\mu=0`) line-center Q/I
-    against TB1999 Table 4.
-    """
-    setup_logging()
 
+def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
     temperature_K = 6000.0
-    epsilon = 1.0e-2
+    epsilon = 1.0e-4
     mu_observer = 0.0
-    tb1999_surface_alignment = 0.05666  # TB1999 Table 4
-    tb1999_qi_percent_tangential = -6.132  # TB1999 Table 4
+    n_mu_tb1999 = 5
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
     transition = next(iter(model.config.transition_registry.transitions.values()))
     upper_level_id = transition.level_upper.level_id
     collisions.set_deexcitation_rate_from_epsilon(transition, epsilon, temperature_K)
+    collisions.set_depolarizing_rate(upper_level_id, K=2, rate_sm1=delta2 * transition.einstein_a_ul)
 
     params = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=0.0, temperature_K=temperature_K
@@ -79,7 +67,9 @@ def main():
 
     stratification = StratifiedAtmosphere(
         model=model,
-        height_cm=log_depth_grid(1000e5, 80),
+        height_cm=height_grid_refined_at_observer_surface(
+            1000e6, n_near_surface=100, n_interior=30, min_surface_fraction=1e-9
+        ),
         temperature_K=temperature_K,
         number_density_cm3=1.0e11,
         magnetic_field_gauss=0.0,
@@ -88,65 +78,378 @@ def main():
         voigt_a=0.0,
         continuum_to_line_ratio=0.0,
     )
-    initial_state = load_warm_state(__file__, WARM_START)
+    state_suffix = f"_delta2_{delta2:g}".replace(".", "p")
+    initial_state = load_warm_state(__file__, warm_start, suffix=state_suffix)
     atmosphere = NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=10,
+        n_mu_quadrature=2 * n_mu_tb1999,
         n_phi_quadrature=3,
-        max_iterations=WARM_START_ITERATIONS if initial_state is not None else 1000,
+        max_iterations=100,
         tolerance=1e-8,
         ng_acceleration=True,
-        ng_damping=0.7,
+        ng_period=7,
+        ng_damping=1,
+        transfer_scheme="delo_linear",
+        estimate_true_error=True,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
-    save_warm_state(__file__, atmosphere)
+    save_warm_state(__file__, atmosphere, suffix=state_suffix)
 
-    vertical_tau = atmosphere.tau_grid
-    optical_depth_from_surface = vertical_tau[-1] - vertical_tau
+    vertical_tau_line_center = atmosphere.tau_grid
+    tau_from_surface = (vertical_tau_line_center[-1] - vertical_tau_line_center) * np.sqrt(np.pi)
     alignment = upper_level_alignment(atmosphere, upper_level_id)
     surface_alignment = alignment[-1]
     emergent_qi_percent = 100.0 * emergent.Q[line_center_index] / emergent.I[line_center_index]
 
-    logging.info("TB1999 benchmark: epsilon = %.0e, delta2 = 0, no continuum, no field", epsilon)
+    logging.info("TB1999 benchmark: epsilon = %.0e, delta2 = %.1f, no continuum, no field", epsilon, delta2)
     logging.info(
-        "vertical optical thickness = %.1f, iterations = %d, residual = %.2e",
-        float(vertical_tau[-1]),
+        "line-integrated optical thickness = %.1f, iterations = %d, residual = %.2e",
+        float(tau_from_surface[0]),
         atmosphere.iterations_used,
         atmosphere.final_residual,
     )
-    logging.info("surface rho^2_0/rho^0_0 = %.5f  (TB1999: %.5f)", surface_alignment, tb1999_surface_alignment)
     logging.info(
-        "tangential (mu=0) line-center Q/I = %.3f %%  (TB1999 Table 4: %.3f %%)",
-        emergent_qi_percent,
-        tb1999_qi_percent_tangential,
-    )
-
-    fig_alignment, ax_alignment = plt.subplots(figsize=(7, 5))
-    ax_alignment.axhline(
-        tb1999_surface_alignment,
-        color="k",
-        linestyle="--",
-        label=f"TB1999 surface value = {tb1999_surface_alignment}",
-    )
-    ax_alignment.plot(optical_depth_from_surface[:-1], alignment[:-1], marker=".", label="SolRaT")
-    ax_alignment.set_xscale("log")
-    ax_alignment.set_xlabel(r"optical depth from surface  $\tau$")
-    ax_alignment.set_ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")
-    ax_alignment.set_ylim(-0.02, 0.10)
-    ax_alignment.legend()
-    fig_alignment.tight_layout()
-
-    print(
-        f"TB1999 (epsilon={epsilon:.0e}): surface rho^2_0/rho^0_0 = {surface_alignment:.5f} "
-        f"(TB1999 {tb1999_surface_alignment:.5f}, rel err "
-        f"{abs(surface_alignment / tb1999_surface_alignment - 1.0):.1%}); tangential Q/I = "
-        f"{emergent_qi_percent:.3f}% (TB1999 {tb1999_qi_percent_tangential:.3f}%); "
+        f"TB1999 (epsilon={epsilon:.0e}, delta2={delta2:.1f}): surface rho^2_0/rho^0_0 = "
+        f"{surface_alignment:.5f}; tangential Q/I = {emergent_qi_percent:.3f}%; "
         f"iterations = {atmosphere.iterations_used}"
     )
+    return tau_from_surface, alignment
+
+
+def main(warm_start=True):
+    r"""
+    Reproduce the Trujillo Bueno & Manso Sainz (1999), ApJ 516, 436, resonance-line-polarization
+    benchmark: a :math:`J=0 \to 1` two-level atom in an isothermal, self-emitting, plane-parallel
+    slab, with the photon destruction probability set through the parametrized collisional
+    de-excitation rate.
+
+    Plots the upper-level alignment :math:`\rho^2_0/\rho^0_0` versus optical depth from the surface
+    against digitized TB1999 Fig. 8 curves for two depolarizing rates.
+    """
+    setup_logging()
+
+    fig_alignment, ax_alignment = plt.subplots(figsize=(7, 5))
+    tb_depth = np.array([
+        1.524109E-04,
+        2.023033E-04,
+        2.685281E-04,
+        3.564319E-04,
+        4.731114E-04,
+        6.279864E-04,
+        8.335603E-04,
+        1.106430E-03,
+        1.468624E-03,
+        1.949385E-03,
+        2.587524E-03,
+        3.434560E-03,
+        4.558878E-03,
+        6.051246E-03,
+        8.032147E-03,
+        1.066150E-02,
+        1.415159E-02,
+        1.878417E-02,
+        2.493325E-02,
+        3.309526E-02,
+        4.392913E-02,
+        5.830951E-02,
+        7.739737E-02,
+        1.027337E-01,
+        1.363640E-01,
+        1.810034E-01,
+        2.402556E-01,
+        3.189043E-01,
+        4.232989E-01,
+        5.618676E-01,
+        7.457973E-01,
+        9.899371E-01,
+        1.313997E+00,
+        1.744140E+00,
+        2.315091E+00,
+        3.072946E+00,
+        4.078888E+00,
+        5.414128E+00,
+        7.186466E+00,
+        9.538986E+00,
+        1.266161E+01,
+        1.680644E+01,
+        2.230810E+01,
+        2.961076E+01,
+        3.930396E+01,
+        5.217028E+01,
+        6.924843E+01,
+        9.191720E+01,
+        1.220067E+02,
+        1.619461E+02,
+        2.149598E+02,
+        2.853278E+02,
+        3.787310E+02,
+        5.027102E+02,
+        6.672745E+02,
+        8.857096E+02,
+        1.175650E+03,
+        1.560504E+03,
+        2.071342E+03,
+        2.749405E+03,
+        3.649434E+03,
+        4.844091E+03,
+        6.429825E+03,
+        8.534654E+03,
+        1.132851E+04,
+        1.503694E+04,
+        1.995935E+04,
+        2.649313E+04,
+        3.516576E+04,
+        4.667742E+04,
+        6.195747E+04,
+        8.223951E+04,
+        1.091610E+05,
+        1.448953E+05,
+        1.923273E+05,
+        2.552865E+05,
+        3.388556E+05,
+        4.497814E+05,
+        5.970192E+05,
+        7.924559E+05,
+        1.051870E+06,
+        1.396204E+06,
+        1.853257E+06,
+        2.459928E+06,
+        3.265196E+06,
+
+    ])
+    tb_alignment_1 = np.array([
+        0.036886,
+        0.036851,
+        0.036825,
+        0.036825,
+        0.036825,
+        0.036801,
+        0.036729,
+        0.036668,
+        0.036668,
+        0.036622,
+        0.036481,
+        0.036390,
+        0.036225,
+        0.036021,
+        0.035750,
+        0.035424,
+        0.034962,
+        0.034395,
+        0.033661,
+        0.032728,
+        0.031569,
+        0.030166,
+        0.028450,
+        0.026466,
+        0.024245,
+        0.021755,
+        0.019049,
+        0.016279,
+        0.013390,
+        0.010620,
+        0.007956,
+        0.005524,
+        0.003580,
+        0.002010,
+        0.000904,
+        0.000187,
+        - 0.000104,
+        - 0.000180,
+        - 0.000213,
+        - 0.000124,
+        - 0.000041,
+        0.000002,
+        0.000035,
+        - 0.000041,
+        - 0.000083,
+        - 0.000083,
+        - 0.000083,
+        - 0.000082,
+        - 0.000052,
+        - 0.000023,
+        0.000011,
+        0.000064,
+        0.000064,
+        0.000073,
+        0.000077,
+        0.000077,
+        0.000079,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000116,
+
+    ])
+
+
+    tb_alignment_0dot1 = np.array([  # for delta(2) = 0.1
+        0.073423,
+        0.073362,
+        0.073362,
+        0.073362,
+        0.073332,
+        0.073332,
+        0.073271,
+        0.073175,
+        0.073088,
+        0.072998,
+        0.072837,
+        0.072618,
+        0.072366,
+        0.072046,
+        0.071582,
+        0.070981,
+        0.070207,
+        0.069225,
+        0.067933,
+        0.066320,
+        0.064278,
+        0.061864,
+        0.058797,
+        0.055291,
+        0.051281,
+        0.046601,
+        0.041622,
+        0.036374,
+        0.030692,
+        0.025000,
+        0.019329,
+        0.014102,
+        0.009565,
+        0.005672,
+        0.002767,
+        0.000954,
+        - 0.000289,
+        - 0.001112,
+        - 0.001304,
+        - 0.001223,
+        - 0.001064,
+        - 0.000914,
+        - 0.000673,
+        - 0.000532,
+        - 0.000083,
+        - 0.000083,
+        - 0.000083,
+        - 0.000082,
+        - 0.000052,
+        - 0.000023,
+        0.000011,
+        0.000064,
+        0.000064,
+        0.000073,
+        0.000077,
+        0.000077,
+        0.000079,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+        0.000097,
+
+    ])
+
+    benchmark_by_delta2 = {
+        1.0: tb_alignment_1,
+        0.1: tb_alignment_0dot1,
+    }
+    colors_by_delta2 = {
+        1.0: "k",
+        0.1: "#d62728",
+    }
+    solrat_by_delta2 = {
+        delta2: calculate_alignment_for_delta2(delta2=delta2, warm_start=warm_start)
+        for delta2 in benchmark_by_delta2
+    }
+
+    for delta2, benchmark_alignment in benchmark_by_delta2.items():
+        color = colors_by_delta2[delta2]
+        ax_alignment.plot(
+            tb_depth[: len(benchmark_alignment)],
+            benchmark_alignment,
+            linestyle="none",
+            marker="x",
+            markersize=5.5,
+            markeredgewidth=1.3,
+            color=color,
+            label=rf"TB99 ($\delta^{{(2)}}={delta2:g}$)",
+        )
+        tau_from_surface, alignment = solrat_by_delta2[delta2]
+        rms = benchmark_rms(
+            tau_from_surface,
+            alignment,
+            tb_depth[: len(benchmark_alignment)],
+            benchmark_alignment,
+        )
+        ax_alignment.plot(
+            tau_from_surface[1:-1],
+            alignment[1:-1],
+            '-',
+            color=color,
+            lw=1.8,
+            label=rf"SolRaT ($\delta^{{(2)}}={delta2:g}$)",
+        )
+        print(f"TM99 Fig. 8, delta2={delta2:g}: RMS rho^2_0/rho^0_0 = {rms:.3e}")
+
+    ax_alignment.set_xscale("log")
+    ax_alignment.set_xlim(1e-3, 1e5)
+    ax_alignment.set_xlabel(r"$\tau$")
+    ax_alignment.set_ylabel(r"$\rho^2_0 / \rho^0_0$")
+    # ax_alignment.set_ylim(-0.02, 0.10)
+    ax_alignment.grid(color="0.88", linewidth=0.5, alpha=0.7)
+    ax_alignment.legend(loc="best")
+    fig_alignment.tight_layout()
+
     return fig_alignment
 
 
