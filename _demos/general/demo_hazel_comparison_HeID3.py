@@ -24,12 +24,6 @@ TEMPERATURE_K = 10000.0
 DELTA_V_TURBULENT_CM_SM1 = 4.7e5
 CONTINUUM_DELTA_TAU = 1.0e-8
 
-# Per-profile factor on the optical depth: SolRaT line_delta_tau = TAU_MULTIPLIER * Hazel tau.
-# This is because SolRat and Hazel have different tau definitions.
-# The Stokes I amplitude therefore is fitted by , but it's just a single point o
-# all other points are legitimate comparison.
-TAU_MULTIPLIERS = [1, 1, 1]
-
 HAZEL_PROFILES_CSV = pathlib.Path(__file__).with_name("hazel_reference") / "hazel_HeID3_profiles.csv"
 HAZEL_D3_WAVELENGTH_A = 5875.9663
 
@@ -153,14 +147,13 @@ def main():
     agreement = []
     colors = ["k", "#d62728", "#2ca02c"]
     for index, profile in enumerate(profiles):
-        tau_multiplier = TAU_MULTIPLIERS[index] if index < len(TAU_MULTIPLIERS) else 1.0
         delta_lambda_a, solrat = synthesize_solrat(
             profile["field_gauss"],
             profile["incl_deg"],
             profile["azim_deg"],
             profile["los_deg"],
             profile["height_arcsec"],
-            profile["optical_depth"] * tau_multiplier,
+            profile["optical_depth"],
         )
         color = colors[index % len(colors)]
         label = (

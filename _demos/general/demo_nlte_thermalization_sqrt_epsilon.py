@@ -17,10 +17,7 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-try:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
-except ImportError:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
 DOPPLER_LINE_CENTER_PROFILE = 1.0 / np.sqrt(np.pi)
 AH65_FIG2_EPSILON_1EM2_TAU = np.array(

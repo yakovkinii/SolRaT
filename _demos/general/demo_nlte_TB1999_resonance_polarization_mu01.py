@@ -17,10 +17,7 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-try:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
-except ImportError:
-    from _demos.general.state.warm_start import load_warm_state, save_warm_state
+from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
 
 def benchmark_rms(reduced_nu, qi_profile_percent, benchmark_reduced_nu, benchmark_qi_percent):

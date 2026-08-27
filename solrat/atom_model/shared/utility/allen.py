@@ -3,7 +3,7 @@ import numpy as np
 r"""
 Allen's :math:`J^K_Q` continuum intensities.
 
-Reference: HAZEL, A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
+Reference: HAZEL 2; A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
 """
 
 C_CM_SM1 = 2.99792458e10  # PC, speed of light [cm/s]

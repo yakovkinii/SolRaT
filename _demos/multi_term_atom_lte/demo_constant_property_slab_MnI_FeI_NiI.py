@@ -186,11 +186,6 @@ def main():
         label="RTE with LTE SEE",
         color="k",
     )
-
-    for axis in plotter.axs:
-        for line in axis.lines:
-            line.set_color("k")
-
     return plotter
 
 

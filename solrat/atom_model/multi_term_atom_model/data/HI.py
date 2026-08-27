@@ -10,6 +10,26 @@ def get_H_I_alpha_config() -> MultiTermAtomConfig:  # pragma: no cover
     H alpha line (:math:`3\to 2`)
     Reference: NIST
 
+    ``einstein_a_ul_sm1`` is the LL04 term coefficient
+    :math:`A(\beta_u L_u S \to \beta_l L_l S)`. NIST usually tabulates fine-structure components
+    :math:`A(\beta_u L_u S J_u \to \beta_l L_l S J_l)`. To convert those component values to the
+    SolRaT multi-term coefficient, fix one upper :math:`J_u` and sum over all lower :math:`J_l`.
+    The result should be independent of the chosen :math:`J_u` in exact LS coupling. In practice,
+    average those per-:math:`J_u` sums over all upper :math:`J_u` values included in the NIST
+    component list:
+
+    .. math::
+        A_\mathrm{SolRaT}
+        =
+        \frac{1}{N_{J_u}}
+        \sum_{J_u}
+        \sum_{J_l}
+        A_\mathrm{NIST}(J_u \to J_l).
+
+    Here :math:`N_{J_u}` is just the number of distinct upper fine-structure :math:`J_u` values
+    included for the upper term; it is not a separate NIST quantity. Do not use the raw sum over all
+    fine-structure component lines unless the upper term has only one :math:`J_u`.
+
     :return: :any:`MultiTermAtomConfig` instance
     """
 

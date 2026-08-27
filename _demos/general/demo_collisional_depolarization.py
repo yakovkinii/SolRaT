@@ -1,6 +1,5 @@
 """
-TODO: this self-consistent NLTE depolarization scan is not converged on the short demo settings.
-Launch a long run before using it as a quantitative validation.
+TODO: this self-consistent NLTE depolarization scan is not converged, need to launch a long run until convergence.
 """
 
 import numpy as np
