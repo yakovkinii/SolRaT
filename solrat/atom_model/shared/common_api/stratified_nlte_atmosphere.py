@@ -841,9 +841,7 @@ class NLTEStratifiedAtmosphere:
                 source_I = np.asarray(source_function_I_per_z[i], dtype=np.float64)
                 if source_I.ndim == 0:
                     source_I = np.full(n_nu, float(source_I))
-                assert source_I.shape == (
-                    n_nu,
-                ), "source_function_I_per_z entries must be scalars or nu-sized arrays."
+                assert source_I.shape == (n_nu,), "source_function_I_per_z entries must be scalars or nu-sized arrays."
                 eps = K[:, :, 0] * source_I[:, np.newaxis]
             K_per_z.append(K)
             eps_per_z.append(eps)
@@ -905,9 +903,7 @@ class NLTEStratifiedAtmosphere:
             source_I = np.asarray(source_function_I_per_z[i_surface], dtype=np.float64)
             if source_I.ndim == 0:
                 source_I = np.full(n_nu, float(source_I))
-            assert source_I.shape == (
-                n_nu,
-            ), "source_function_I_per_z entries must be scalars or nu-sized arrays."
+            assert source_I.shape == (n_nu,), "source_function_I_per_z entries must be scalars or nu-sized arrays."
             eps = K[:, :, 0] * source_I[:, np.newaxis]
         return self._delo_source_function(K, eps).T  # [4, n_nu]
 
@@ -1310,7 +1306,9 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
         tau_for_prescription = np.zeros(n_z, dtype=np.float64)
         if callable(self.prescribed_radiation_tensor):
             trial_radiation_tensor_grid = self._radiation_tensor_grid(z, tau_for_prescription)
-            trial_rho_grid = self._rho_grid_from_radiation_tensors(see, see_params, b_angles, trial_radiation_tensor_grid)
+            trial_rho_grid = self._rho_grid_from_radiation_tensors(
+                see, see_params, b_angles, trial_radiation_tensor_grid
+            )
             trial_eta_peak = self._line_core_opacity_grid(rte, trial_rho_grid, obs_params, obs_angles, N)
             tau_for_prescription = self._integrated_depth_grid(trial_eta_peak, z)
 
