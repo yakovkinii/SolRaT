@@ -32,10 +32,11 @@ non-LTE scattering problem [[TM99](#References)].
 #### Atmospheres and synthesis
 - **Constant-property slabs**, optionally stacked into a multi-slab stratification under
 anisotropic illumination.
-- **Height-stratified atmosphere** in which temperature, absorber number density, the
+- **Height-stratified atmospheres** in which temperature, absorber number density, the
 magnetic-field vector, microturbulence, Voigt damping, and the vector macroscopic velocity
-vary continuously with geometric height. The scattering $J^K_Q$ is solved self-consistently
-by $\Lambda$-iteration on a depth grid, with the Stokes transfer solved by the DELO method.
+vary continuously with geometric height. The radiation tensor $J^K_Q$ can be prescribed on
+the depth grid or solved self-consistently by $\Lambda$-iteration, with the Stokes transfer
+solved by the DELO method.
 - Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
 
 #### Design
