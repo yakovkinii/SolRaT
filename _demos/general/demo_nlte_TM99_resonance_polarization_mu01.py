@@ -3,7 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
-from _demos.general.state.warm_start import load_warm_state, save_warm_state
+from _demos.general.state.warm_start import load_warm_state
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
@@ -78,7 +78,7 @@ def main(warm_start=True):
         estimate_true_error=True,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
-    save_warm_state(__file__, atmosphere)
+    # save_warm_state(__file__, atmosphere)
 
     nu0 = transition.get_mean_transition_frequency_sm1()
     reduced_nu = reduced_frequency(nu, nu0, params.delta_v_thermal_cm_sm1)

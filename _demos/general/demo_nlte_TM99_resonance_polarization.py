@@ -3,7 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
-from _demos.general.state.warm_start import load_warm_state, save_warm_state
+from _demos.general.state.warm_start import load_warm_state
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
@@ -95,7 +95,7 @@ def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
         estimate_true_error=True,
     )
     emergent = atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu), initial_state=initial_state)
-    save_warm_state(__file__, atmosphere, suffix=state_suffix)
+    # save_warm_state(__file__, atmosphere, suffix=state_suffix)
 
     vertical_tau_line_center = atmosphere.tau_grid
     tau_from_surface = (vertical_tau_line_center[-1] - vertical_tau_line_center) * np.sqrt(np.pi)

@@ -3,7 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
-from _demos.general.state.warm_start import load_warm_state, save_warm_state
+from _demos.general.state.warm_start import load_warm_state
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
@@ -234,7 +234,7 @@ def main(warm_start=True):
         initial_stokes=Stokes.from_BP(nu_sm1=nu, temperature_K=temperature_K),
         initial_state=initial_state,
     )
-    save_warm_state(__file__, atmosphere)
+    # save_warm_state(__file__, atmosphere)
 
     # tau_grid is line-center optical depth. The plotted tau is line-integrated optical depth,
     # measured from the observer surface inward.
