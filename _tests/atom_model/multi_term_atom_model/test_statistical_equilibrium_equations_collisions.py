@@ -51,7 +51,7 @@ def solve(model, radiation_kind):
     if radiation_kind == "iso":
         radiation = radiation.fill_planck(temperature_K=TEMPERATURE_K)
     else:
-        radiation = radiation.fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation = radiation.fill_NLTE_n_w_allen(h_arcsec=30)
     see.fill_all_equations(
         atmosphere_parameters=params,
         radiation_tensor_in_magnetic_frame=radiation.rotate_to_magnetic_frame(angles=Angles()),

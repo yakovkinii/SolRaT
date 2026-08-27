@@ -16,7 +16,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 def _c_ul_for_epsilon(epsilon, transition, temperature_K):
     r"""Collisional de-excitation rate :math:`C_{ul}` giving a two-level photon destruction probability
-    ``epsilon`` (TB1999 Sec. 2)."""
+    ``epsilon`` (TM99 Sec. 2)."""
     delta_e_erg = (transition.level_upper.energy_cmm1 - transition.level_lower.energy_cmm1) * h_erg_s * c_cm_sm1
     stimulated_correction = 1.0 - exp(-delta_e_erg / (kB_erg_Km1 * temperature_K))
     return epsilon / (1.0 - epsilon) * transition.einstein_a_ul / stimulated_correction
@@ -37,18 +37,18 @@ def _symmetric_frequency_grid(transition, delta_v_thermal_cm_sm1, n_half=3):
     return nu0 + np.linspace(-4.0, 4.0, 2 * n_half + 1) * delta_nu_D
 
 
-class TestNLTEStratifiedTB1999(unittest.TestCase):
+class TestNLTEStratifiedTM99(unittest.TestCase):
     r"""
-    TB1999 resonance-polarization benchmark (a J=0 -> J=1 two-level atom in an isothermal, self-emitting
+    TM99 resonance-polarization benchmark (a J=0 -> J=1 two-level atom in an isothermal, self-emitting
     slab; no continuum, no field, epsilon = 1e-2). Each observable is checked two ways: a loose
-    comparison against the tabulated TB1999 value (right sign and order; the coarse grids used for speed
+    comparison against the tabulated TM99 value (right sign and order; the coarse grids used for speed
     under-resolve the angular quadrature and the surface, reaching roughly half the tabulated value), and
     a tight regression against the current computed value. The demos do the fully-resolved quantitative
     comparison.
     """
 
     def _solve(self, mu_observer, n_depth):
-        r"""Solve the tiny TB1999 slab along a line of sight ``mu_observer``; return
+        r"""Solve the tiny TM99 slab along a line of sight ``mu_observer``; return
         (atmosphere, emergent, nu, transition). A fixed iteration count is used (tolerance = 0):
         Lambda-iteration's per-step change is small while the alignment is still building up, so a
         residual threshold would stop before it does."""
@@ -93,7 +93,7 @@ class TestNLTEStratifiedTB1999(unittest.TestCase):
     def test_tangential_surface_alignment_and_qi(self):
         r"""
         Tangential (mu = 0) solve: the upper-level alignment rho^2_0/rho^0_0 at the surface (tau -> 0)
-        and the emergent line-center Q/I. Both are compared against TB1999 Table 4 (epsilon = 1e-2:
+        and the emergent line-center Q/I. Both are compared against TM99 Table 4 (epsilon = 1e-2:
         alignment 0.05666, Q/I -6.132%) loosely and pinned as regressions. The tangential emergent is
         the surface source function, so Q/I equals the surface alignment times the fixed J=0 -> J=1
         geometric factor (~ -108%), a resolution-independent relation checked directly.
@@ -106,7 +106,7 @@ class TestNLTEStratifiedTB1999(unittest.TestCase):
         )
         qi_percent = 100.0 * np.real(emergent.Q[len(nu) // 2] / emergent.I[len(nu) // 2])
 
-        # Loosely vs TB1999 Table 4 (right sign and order; the coarse angular grid reaches ~half).
+        # Loosely vs TM99 Table 4 (right sign and order; the coarse angular grid reaches ~half).
         assert 0.3 < alignment / 0.05666 < 1.1
         assert 0.3 < qi_percent / -6.132 < 1.1
         # Emergent = surface source function: Q/I is the alignment times the geometric factor.
@@ -117,9 +117,9 @@ class TestNLTEStratifiedTB1999(unittest.TestCase):
 
     def test_inclined_emergent_qi_profile(self):
         r"""
-        Inclined (mu = 0.1) emergent Q/I profile (TB1999 Fig. 10, delta2 = 0). The static isothermal
+        Inclined (mu = 0.1) emergent Q/I profile (TM99 Fig. 10, delta2 = 0). The static isothermal
         slab makes the profile symmetric about line center, and the line core is negatively polarized.
-        The line-center Q/I is compared against the digitized TB1999 Fig. 10 value (-3.40%) loosely (the
+        The line-center Q/I is compared against the digitized TM99 Fig. 10 value (-3.40%) loosely (the
         coarse depth under-resolves the core, reaching ~40%) and pinned as a regression.
         """
         atmosphere, emergent, nu, transition = self._solve(mu_observer=0.1, n_depth=24)
@@ -129,7 +129,7 @@ class TestNLTEStratifiedTB1999(unittest.TestCase):
         assert np.all(np.isfinite(qi_percent))
         assert np.allclose(qi_percent, qi_percent[::-1], atol=1e-3, rtol=1e-4)  # symmetric about line center
         assert qi_percent[center] < 0  # negatively polarized line core
-        # Loosely vs TB1999 Fig. 10 line center (right sign and order; the coarse depth reaches ~40%).
+        # Loosely vs TM99 Fig. 10 line center (right sign and order; the coarse depth reaches ~40%).
         assert 0.2 < qi_percent[center] / -3.40158 < 1.1
         # Regression against the current computed value.
         assert np.isclose(qi_percent[center], -1.33128, rtol=1e-3)

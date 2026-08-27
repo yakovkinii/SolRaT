@@ -58,7 +58,7 @@ def main():
     atmosphere_parameters = model.AtmosphereParameters(
         model_config=model.config, magnetic_field_gauss=1000.0, temperature_K=7000.0
     )
-    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+    radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
     n_frequency_points = [50, 100, 200, 400, 800, 1600, 3200]
     forward_times = []

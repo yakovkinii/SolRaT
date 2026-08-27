@@ -55,7 +55,7 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
             )
             rad = (
                 model.RadiationTensor.from_model_config(model.config)
-                .fill_NLTE_n_w_parametrized(h_arcsec=30)
+                .fill_NLTE_n_w_allen(h_arcsec=30)
                 .rotate_to_magnetic_frame(angles=angles)
             )
             return atm, rad
@@ -69,6 +69,18 @@ class TestSEEPrecomputationReproducible(unittest.TestCase):
             radiation_tensor_in_magnetic_frame=rad_fresh,
         )
         rho_fresh = see_fresh.get_solution()
+
+        # precomputed_data = PrecomputedData(
+        #     absorption_frame=see_fresh.absorption_frame,
+        #     emission_e_frame=see_fresh.emission_e_frame,
+        #     emission_s_frame=see_fresh.emission_s_frame,
+        #     relaxation_a_frame=see_fresh.relaxation_a_frame,
+        #     relaxation_e_frame=see_fresh.relaxation_e_frame,
+        #     relaxation_s_frame=see_fresh.relaxation_s_frame,
+        #     coherence_decay_frame=see_fresh.coherence_decay_frame_n_0,
+        #     coherence_decay_frame_n_1=see_fresh.coherence_decay_frame_n_1,
+        # )
+        # precomputed_data.save_to_directory(directory=_PRECOMPUTED_DIR)
 
         see_disk = model_disk.StatisticalEquilibriumEquations.from_model_config(model_disk.config)
         see_disk.fill_all_equations(

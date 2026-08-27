@@ -35,7 +35,7 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
 
         # Fill the radiation tensor with anisotropic radiation field 10 arcsec from the Sun's apparent surface
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
             h_arcsec=10,
         )
 
@@ -57,7 +57,7 @@ class TestRadiativeTransferEquationsD3(unittest.TestCase):
         eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV = eta_rho_s[0], eta_rho_s[1], eta_rho_s[2], eta_rho_s[3]
 
         # Check that the result did not change from previous runs
-        last_run_hash = 2.312804517792012e-16
+        last_run_hash = 6.400073090494805e-17
         new_hash = pseudo_hash(eta_rho_sI, eta_rho_sQ, eta_rho_sU, eta_rho_sV)
         logging.info(new_hash)
         logging.info(last_run_hash)

@@ -15,6 +15,26 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
     Config constructor for He I atom, with multiple transitions including D3.
     For details see A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
 
+    ``einstein_a_ul_sm1`` is the LL04 term coefficient
+    :math:`A(\beta_u L_u S \to \beta_l L_l S)`. NIST usually tabulates fine-structure components
+    :math:`A(\beta_u L_u S J_u \to \beta_l L_l S J_l)`. To convert those component values to the
+    SolRaT multi-term coefficient, fix one upper :math:`J_u` and sum over all lower :math:`J_l`.
+    The result should be independent of the chosen :math:`J_u` in exact LS coupling. In practice,
+    average those per-:math:`J_u` sums over all upper :math:`J_u` values included in the NIST
+    component list:
+
+    .. math::
+        A_\mathrm{SolRaT}
+        =
+        \frac{1}{N_{J_u}}
+        \sum_{J_u}
+        \sum_{J_l}
+        A_\mathrm{NIST}(J_u \to J_l).
+
+    Here :math:`N_{J_u}` is just the number of distinct upper fine-structure :math:`J_u` values
+    included for the upper term; it is not a separate NIST quantity. Do not use the raw sum over all
+    fine-structure component lines unless the upper term has only one :math:`J_u`.
+
     :return: :any:`MultiTermAtomConfig` instance
     """
 
@@ -105,22 +125,23 @@ def get_He_I_D3_config() -> MultiTermAtomConfig:  # pragma: no cover
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="2p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
-        einstein_a_ul_sm1=3 * 1.022e7,
+        einstein_a_ul_sm1=1.022e7,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3p3", L=1, S=1),
         term_lower=level_registry.get_term(beta="2s3", L=0, S=1),
-        einstein_a_ul_sm1=3 * 9.478e6,
+        einstein_a_ul_sm1=9.478e6,
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3s3", L=0, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
-        einstein_a_ul_sm1=3.080e6 + 9.259e6 + 1.540e7,
+        # einstein_a_ul_sm1=3.080e6 + 9.259e6 + 1.540e7,  # upper term 3s3S has one J, so this sum is the term A
+        einstein_a_ul_sm1=2.780e7,  # This one is from HAZEL
     )
     transition_registry.register_transition(
         term_upper=level_registry.get_term(beta="3d3", L=2, S=1),
         term_lower=level_registry.get_term(beta="2p3", L=1, S=1),
-        einstein_a_ul_sm1=3.920e7 + 5.290e7 + 2.940e7 + 7.060e7 + 1.760e7 + 1.960e6,
+        einstein_a_ul_sm1=7.060e7,
     )
     precomputed_data = PrecomputedData.load_from_directory(str(_PRECOMPUTED_DIR)) if _PRECOMPUTED_DIR.exists() else None
     return MultiTermAtomConfig(

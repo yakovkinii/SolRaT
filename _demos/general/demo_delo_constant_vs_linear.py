@@ -18,8 +18,8 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 def main():
     r"""
     Compare the depth-resolution convergence of the first-order (``delo_constant``) and second-order
-    (``delo_linear``) DELO transfer schemes on the TB1999 (:math:`\mu=0.1`) scattering line: the
-    emergent line-center :math:`Q/I` error against the digitized TB1999 benchmark versus the number
+    (``delo_linear``) DELO transfer schemes on the TM99 (:math:`\mu=0.1`) scattering line: the
+    emergent line-center :math:`Q/I` error against the digitized TM99 benchmark versus the number
     of surface depth points.
     """
     setup_logging()
@@ -73,9 +73,9 @@ def main():
         return 100.0 * emergent.Q[line_center] / emergent.I[line_center]
 
     node_counts = np.array([2, 5, 10, 20, 50, 100])
-    tb1999_line_center_qi = -3.40158  # TB1999 Fig. 10 (mu=0.1) line-center 100 Q/I
+    tm99_line_center_qi = -3.40158  # TM99 Fig. 10 (mu=0.1) line-center 100 Q/I
     errors = {
-        scheme: np.array([abs(qi(n, scheme) - tb1999_line_center_qi) for n in node_counts])
+        scheme: np.array([abs(qi(n, scheme) - tm99_line_center_qi) for n in node_counts])
         for scheme in ("delo_constant", "delo_linear")
     }
     slopes = {scheme: np.polyfit(np.log(node_counts), np.log(errors[scheme]), 1)[0] for scheme in errors}
@@ -84,12 +84,12 @@ def main():
     ax.loglog(node_counts, errors["delo_constant"], marker="o", color="k", label="DELO-constant (1st order)")
     ax.loglog(node_counts, errors["delo_linear"], marker="s", color="#d62728", label="DELO-linear (2nd order)")
     ax.set_xlabel("surface depth points $N$")
-    ax.set_ylabel(r"$|100\,Q/I - \mathrm{TB1999}|$ at line center")
+    ax.set_ylabel(r"$|100\,Q/I - \mathrm{TM99}|$ at line center")
     ax.legend()
     fig.tight_layout()
 
     print(
-        f"DELO scheme depth-convergence (TB1999 mu=0.1): TB1999 100 Q/I = {tb1999_line_center_qi:.4f}; "
+        f"DELO scheme depth-convergence (TM99 mu=0.1): TM99 100 Q/I = {tm99_line_center_qi:.4f}; "
         f"fitted order (log-log slope) constant = {-slopes['delo_constant']:.2f}, "
         f"linear = {-slopes['delo_linear']:.2f}"
     )

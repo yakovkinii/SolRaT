@@ -71,7 +71,7 @@ class TestStatisticalEquilibriumEquationsResonance(unittest.TestCase):
             magnetic_field_gauss=0,
             temperature_K=7000,
         )
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
             h_arcsec=30,
         )
 

@@ -40,14 +40,14 @@ def main():
         "He I D3 transition for different magnetic field values", reference_lambda_A_air=reference_lambda_A_air
     )
 
-    for Bz in [0, 3000, 5000]:
+    for Bz, color in zip([0, 3000, 5000], ["k", "#d62728", "#2ca02c"]):
         atmosphere_parameters = model.AtmosphereParameters(
             model_config=model.config,
             magnetic_field_gauss=Bz,
             temperature_K=5000,
         )
 
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
             h_arcsec=30,
         )
 
@@ -68,6 +68,7 @@ def main():
             stokes=atmosphere.forward(initial_stokes=initial_stokes),
             norm=StokesPlotter.Norm.MAX_I,
             label=f"B = {Bz} G",
+            color=color,
         )
 
     return plotter

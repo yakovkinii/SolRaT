@@ -5,13 +5,13 @@ import numpy as np
 
 from solrat.atom_model.multi_term_atom_model.data.HeI import get_He_I_D3_config
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
+from solrat.atom_model.shared.utility.allen import nbar_allen, omega_allen
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
 def main():
     r"""
-    Recreate Fig. 4 of Asensio Ramos et al. 2008 (ApJ 683, 542) with the parametrized smooth
-    n(lambda) and w(lambda) functions.
+    Plot the Allen n(lambda) and w(lambda) values used to build the NLTE radiation tensor.
     """
     setup_logging()
     config = get_He_I_D3_config()
@@ -19,12 +19,12 @@ def main():
     radiation_tensor = RadiationTensor(transition_registry=config.transition_registry)
 
     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(12, 4))
-    fig.suptitle("Anisotropic parametrization of $J_0^0$ and $J_0^2$ depending on the height above the photosphere")
+    fig.suptitle("Allen parametrization of $J_0^0$ and $J_0^2$ depending on the height above the photosphere")
 
     lambda_A = np.arange(4000, 12000, 1)
     for h_arcsec in [0, 3, 10, 40][::-1]:
-        n = [radiation_tensor.n_fit(lam) for lam in lambda_A]
-        w = [radiation_tensor.w_fit(lam, h_arcsec) for lam in lambda_A]
+        n = [nbar_allen(lam, h_arcsec) for lam in lambda_A]
+        w = [omega_allen(lam, h_arcsec) for lam in lambda_A]
         ax[0].plot(lambda_A, n, label=rf"{h_arcsec=}")
         ax[1].plot(lambda_A, w, label=rf"{h_arcsec=}")
 
@@ -54,7 +54,7 @@ def main():
 
     for h_arcsec in [40, 30, 20, 10, 5, 2, 1, 0]:
         logging.info("===========================")
-        radiation_tensor.fill_NLTE_n_w_parametrized(h_arcsec=h_arcsec)
+        radiation_tensor.fill_NLTE_n_w_allen(h_arcsec=h_arcsec)
         ax[2].scatter(
             x_axis,
             [radiation_tensor.data[transition_id] for transition_id in transitions_to_plot],

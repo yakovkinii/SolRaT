@@ -1,5 +1,6 @@
 import numpy as np
 
+from solrat.atom_model.shared.utility.allen import i0_allen
 from solrat.atom_model.shared.utility.functions import get_planck_BP
 
 
@@ -53,3 +54,21 @@ class Stokes:
             U=nu_sm1 * 0,
             V=nu_sm1 * 0,
         )
+
+
+def get_boundary_stokes_allen(nu_sm1: np.ndarray, lambda_A: float, mu: float) -> Stokes:
+    """
+    Get the unpolarized Allen continuum boundary Stokes vector.
+
+    :param nu_sm1: frequencies [1/s]
+    :param lambda_A: wavelength used for the Allen continuum intensity [Angstrom]
+    :param mu: heliocentric cosine of the line of sight
+    :return: Stokes instance
+    """
+    return Stokes(
+        nu=nu_sm1,
+        I=np.full_like(nu_sm1, i0_allen(lambda_A=lambda_A, mu=mu)),
+        Q=nu_sm1 * 0,
+        U=nu_sm1 * 0,
+        V=nu_sm1 * 0,
+    )

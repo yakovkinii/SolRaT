@@ -51,7 +51,7 @@ class TransitionRegistry:
         """
         if lower_J_constraint is not None or upper_J_constraint is not None:
             logging.warning(
-                "J constraints are an experimental feature."
+                "J constraints are an experimental feature. "
                 "Check the final solution for adiabatic continuity as B is decreased to zero."
             )
 

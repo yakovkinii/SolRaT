@@ -184,8 +184,8 @@ def main():
             V=np.concat([initial_stokes_Mn.V, initial_stokes_Fe.V, initial_stokes_Ni.V]),
         ),
         label="RTE with LTE SEE",
+        color="k",
     )
-
     return plotter
 
 

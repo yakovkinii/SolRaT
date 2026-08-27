@@ -27,7 +27,7 @@
     ```bash 
     python -m build
     ```
-4. Check docs:
+4. Check and update docs:
     ```bash
     pip install -e .
     ```

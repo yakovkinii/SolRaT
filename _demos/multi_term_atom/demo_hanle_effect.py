@@ -28,7 +28,7 @@ def main():
 
     radiation_tensor_mag = (
         model.RadiationTensor.from_model_config(model.config)
-        .fill_NLTE_n_w_parametrized(h_arcsec=30)
+        .fill_NLTE_n_w_allen(h_arcsec=30)
         .rotate_to_magnetic_frame(angles=angles)
     )
 
@@ -75,26 +75,24 @@ def main():
     hanle_H = 2.0 * np.pi * nu_larmor(B_values) * g_upper / transition.einstein_a_ul
     analytic_hanle = 1.0 / np.sqrt(1.0 + (2.0 * hanle_H) ** 2)
 
-    fig, ax = plt.subplots(figsize=(6, 6), num="Hanle Effect")
-    ax.plot(B_values, alignments_norm, lw=2, label=r"SolRaT $|\rho^2_2|\,/\,|\rho^2_2(B{=}0)|$")
+    fig, ax = plt.subplots(figsize=(9, 6), num="Hanle Effect")
+    ax.plot(B_values, alignments_norm, lw=0.9, color="k", label=r"SolRaT")
     ax.plot(
         B_values,
         analytic_hanle,
-        lw=2.6,
-        ls=(0, (1, 1)),
+        lw=3,
+        ls=(0, (1.5, 3)),
+        dash_capstyle="round",
         color="k",
-        label=r"LL04 eq. (10.30): $1/\sqrt{1+(Q H_u)^2}$",
+        label=r"LL04 eq. (10.30)",
     )
-    ax.axhline(1 / np.sqrt(2), color="gray", linestyle="--", lw=1, label=r"$1/\sqrt{2}$ level")
     ax.set_xlabel(r"$B$ (G)")
     ax.set_ylabel(r"$|\rho^2_2|\,/\,|\rho^2_2|_{B=0}$")
-    ax.legend()
-    ax.grid(True)
+    ax.legend(loc="best")
+    ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
     fig.tight_layout()
-    print(
-        f"Hanle depolarization vs LL04 eq. (10.30): max|SolRaT - analytic| = "
-        f"{float(np.max(np.abs(alignments_norm - analytic_hanle))):.2e}"
-    )
+    rms = float(np.sqrt(np.mean((alignments_norm - analytic_hanle) ** 2)))
+    print(f"Hanle depolarization vs LL04 eq. (10.30): RMS SolRaT - analytic = {rms:.2e}")
     return fig
 
 

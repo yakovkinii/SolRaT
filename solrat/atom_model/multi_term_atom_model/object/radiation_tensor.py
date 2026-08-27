@@ -13,6 +13,7 @@ from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config impor
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import Transition, TransitionRegistry
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import WignerD
+from solrat.atom_model.shared.utility.allen import nbar_allen, omega_allen
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt2
 from solrat.atom_model.shared.utility.functions import frequency_sm1_to_lambda_A, get_planck_BP
 from solrat.engine.functions.decorators import log_method
@@ -77,50 +78,22 @@ class RadiationTensor(BaseRadiationTensor):
         self._df = None
         return self
 
-    @staticmethod
-    def n_fit(lambda_A: float) -> float:
-        r"""
-        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
-
-        :param lambda_A: wavelength in Angstrom
-        """
-        assert lambda_A >= 2750, "n_fit is only valid for lambda_A >= 2750"
-        assert lambda_A <= 12000, "n_fit is not tested for lambda_A >= 12000"
-        return 3e-10 * (lambda_A - 2500) ** 2.1
-
-    @staticmethod
-    def w_fit(lambda_A, h_arcsec) -> float:
-        r"""
-        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
-
-        :param lambda_A: wavelength in Angstrom
-        :param h_arcsec: height above the Sun's surface in arcsec
-        """
-        assert lambda_A >= 3800, "w_fit is only valid for lambda_A >= 3800"
-        assert lambda_A <= 12000, "w_fit is not tested for lambda_A >= 12000"
-        assert h_arcsec >= 0, "h_arcsec must be non-negative"
-        assert h_arcsec <= 50, "w_fit is not tested for h_arcsec>50"
-        return 0.02 + h_arcsec**0.6 * 0.0175 + 4e2 / (lambda_A - 1600 + h_arcsec * 20)
-
     @log_method
-    def fill_NLTE_n_w_parametrized(self, h_arcsec) -> "RadiationTensor":
+    def fill_NLTE_n_w_allen(self, h_arcsec: float) -> "RadiationTensor":
         r"""
-        Fill the radiation tensor with an anisotropic parametrization from A. Asensio Ramos et al (2008)
-        Assume flat spectrum. Note that this fit is a smooth fit of data in A. Asensio Ramos et al (2008).
+        Fill the radiation tensor from the Allen parametrization of :math:`(n, w)`, evaluated per
+        transition at its wavelength and the given height.
 
-        :param h_arcsec: height above the Sun's surface in arcsec; 1'' = 725 km
+        :param h_arcsec: height above the surface [arcsec]; 1'' = 725 km.
+        :return: ``RadiationTensor`` instance.
 
-        Reference: (LL04 12.1)
-        Reference: Figures and eq. (19) in
-        A. Asensio Ramos et al 2008 ApJ 683 542 https://iopscience.iop.org/article/10.1086/589433
+        Reference: (LL04 12.1); Allen's Astrophysical Quantities.
         """
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
             lambda_ul_A = frequency_sm1_to_lambda_A(nu_ul)
-
-            J00 = self.n_fit(lambda_ul_A) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
-            J20 = J00 * self.w_fit(lambda_ul_A, h_arcsec) / sqrt2
-
+            J00 = nbar_allen(lambda_ul_A, h_arcsec) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+            J20 = J00 * omega_allen(lambda_ul_A, h_arcsec) / sqrt2
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
                 self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
@@ -128,7 +101,37 @@ class RadiationTensor(BaseRadiationTensor):
         return self
 
     @log_method
-    def get_NLTE_n_w_parametrized_stokes_I(self, h_arcsec, theta, nu):
+    def fill_NLTE_n_w(self, n: float, w: float) -> "RadiationTensor":
+        r"""
+        Fill the radiation tensor from explicit anisotropy parameters ``n`` (nbar) and ``w`` (omega),
+        applied to every transition (flat spectrum). Use this to prescribe exactly the :math:`(n, w)`
+        another code used -- e.g. the values Hazel derives from Allen's continuum data -- so that a
+        comparison isolates the transfer and atomic physics from the anisotropy parametrization:
+
+        .. math::
+            J^0_0 = n\,\frac{2 h \nu_{ul}^3}{c^2}, \qquad
+            J^2_0 = \frac{w}{\sqrt 2}\,J^0_0,
+
+        with all other components zero.
+
+        :param n: the nbar parameter (sets :math:`J^0_0`).
+        :param w: the anisotropy :math:`w` (sets :math:`J^2_0 / J^0_0 = w / \sqrt 2`).
+        :return: ``RadiationTensor`` instance.
+
+        Reference: (LL04 12.1); A. Asensio Ramos et al 2008 ApJ 683 542.
+        """
+        for transition in self.transition_registry.transitions.values():
+            nu_ul = transition.get_mean_transition_frequency_sm1()
+            J00 = n * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+            J20 = J00 * w / sqrt2
+            for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
+                key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)
+                self.data[key] = delta(K, 0) * delta(Q, 0) * J00 + delta(K, 2) * delta(Q, 0) * J20
+        self._df = None
+        return self
+
+    @log_method
+    def get_NLTE_n_w_allen_stokes_I(self, h_arcsec, theta, nu):
         r"""
         Get Stokes I that is consistent with the anisotropic {n, w} :math:`J^K_Q` tensor.
 
@@ -144,8 +147,8 @@ class RadiationTensor(BaseRadiationTensor):
         stokesI = np.zeros_like(nu)
         for i, nui in enumerate(nu):
             lambdai = frequency_sm1_to_lambda_A(nui)
-            J00 = self.n_fit(lambdai) * 2 * h_erg_s * nui**3 / c_cm_sm1**2
-            J20 = J00 * self.w_fit(lambdai, h_arcsec) / sqrt2
+            J00 = nbar_allen(lambdai, h_arcsec) * 2 * h_erg_s * nui**3 / c_cm_sm1**2
+            J20 = J00 * omega_allen(lambdai, h_arcsec) / sqrt2
             stokesI[i] = J00 + 5 * J20 * (3 * np.cos(theta) ** 2 - 1) / 2
 
         return stokesI

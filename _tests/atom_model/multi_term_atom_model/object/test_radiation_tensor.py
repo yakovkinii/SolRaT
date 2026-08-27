@@ -47,7 +47,7 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
         self.assertGreater(len(tensor.df), 0)  # triggers construct_df
 
     def test_anisotropic_has_alignment(self):
-        tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_allen(h_arcsec=30)
         self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
         self.assertNotAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
         self.assertGreater(len(tensor.df), 0)
@@ -57,7 +57,7 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
         transition = next(iter(self.config.transition_registry.transitions.values()))
         nu0 = transition.get_mean_transition_frequency_sm1()
         nu = np.linspace(0.999 * nu0, 1.001 * nu0, 4)
-        stokes_I = tensor.get_NLTE_n_w_parametrized_stokes_I(h_arcsec=30, theta=0.5, nu=nu)
+        stokes_I = tensor.get_NLTE_n_w_allen_stokes_I(h_arcsec=30, theta=0.5, nu=nu)
         self.assertEqual(stokes_I.shape, nu.shape)
         self.assertTrue(np.all(np.isfinite(stokes_I)))
 

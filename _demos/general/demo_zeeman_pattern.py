@@ -85,7 +85,7 @@ def main():
             analytic_positions.append(g_upper * m_upper - g_lower * m_lower)
     analytic_positions = np.array(analytic_positions)
 
-    position_error = float(np.max(np.abs(displacements - analytic_positions)))
+    position_rms = float(np.sqrt(np.mean((displacements - analytic_positions) ** 2)))
 
     colors = {(-1): "#d62728", 0: "#1f77b4", 1: "#2ca02c"}
     labels = {(-1): r"$\sigma_-$ ($\Delta M = -1$)", 0: r"$\pi$ ($\Delta M = 0$)", 1: r"$\sigma_+$ ($\Delta M = +1$)"}
@@ -103,8 +103,8 @@ def main():
     ax.legend(fontsize=8)
     fig.tight_layout()
     print(
-        f"Zeeman pattern (B = {MAGNETIC_FIELD_GAUSS:.0f} G): max|SolRaT - linear Zeeman| positions = "
-        f"{position_error:.2e} Lorentz units"
+        f"Zeeman pattern (B = {MAGNETIC_FIELD_GAUSS:.0f} G): RMS SolRaT - linear Zeeman positions = "
+        f"{position_rms:.2e} Lorentz units"
     )
     return fig
 

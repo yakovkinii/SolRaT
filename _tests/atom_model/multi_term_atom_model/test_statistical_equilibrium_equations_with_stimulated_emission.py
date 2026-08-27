@@ -19,7 +19,7 @@ class TestStatisticalEquilibriumEquationsResonanceStimulated(unittest.TestCase):
         atmosphere_parameters = model.AtmosphereParameters(
             model_config=model.config, magnetic_field_gauss=0, temperature_K=7000
         )
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
         see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
         see_legacy = model_legacy.StatisticalEquilibriumEquations.from_model_config(model_legacy.config)

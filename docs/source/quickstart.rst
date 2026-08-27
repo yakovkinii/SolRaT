@@ -76,10 +76,10 @@ using a built-in pre-configured model through the public API.
             voigt_a=0,  # Voigt damping coefficient
         )
 
-        # Construct a radiation tensor from the built-in height-stratified parametrization
-        # Here we use NLTE J tensor for the height of 30 arcsec above photosphere.
+        # Construct a radiation tensor from the Allen solar radiation-field machinery.
+        # Here we use the radiation tensor at a height of 30 arcsec above the photosphere.
         # Another option is .fill_planck(self, temperature_K) - fill using LTE Planck distribution
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
         # Set up the initial Stokes vector: zero in this case, corresponding to a limb observation
         # Another option is .from_BP(nu_sm1, temperature_K) - fill using LTE Planck distribution

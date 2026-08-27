@@ -120,7 +120,7 @@ class TestMultiTermVsMultiLevelSelfConsistent(unittest.TestCase):
     On an :math:`S=0` line the multi-term and multi-level atoms are formally identical, so the
     self-consistent NLTE solve -- with the photon-destruction probability set through the parametrized
     collisions on both -- must agree to numerical precision, anchoring the multi-term ``add_collisions``
-    path to the (TB1999-validated) multi-level solver.
+    path to the (TM99-validated) multi-level solver.
     """
 
     def test_agree_to_numerical_precision(self):

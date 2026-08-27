@@ -93,12 +93,14 @@ def build_multi_term_doublet(reference_lambda_A_air: float, lte: bool, j_constra
     return model.configure(config=config)
 
 
-def build_multi_level_branch(reference_lambda_A_air: float):
+def build_multi_level_branch(reference_lambda_A_air: float, lte: bool = False):
     r"""
     The observed 4P_5/2 -> 4S_3/2 line as an isolated multi-level transition. Each J is an independent
     level, so the line is strictly linear in B (no intra-term J-mixing).
 
     :param reference_lambda_A_air: air reference wavelength [Angstrom].
+    :param lte: if True use the LTE multi-level model (thermal populations, no scattering), else the
+        NLTE one. Built by strict analogy with the multi-term LTE branch.
     :return: configured multi-level Model.
     """
     lande_upper = 1.0 + (J_OBSERVED_UPPER * (J_OBSERVED_UPPER + 1) + TERM_SPIN * (TERM_SPIN + 1) - 1 * (1 + 1)) / (
@@ -120,7 +122,8 @@ def build_multi_level_branch(reference_lambda_A_air: float):
         reference_lambda_A_air=reference_lambda_A_air,
         collisions=None,
     )
-    return Models.multi_level_atom().configure(config=config)
+    model = Models.multi_level_atom_lte() if lte else Models.multi_level_atom()
+    return model.configure(config=config)
 
 
 def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: float, anisotropic: bool) -> Stokes:
@@ -145,8 +148,8 @@ def synthesize(model, nu: np.ndarray, angles: Angles, magnetic_field_gauss: floa
     )
     # The LTE radiation tensor has no fill_* methods (LTE SEE ignores the radiation field).
     radiation_tensor = model.RadiationTensor.from_model_config(model.config)
-    if anisotropic and hasattr(radiation_tensor, "fill_NLTE_n_w_parametrized"):
-        radiation_tensor = radiation_tensor.fill_NLTE_n_w_parametrized(h_arcsec=30)
+    if anisotropic and hasattr(radiation_tensor, "fill_NLTE_n_w_allen"):
+        radiation_tensor = radiation_tensor.fill_NLTE_n_w_allen(h_arcsec=30)
     elif not anisotropic and hasattr(radiation_tensor, "fill_planck"):
         radiation_tensor = radiation_tensor.fill_planck(temperature_K=TEMPERATURE_K)
     atmosphere = MultiSlabAtmosphere(
@@ -185,22 +188,20 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     field_values_gauss = [500.0, 1000.0, 2000.0]
     zoom_limits = (-5.0, 5.0)  # reduced-frequency window on the observed-line core (satellites excluded)
     fig, axes = plt.subplots(2, len(field_values_gauss), figsize=(12, 7), sharey="row")
-    worst_delta_v = 0.0
+    v_rms_by_field = []
     for column, magnetic_field_gauss in enumerate(field_values_gauss):
         stokes_mt_full = synthesize(model_mt_full, nu, angles, magnetic_field_gauss, anisotropic=False)
         stokes_mt_constrained = synthesize(model_mt_constrained, nu, angles, magnetic_field_gauss, anisotropic=False)
         stokes_ml = synthesize(model_ml, nu, angles, magnetic_field_gauss, anisotropic=False)
 
-        max_deltaV = np.max(
-            np.abs(stokes_mt_constrained.V / np.max(stokes_mt_constrained.I) - stokes_ml.V / np.max(stokes_ml.I))
-        )
-        worst_delta_v = max(worst_delta_v, float(max_deltaV))
+        delta_v = stokes_mt_constrained.V / np.max(stokes_mt_constrained.I) - stokes_ml.V / np.max(stokes_ml.I)
+        v_rms_by_field.append(float(np.sqrt(np.mean(delta_v**2))))
 
         ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column]
         for stokes, lw, color, linestyle in (
-            (stokes_mt_full, 0.9, "#00FF00", "-"),
-            (stokes_mt_constrained, 1.5, "#0000FF", "--"),
-            (stokes_ml, 2.2, "k", (0, (1, 1))),
+            (stokes_mt_full, 0.9, "k", "-"),
+            (stokes_mt_constrained, 2.6, "#d62728", (0, (1, 1))),
+            (stokes_ml, 1.6, "#2ca02c", (0, (3, 2))),
         ):
             intensity = stokes.I / np.max(stokes.I)
             v_over_imax = stokes.V / np.max(stokes.I)
@@ -212,18 +213,19 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         ax_v_zoom.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
         for ax in (ax_intensity_zoom, ax_v_zoom):
             ax.axhline(0.0, color="0.7", lw=0.6)
-            ax.grid(alpha=0.3)
+            ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
     axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
     axes[1, 0].set_ylabel(r"$V\,/\,I_{\max}$")
     style_key = [
-        Line2D([], [], color="#00FF00", lw=0.9, label="Multi-term, all branches"),
-        Line2D([], [], color="#0000FF", lw=1.5, ls="--", label="Multi-term, $J$-constrained"),
-        Line2D([], [], color="k", lw=2.2, ls=(0, (1, 1)), label="Multi-level (linear)"),
+        Line2D([], [], color="k", lw=0.9, label="Multi-term, all branches"),
+        Line2D([], [], color="#d62728", lw=2.6, ls=(0, (1, 1)), label="Multi-term, $J$-constrained"),
+        Line2D([], [], color="#2ca02c", lw=1.6, ls=(0, (3, 2)), label="Multi-level"),
     ]
     axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
+    fig.align_ylabels(axes.ravel())
     fig.tight_layout()
     print(
-        f"Second-order Zeeman (MT J-constrained vs ML): max|Delta V/I_max| = {worst_delta_v:.2e} "
+        f"Second-order Zeeman (MT J-constrained vs ML): RMS Delta V/I_max = {max(v_rms_by_field):.2e} "
         f"over B = {[int(b) for b in field_values_gauss]} G (should grow from ~0 at low field into "
         f"incomplete Paschen-Back)"
     )
@@ -232,34 +234,100 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
 def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     r"""
-    Part (b): isolate NLTE scattering. At weak field and under an anisotropic radiation field, the
-    multi-level atom develops a scattering-polarization Q/I from the self-consistent upper-level
-    alignment, while the LTE multi-term atom (thermal populations, no alignment) does not.
+    Part (b): isolate NLTE scattering, for both atomic models at once. At weak field and under an
+    anisotropic radiation field the non-LTE atoms build upper-level alignment and hence a
+    scattering-polarization Q/I, while their LTE counterparts (thermal populations, no alignment) sit
+    at Q/I = 0. The all-branches multi-term curves show the effect of leaving the RTE branch
+    unconstrained in each population treatment.
 
     :return: the matplotlib Figure.
     """
     angles = Angles(chi=0.0, theta=np.pi / 3, gamma=0.0, chi_B=0.0, theta_B=0.0)
     magnetic_field_gauss = 50.0
-    model_ml = build_multi_level_branch(reference_lambda_A_air)
-    model_mt_lte = build_multi_term_doublet(reference_lambda_A_air, lte=True)
     reduced_frequency = (nu - nu0) / delta_nu_D
 
-    stokes_ml = synthesize(model_ml, nu, angles, magnetic_field_gauss, anisotropic=True)
-    stokes_mt_lte = synthesize(model_mt_lte, nu, angles, magnetic_field_gauss, anisotropic=True)
-    qi_ml = 100.0 * stokes_ml.Q / stokes_ml.I
-    qi_mt_lte = 100.0 * stokes_mt_lte.Q / stokes_mt_lte.I
-    fig, ax = plt.subplots(figsize=(7, 5))
-    ax.plot(reduced_frequency, qi_ml, lw=1.5, color="#1f77b4", label="Multi-level (NLTE scattering)")
-    ax.plot(reduced_frequency, qi_mt_lte, lw=1.5, ls="--", color="#d62728", label="Multi-term (LTE, no scattering)")
-    ax.axhline(0.0, color="0.7", lw=0.6)
-    ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
-    ax.set_ylabel("$100\\,Q/I$")
-    ax.grid(alpha=0.3)
-    ax.legend()
+    nlte_curves = (
+        (
+            "MT all branches",
+            build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=False),
+            "k",
+            "-",
+        ),
+        (
+            r"MT $J$-constrained",
+            build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=True),
+            "#d62728",
+            (0, (1, 1)),
+        ),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=False), "#2ca02c", (0, (3, 2))),
+    )
+    lte_curves = (
+        (
+            "MT all branches",
+            build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=False),
+            "k",
+            "-",
+        ),
+        (
+            r"MT $J$-constrained",
+            build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=True),
+            "#d62728",
+            (0, (1, 1)),
+        ),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=True), "#2ca02c", (0, (3, 2))),
+    )
+
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(7, 7),
+        sharex=True,
+        gridspec_kw={"height_ratios": [1.5, 9.0]},
+    )
+    qi_by_label = {}
+    for ax, curves, panel_label, ylim in (
+        (axes[0], lte_curves, "LTE", (-1.0, 0.5)),
+        (axes[1], nlte_curves, "non-LTE", (-8.5, 0.5)),
+    ):
+        for label, model, color, linestyle in curves:
+            stokes = synthesize(model, nu, angles, magnetic_field_gauss, anisotropic=True)
+            qi = 100.0 * stokes.Q / stokes.I
+            qi_by_label[(panel_label, label)] = qi
+            linewidth = 0.9 if linestyle == "-" else 2.2
+            ax.plot(reduced_frequency, qi, lw=linewidth, color=color, ls=linestyle, label=label)
+        ax.axhline(0.0, color="0.7", lw=0.6)
+        ax.set_ylabel("$100\\,Q/I$")
+        ax.set_ylim(*ylim)
+        ax.set_title(panel_label)
+        ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
+        if panel_label == "non-LTE":
+            ax.legend(loc="best", fontsize=9)
+    axes[1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
+    fig.align_ylabels(axes)
     fig.tight_layout()
+
+    nlte_reference = qi_by_label[("non-LTE", "ML")]
+    lte_reference = qi_by_label[("LTE", "ML")]
+    nlte_rms = [
+        float(np.sqrt(np.mean((qi_by_label[("non-LTE", label)] - nlte_reference) ** 2)))
+        for label in (
+            r"MT $J$-constrained",
+            "MT all branches",
+        )
+    ]
+    lte_rms = [
+        float(np.sqrt(np.mean((qi_by_label[("LTE", label)] - lte_reference) ** 2)))
+        for label in (
+            r"MT $J$-constrained",
+            "MT all branches",
+        )
+    ]
     print(
-        f"Weak-field scattering Q/I: ML (NLTE) max|Q/I| = {np.max(np.abs(qi_ml)):.3e} %, "
-        f"MT (LTE) max|Q/I| = {np.max(np.abs(qi_mt_lte)):.3e} % (MT-LTE should be ~0)"
+        "Weak-field scattering RMS 100 Q/I differences: "
+        f"MT constrained NLTE - ML NLTE = {nlte_rms[0]:.3e}, "
+        f"MT all-branches NLTE - ML NLTE = {nlte_rms[1]:.3e}, "
+        f"MT constrained LTE - ML LTE = {lte_rms[0]:.3e}, "
+        f"MT all-branches LTE - ML LTE = {lte_rms[1]:.3e}"
     )
     return fig
 
@@ -276,9 +344,10 @@ def main():
     isotropic field the two Stokes V/I profiles agree at low field and diverge as the field enters the
     incomplete-Paschen-Back regime.
 
-    Part (b) isolates NLTE scattering: at weak field and anisotropic illumination the multi-level atom
-    builds a self-consistent upper-level alignment and hence a scattering Q/I, which the LTE multi-term
-    atom (thermal populations) does not reproduce.
+    Part (b) isolates NLTE scattering, for both atomic models at once: at weak field and anisotropic
+    illumination the non-LTE multi-term and multi-level atoms each build a self-consistent upper-level
+    alignment and hence a scattering Q/I, while their LTE counterparts (thermal populations) sit at
+    Q/I = 0. The effect is a property of the population treatment, not of the atomic model.
 
     :return: a tuple ``(second_order_zeeman_figure, nlte_scattering_figure)`` (neither shown; the
         caller decides whether to display or save them; they are separate manuscript figures).

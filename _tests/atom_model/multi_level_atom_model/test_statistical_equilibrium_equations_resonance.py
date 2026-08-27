@@ -52,7 +52,7 @@ class TestMultiLevelStatisticalEquilibriumEquationsResonance(unittest.TestCase):
             magnetic_field_gauss=0,
             temperature_K=7000,
         )
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
             h_arcsec=30,
         )
 
@@ -152,8 +152,8 @@ class TestMultiLevelStatisticalEquilibriumEquationsResonance(unittest.TestCase):
             temperature_K=7000,
         )
 
-        mt_rad = mt_model.RadiationTensor.from_model_config(mt_model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
-        ml_rad = ml_model.RadiationTensor.from_model_config(ml_model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        mt_rad = mt_model.RadiationTensor.from_model_config(mt_model.config).fill_NLTE_n_w_allen(h_arcsec=30)
+        ml_rad = ml_model.RadiationTensor.from_model_config(ml_model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
         mt_see = mt_model.StatisticalEquilibriumEquations.from_model_config(mt_model.config)
         mt_see.fill_all_equations(atmosphere_parameters=mt_atm, radiation_tensor_in_magnetic_frame=mt_rad)

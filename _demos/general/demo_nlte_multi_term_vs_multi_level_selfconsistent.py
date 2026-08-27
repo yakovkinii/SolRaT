@@ -170,13 +170,13 @@ def main():
     Both a multi-term and a multi-level atom are built for the same line, given the same
     photon-destruction probability :math:`\epsilon=10^{-2}` through the parametrized collisional
     de-excitation rate, and run through the same self-consistent height-stratified scattering
-    atmosphere under identical conditions -- the setup of Trujillo Bueno & Manso Sainz (1999, TB1999).
+    atmosphere under identical conditions -- the setup of Trujillo Bueno & Manso Sainz (1999, TM99).
 
     * Direct benchmark: the multi-term surface alignment :math:`\rho^2_0/\rho^0_0` and the tangential
-      (:math:`\mu=0`) line-center :math:`Q/I` are compared with the tabulated TB1999 values.
+      (:math:`\mu=0`) line-center :math:`Q/I` are compared with the tabulated TM99 values.
     * Reduction cross-check: because the term carries a single :math:`J`, the two descriptions are
       formally identical, so the multi-term and multi-level solutions must agree to numerical
-      precision. This anchors the multi-term run to the (independently TB1999-validated) multi-level
+      precision. This anchors the multi-term run to the (independently TM99-validated) multi-level
       solver. The Paschen-Back machinery carried by the same multi-term SEE/RTE is validated
       separately (Zeeman pattern, Unno-Rachkovsky, and the Hazel2 He\,I D3 comparison).
     """
@@ -185,9 +185,9 @@ def main():
     temperature_K = 6000.0
     number_density_cm3 = 1.0e11
     epsilon = 1.0e-2
-    mu_observer = 0.0  # tangential, to compare the line-center Q/I with TB1999 Table 4
-    tb1999_surface_alignment = 0.05666  # TB1999 Table 4
-    tb1999_qi_percent_tangential = -6.132  # TB1999 Table 4
+    mu_observer = 0.0  # tangential, to compare the line-center Q/I with TM99 Table 4
+    tm99_surface_alignment = 0.05666  # TM99 Table 4
+    tm99_qi_percent_tangential = -6.132  # TM99 Table 4
 
     reference_lambda_A_air = reference_wavelength_A_air()
 
@@ -236,13 +236,13 @@ def main():
         float(atmosphere_mt.tau_grid[-1]),
     )
     logging.info(
-        "surface rho^2_0/rho^0_0 (multi-term) = %.5f  (TB1999: %.5f)",
+        "surface rho^2_0/rho^0_0 (multi-term) = %.5f  (TM99: %.5f)",
         surface_alignment_mt,
-        tb1999_surface_alignment,
+        tm99_surface_alignment,
     )
 
     fig, (ax_align, ax_qi) = plt.subplots(1, 2, figsize=(11, 5))
-    ax_align.axhline(tb1999_surface_alignment, color="k", ls="--", label=f"TB1999 surface = {tb1999_surface_alignment}")
+    ax_align.axhline(tm99_surface_alignment, color="k", ls="--", label=f"TM99 surface = {tm99_surface_alignment}")
     ax_align.plot(optical_depth_from_surface[:-1], alignment_mt[:-1], lw=1.4, color="#1f77b4", label="multi-term")
     ax_align.plot(
         optical_depth_from_surface[:-1], alignment_ml[:-1], lw=3.0, ls=(0, (1, 1)), color="#d62728", label="multi-level"
@@ -266,7 +266,7 @@ def main():
     ax_qi.set_ylabel(r"emergent $Q/I$ (\%), $\mu=0$")
     ax_qi.legend()
     fig.suptitle(
-        rf"Self-consistent NLTE ($\epsilon=10^{{-2}}$): multi-term vs TB1999 and vs multi-level "
+        rf"Self-consistent NLTE ($\epsilon=10^{{-2}}$): multi-term vs TM99 and vs multi-level "
         rf"(max$|\Delta\rho^2_0/\rho^0_0|={max_alignment_delta:.1e}$)"
     )
     fig.tight_layout()
@@ -274,9 +274,9 @@ def main():
     print(
         f"Multi-term self-consistent NLTE (S=0 line, epsilon={epsilon:.0e}): "
         f"surface rho^2_0/rho^0_0 = {surface_alignment_mt:.5f} "
-        f"(TB1999 {tb1999_surface_alignment:.5f}, "
-        f"rel err {abs(surface_alignment_mt / tb1999_surface_alignment - 1.0):.1%}); "
-        f"tangential Q/I = {qi_mt:.3f}% (TB1999 {tb1999_qi_percent_tangential:.3f}%). "
+        f"(TM99 {tm99_surface_alignment:.5f}, "
+        f"rel err {abs(surface_alignment_mt / tm99_surface_alignment - 1.0):.1%}); "
+        f"tangential Q/I = {qi_mt:.3f}% (TM99 {tm99_qi_percent_tangential:.3f}%). "
         f"Multi-term vs multi-level: max|Delta rho^2_0/rho^0_0| = {max_alignment_delta:.2e}, "
         f"max|Delta Stokes| = {max_stokes_delta:.2e}, Q/I {qi_mt:.4f}% vs {qi_ml:.4f}% "
         f"(both should be ~machine precision)."

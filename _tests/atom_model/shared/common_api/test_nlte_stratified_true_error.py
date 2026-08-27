@@ -27,7 +27,7 @@ class TestEstimateTrueError(unittest.TestCase):
     r"""
     The ``estimate_true_error`` convergence criterion: stop on the estimated distance to the fixed
     point (from the residual-decay rate) rather than on the step size. Drives that branch and the rate
-    estimator on a tiny TB1999-like slab.
+    estimator on a tiny TM99-like slab.
     """
 
     def test_runs_and_populates_error_estimate(self):

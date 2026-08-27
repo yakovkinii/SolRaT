@@ -12,6 +12,7 @@ from solrat.atom_model.multi_level_atom_model.object.multi_level_atom_config imp
 from solrat.atom_model.multi_level_atom_model.object.transition_registry import Transition, TransitionRegistry
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import WignerD
+from solrat.atom_model.shared.utility.allen import nbar_allen, omega_allen
 from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s, sqrt2
 from solrat.atom_model.shared.utility.functions import frequency_sm1_to_lambda_A, get_planck_BP
 from solrat.engine.functions.decorators import log_method
@@ -68,38 +69,18 @@ class RadiationTensor(BaseRadiationTensor):
         self._df = None
         return self
 
-    @staticmethod
-    def n_fit(lambda_A: float) -> float:
-        r"""
-        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542.
-        """
-        assert lambda_A >= 2750, "n_fit is only valid for lambda_A >= 2750"
-        assert lambda_A <= 12000, "n_fit is not tested for lambda_A >= 12000"
-        return 3e-10 * (lambda_A - 2500) ** 2.1
-
-    @staticmethod
-    def w_fit(lambda_A, h_arcsec) -> float:
-        r"""
-        Fit from Fig 4 of A. Asensio Ramos et al 2008 ApJ 683 542.
-        """
-        assert lambda_A >= 3800, "w_fit is only valid for lambda_A >= 3800"
-        assert lambda_A <= 12000, "w_fit is not tested for lambda_A >= 12000"
-        assert h_arcsec >= 0, "h_arcsec must be non-negative"
-        assert h_arcsec <= 50, "w_fit is not tested for h_arcsec>50"
-        return 0.02 + h_arcsec**0.6 * 0.0175 + 4e2 / (lambda_A - 1600 + h_arcsec * 20)
-
     @log_method
-    def fill_NLTE_n_w_parametrized(self, h_arcsec) -> "RadiationTensor":
+    def fill_NLTE_n_w_allen(self, h_arcsec: float) -> "RadiationTensor":
         r"""
-        Fill the radiation tensor with the anisotropic {n, w} parametrization
-        from A. Asensio Ramos et al (2008).
+        Fill the radiation tensor from the Allen parametrization of :math:`(n, w)`, evaluated per
+        transition at its wavelength and the given height.
         """
         for transition in self.transition_registry.transitions.values():
             nu_ul = transition.get_mean_transition_frequency_sm1()
             lambda_ul_A = frequency_sm1_to_lambda_A(nu_ul)
 
-            J00 = self.n_fit(lambda_ul_A) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
-            J20 = J00 * self.w_fit(lambda_ul_A, h_arcsec) / sqrt2
+            J00 = nbar_allen(lambda_ul_A, h_arcsec) * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+            J20 = J00 * omega_allen(lambda_ul_A, h_arcsec) / sqrt2
 
             for K, Q in nested_loops(K=FROMTO(0, 2), Q=PROJECTION("K")):
                 key = self.get_key(transition_id=transition.transition_id, K=K, Q=Q)

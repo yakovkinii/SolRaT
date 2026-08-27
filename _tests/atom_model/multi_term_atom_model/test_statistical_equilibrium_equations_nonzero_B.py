@@ -68,7 +68,7 @@ class TestStatisticalEquilibriumEquationsNonzeroB(unittest.TestCase):
             chi_B=np.pi / 3,
             theta_B=np.pi / 5,
         )
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
         self._run_for_model_pair(
             model=model,
@@ -92,7 +92,7 @@ class TestStatisticalEquilibriumEquationsNonzeroB(unittest.TestCase):
             chi_B=0,
             theta_B=np.pi / 3,
         )
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_parametrized(h_arcsec=30)
+        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(h_arcsec=30)
 
         self._run_for_model_pair(
             model=model,

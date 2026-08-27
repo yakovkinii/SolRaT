@@ -69,7 +69,7 @@ def main():
     field_frame_angles = Angles(chi=0.0, theta=0.0, gamma=0.0, chi_B=0.0, theta_B=0.0)
     radiation_tensor = (
         model.RadiationTensor.from_model_config(model.config)
-        .fill_NLTE_n_w_parametrized(h_arcsec=30)
+        .fill_NLTE_n_w_allen(h_arcsec=30)
         .rotate_to_magnetic_frame(angles=field_frame_angles)
     )
     see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
@@ -92,7 +92,8 @@ def main():
 
     rayleigh = np.sin(scattering_angles) ** 2
     normalization = np.max(np.abs(qi_line_center))
-    shape_deviation = float(np.max(np.abs(np.abs(qi_line_center) / normalization - rayleigh / np.max(rayleigh))))
+    shape_residual = np.abs(qi_line_center) / normalization - rayleigh / np.max(rayleigh)
+    shape_rms = float(np.sqrt(np.mean(shape_residual**2)))
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.plot(
@@ -118,8 +119,8 @@ def main():
     ax.legend()
     fig.tight_layout()
     print(
-        f"Single-scattering polarization: max|SolRaT - Rayleigh sin^2| (normalized shape) = "
-        f"{shape_deviation:.2e}; peak |Q/I| = {normalization:.3e}"
+        f"Single-scattering polarization: RMS SolRaT - Rayleigh sin^2 (normalized shape) = "
+        f"{shape_rms:.2e}; peak |Q/I| = {normalization:.3e}"
     )
     return fig
 
