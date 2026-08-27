@@ -3,6 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
+from _demos.general.state.warm_start import load_warm_state, save_warm_state
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
@@ -17,8 +18,6 @@ from solrat.atom_model.shared.utility.functions import (
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
-from _demos.general.state.warm_start import load_warm_state, save_warm_state
-
 
 def benchmark_rms(reduced_nu, qi_profile_percent, benchmark_reduced_nu, benchmark_qi_percent):
     order = np.argsort(reduced_nu)
@@ -28,15 +27,15 @@ def benchmark_rms(reduced_nu, qi_profile_percent, benchmark_reduced_nu, benchmar
 
 def main(warm_start=True):
     r"""
-    Emergent :math:`Q/I` profile of the TB1999 :math:`J=0 \to 1` scattering line at an inclined line
-    of sight (:math:`\mu=0.1`), overlaid on the digitized TB1999 (ApJ 516, 436) Fig. 10.
+    Emergent :math:`Q/I` profile of the TM99 :math:`J=0 \to 1` scattering line at an inclined line
+    of sight (:math:`\mu=0.1`), overlaid on the digitized TM99 (ApJ 516, 436) Fig. 10.
     """
     setup_logging()
 
     temperature_K = 6000.0
     epsilon = 1.0e-2
     mu_observer = 0.1
-    n_mu_tb1999 = 15
+    n_mu_tm99 = 15
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -68,7 +67,7 @@ def main(warm_start=True):
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=2 * n_mu_tb1999,
+        n_mu_quadrature=2 * n_mu_tm99,
         n_phi_quadrature=3,
         max_iterations=100,
         tolerance=1e-8,
@@ -85,7 +84,7 @@ def main(warm_start=True):
     reduced_nu = reduced_frequency(nu, nu0, params.delta_v_thermal_cm_sm1)
     qi_profile_percent = 100.0 * emergent.Q / emergent.I
 
-    logging.info("TB1999 benchmark (mu = 0.1): epsilon = %.0e, delta2 = 0, no continuum, no field", epsilon)
+    logging.info("TM99 benchmark (mu = 0.1): epsilon = %.0e, delta2 = 0, no continuum, no field", epsilon)
     logging.info(
         "vertical optical thickness = %.1f, iterations = %d, residual = %.2e",
         float(atmosphere.tau_grid[-1]),
@@ -93,9 +92,9 @@ def main(warm_start=True):
         atmosphere.final_residual,
     )
 
-    # TB1999 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
-    tb_rf = np.array(np.arange(-5, 1e-4, 0.15))
-    tb_qi_dig = np.array(
+    # TM99 Fig. 10 (delta2 = 0, mu = 0.1) digitized, blue wing mirrored onto the red.
+    tm99_rf = np.array(np.arange(-5, 1e-4, 0.15))
+    tm99_qi_dig = np.array(
         [
             0.00,
             0.00,
@@ -134,24 +133,24 @@ def main(warm_start=True):
         ]
     )
 
-    tb_reduced_frequency_full2 = np.concatenate([tb_rf, -tb_rf[::-1]])
-    tb_qi_percent_full2 = np.concatenate([tb_qi_dig, tb_qi_dig[::-1]])
-    rms_percent = benchmark_rms(reduced_nu, qi_profile_percent, tb_reduced_frequency_full2, tb_qi_percent_full2)
+    tm99_reduced_frequency_full2 = np.concatenate([tm99_rf, -tm99_rf[::-1]])
+    tm99_qi_percent_full2 = np.concatenate([tm99_qi_dig, tm99_qi_dig[::-1]])
+    rms_percent = benchmark_rms(reduced_nu, qi_profile_percent, tm99_reduced_frequency_full2, tm99_qi_percent_full2)
     rms = rms_percent / 100.0
 
     fig_qi, ax_qi = plt.subplots(figsize=(7, 5))
 
-    # Emergent Q/I profile at mu = 0.1 (TB1999 Fig. 10, delta2 = 0).
+    # Emergent Q/I profile at mu = 0.1 (TM99 Fig. 10, delta2 = 0).
     ax_qi.axhline(0.0, color="k", linewidth=0.8)
     ax_qi.plot(
-        tb_reduced_frequency_full2,
-        tb_qi_percent_full2,
+        tm99_reduced_frequency_full2,
+        tm99_qi_percent_full2,
         linestyle="none",
         marker="x",
         markersize=5.5,
         markeredgewidth=1.3,
         color="k",
-        label="TB99",
+        label="TM99",
     )
     ax_qi.plot(reduced_nu, qi_profile_percent, "k-", label="SolRaT")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")

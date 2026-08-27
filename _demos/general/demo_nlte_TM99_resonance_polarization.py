@@ -21,7 +21,7 @@ from solrat.atom_model.shared.utility.log_setup import setup_logging
 def upper_level_alignment(atmosphere: NLTEStratifiedAtmosphere, upper_level_id: str) -> np.ndarray:
     r"""
     Fractional atomic alignment :math:`\rho^2_0 / \rho^0_0` of the upper level over the depth grid
-    (TB1999 Fig. 8).
+    (TM99 Fig. 8).
     """
     sigma = []
     for rho in atmosphere.rho_grid:
@@ -46,7 +46,7 @@ def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
     temperature_K = 6000.0
     epsilon = 1.0e-4
     mu_observer = 0.0
-    n_mu_tb1999 = 5
+    n_mu_tm99 = 5
 
     collisions = ParametrizedCollisions()
     model = PreconfiguredModels.multi_level_atom_mock(collisions=collisions)
@@ -84,7 +84,7 @@ def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=2 * n_mu_tb1999,
+        n_mu_quadrature=2 * n_mu_tm99,
         n_phi_quadrature=3,
         max_iterations=100,
         tolerance=1e-8,
@@ -103,7 +103,7 @@ def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
     surface_alignment = alignment[-1]
     emergent_qi_percent = 100.0 * emergent.Q[line_center_index] / emergent.I[line_center_index]
 
-    logging.info("TB1999 benchmark: epsilon = %.0e, delta2 = %.1f, no continuum, no field", epsilon, delta2)
+    logging.info("TM99 benchmark: epsilon = %.0e, delta2 = %.1f, no continuum, no field", epsilon, delta2)
     logging.info(
         "line-integrated optical thickness = %.1f, iterations = %d, residual = %.2e",
         float(tau_from_surface[0]),
@@ -111,7 +111,7 @@ def calculate_alignment_for_delta2(delta2: float, warm_start: bool):
         atmosphere.final_residual,
     )
     logging.info(
-        f"TB1999 (epsilon={epsilon:.0e}, delta2={delta2:.1f}): surface rho^2_0/rho^0_0 = "
+        f"TM99 (epsilon={epsilon:.0e}, delta2={delta2:.1f}): surface rho^2_0/rho^0_0 = "
         f"{surface_alignment:.5f}; tangential Q/I = {emergent_qi_percent:.3f}%; "
         f"iterations = {atmosphere.iterations_used}"
     )
@@ -126,12 +126,12 @@ def main(warm_start=True):
     de-excitation rate.
 
     Plots the upper-level alignment :math:`\rho^2_0/\rho^0_0` versus optical depth from the surface
-    against digitized TB1999 Fig. 8 curves for two depolarizing rates.
+    against digitized TM99 Fig. 8 curves for two depolarizing rates.
     """
     setup_logging()
 
     fig_alignment, ax_alignment = plt.subplots(figsize=(7, 5))
-    tb_depth = np.array(
+    tm99_depth = np.array(
         [
             1.524109e-04,
             2.023033e-04,
@@ -220,7 +220,7 @@ def main(warm_start=True):
             3.265196e06,
         ]
     )
-    tb_alignment_1 = np.array(
+    tm99_alignment_1 = np.array(
         [
             0.036886,
             0.036851,
@@ -310,7 +310,7 @@ def main(warm_start=True):
         ]
     )
 
-    tb_alignment_0dot1 = np.array(
+    tm99_alignment_0dot1 = np.array(
         [  # for delta(2) = 0.1
             0.073423,
             0.073362,
@@ -400,8 +400,8 @@ def main(warm_start=True):
     )
 
     benchmark_by_delta2 = {
-        1.0: tb_alignment_1,
-        0.1: tb_alignment_0dot1,
+        1.0: tm99_alignment_1,
+        0.1: tm99_alignment_0dot1,
     }
     colors_by_delta2 = {
         1.0: "k",
@@ -414,20 +414,20 @@ def main(warm_start=True):
     for delta2, benchmark_alignment in benchmark_by_delta2.items():
         color = colors_by_delta2[delta2]
         ax_alignment.plot(
-            tb_depth[: len(benchmark_alignment)],
+            tm99_depth[: len(benchmark_alignment)],
             benchmark_alignment,
             linestyle="none",
             marker="x",
             markersize=5.5,
             markeredgewidth=1.3,
             color=color,
-            label=rf"TB99 ($\delta^{{(2)}}={delta2:g}$)",
+            label=rf"TM99 ($\delta^{{(2)}}={delta2:g}$)",
         )
         tau_from_surface, alignment = solrat_by_delta2[delta2]
         rms = benchmark_rms(
             tau_from_surface,
             alignment,
-            tb_depth[: len(benchmark_alignment)],
+            tm99_depth[: len(benchmark_alignment)],
             benchmark_alignment,
         )
         ax_alignment.plot(

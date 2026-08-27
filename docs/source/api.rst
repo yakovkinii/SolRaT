@@ -26,6 +26,16 @@ Multi-Level Atom Model
    solrat.atom_model.multi_level_atom_model
    solrat.atom_model.multi_level_atom_model.*
 
+Multi-Level Atom Model (LTE)
+============================
+
+.. toctree::
+   :maxdepth: 1
+   :glob:
+
+   solrat.atom_model.multi_level_atom_model_lte
+   solrat.atom_model.multi_level_atom_model_lte.*
+
 Multi-Term Atom Model
 =====================
 

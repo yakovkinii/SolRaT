@@ -12,6 +12,7 @@ Submodules
 .. toctree::
    :maxdepth: 4
 
+   solrat.atom_model.shared.utility.allen
    solrat.atom_model.shared.utility.constants
    solrat.atom_model.shared.utility.functions
    solrat.atom_model.shared.utility.log_setup

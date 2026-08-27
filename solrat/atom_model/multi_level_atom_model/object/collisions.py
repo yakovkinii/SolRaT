@@ -53,7 +53,7 @@ class ParametrizedCollisions:
     def _rate_from_epsilon(transition, epsilon: float, temperature_K: float) -> float:
         r"""
         :math:`C_{ul} = \frac{\epsilon}{1-\epsilon}\, A_{ul} / (1 - e^{-h\nu_0/kT})` (LL04 Sec. 7.13;
-        TB1999 Sec. 2). Reads the transition through the interface shared by the multi-level and
+        TM99 Sec. 2). Reads the transition through the interface shared by the multi-level and
         multi-term transitions (``get_mean_transition_frequency_sm1``, ``einstein_a_ul``).
         """
         assert 0.0 < epsilon < 1.0, "epsilon must be in (0, 1)."
@@ -65,7 +65,7 @@ class ParametrizedCollisions:
         self, transition, epsilon: float, temperature_K: float, J_upper=None, J_lower=None
     ) -> None:
         r"""
-        Set :math:`C_{ul}` from a photon destruction probability ``epsilon`` (LL04 Sec. 7.13; TB1999).
+        Set :math:`C_{ul}` from a photon destruction probability ``epsilon`` (LL04 Sec. 7.13; TM99).
 
         Multi-level atom: call without ``J_upper``/``J_lower`` -- each transition is a single
         fine-structure component, keyed by its ``transition_id``. Multi-term atom: a transition is a

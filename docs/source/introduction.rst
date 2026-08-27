@@ -13,9 +13,9 @@ SolRaT is written so that each rate and transfer expression reads close to the e
 Physical model
 --------------
 *   **Density-matrix formalism** in the irreducible spherical statistical tensors :math:`\rho^K_Q`, with atomic level polarization fully included (LL04).
-*   **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and a semi-LTE multi-term model, selectable without rewriting the surrounding code.
+*   **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and LTE variants of both descriptions, selectable without rewriting the surrounding code.
 *   **Magnetic fields of arbitrary strength**: Zeeman, Hanle, and the Paschen-Back regime by exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Hanle for the multi-level atom).
-*   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or the anisotropic :math:`\{n, w\}` parametrization of ATL08 for coronal/chromospheric lines) or solved self-consistently for the non-LTE scattering problem (TB99): collisionless by default, with optional parametrized collisional rates in the statistical equilibrium of both the multi-level and the multi-term atom (inelastic transfer with Einstein-Milne detailed balance, and elastic depolarization) that bridge the scattering limit to LTE.
+*   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or Allen/ATL08-style anisotropic :math:`\{n, w\}` values for coronal/chromospheric lines) or solved self-consistently for the non-LTE scattering problem (TM99): collisionless by default, with optional parametrized collisional rates in the statistical equilibrium of both the multi-level and the multi-term atom (inelastic transfer with Einstein-Milne detailed balance, and elastic depolarization) that bridge the scattering limit to LTE.
 
 Atmospheres and synthesis
 -------------------------
@@ -41,7 +41,7 @@ References
 
 [ATL08] Asensio Ramos, A., Trujillo Bueno, J., & Landi Degl’Innocenti, E. (2008). Advanced Forward Modeling and Inversion of Stokes Profiles Resulting from the Joint Action of the Hanle and Zeeman Effects. The Astrophysical Journal, 683(1), 542–565.
 
-[TB99] Trujillo Bueno, J., & Manso Sainz, R. (1999). Iterative Methods for the Non-LTE Transfer of Polarized Radiation. The Astrophysical Journal, 516(1), 436–450.
+[TM99] Trujillo Bueno, J., & Manso Sainz, R. (1999). Iterative Methods for the Non-LTE Transfer of Polarized Radiation. The Astrophysical Journal, 516(1), 436–450.
 
 [HAZEL2] https://github.com/aasensio/hazel2
 

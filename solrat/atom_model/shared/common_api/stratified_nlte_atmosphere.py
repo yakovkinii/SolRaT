@@ -226,7 +226,7 @@ class NLTEStratifiedAtmosphere:
     * Lambda-iteration scheme, source functions, continuum, and the radiation-field-tensor
       moments: Trujillo Bueno & Manso Sainz (1999), ApJ, 516, 436 (DOI 10.1086/307107),
       eqs. (3)-(7) transfer + source + continuum, (10)-(11) for :math:`J^0_0, J^2_0`,
-      (12)-(13) for the Lambda-iteration update (referred to below as TB1999).
+      (12)-(13) for the Lambda-iteration update (referred to below as TM99).
     * Formal solution of the polarized transfer equation (evolution operator, constant-K step):
       Landi Degl'Innocenti & Landi Degl'Innocenti (1985), Solar Phys. 97, 239, eqs. (1), (5)
       (referred to below as LandiLandi1985); see also LL04 Ch. 8.
@@ -248,9 +248,9 @@ class NLTEStratifiedAtmosphere:
     :param n_mu_quadrature:  total number of :math:`\mu` points; a double-Gauss rule uses
         ``n_mu_quadrature // 2`` Gauss-Legendre points on each hemisphere ([-1, 0] and [0, 1]).
         Must be even (so the two hemispheres get equal orders and no node lands on the tangential
-        :math:`\mu = 0`). Comparable to TB1999's ``n_mu``, which likewise counts points per hemisphere.
+        :math:`\mu = 0`). Comparable to TM99's ``n_mu``, which likewise counts points per hemisphere.
     :param n_phi_quadrature:  number of uniform azimuthal samples; must be >= 3 so the K = 2
-        radiation-field-tensor components (azimuthal orders |Q| up to 2) integrate correctly.
+        radiation-field-tensor components (azimuthal orders :math:`|Q|` up to 2) integrate correctly.
     :param max_iterations:  maximum number of iterations.
     :param tolerance:  convergence threshold on :math:`\max|\Delta\rho|`.
     :param top_incident_stokes:  Stokes incident from the observer-side boundary (defaults
@@ -461,7 +461,7 @@ class NLTEStratifiedAtmosphere:
             "Check that the frequency grid covers the transition and N(z) > 0."
         )
         # Grey continuum opacity k_c(z): use the user-supplied absolute profile if given
-        # (standard slab-model input; TB1999 eqs. 5-7, Khan & Shulyak 2006 eqs. 3-6), otherwise
+        # (standard slab-model input; TM99 eqs. 5-7, Khan & Shulyak 2006 eqs. 3-6), otherwise
         # fall back to the continuum-to-line ratio times the line-core opacity.
         if strat.continuum_opacity_cm_m1 is not None:
             k_c_per_z = np.asarray(strat.continuum_opacity_cm_m1, dtype=np.float64)
@@ -549,7 +549,7 @@ class NLTEStratifiedAtmosphere:
 
         # 4. Lambda-iteration: rho(old) -> formal solution for I along each ray -> reconstruct
         # J^K_Q -> re-solve the SEE for rho(new). Convergence is tested on the maximum coherence
-        # change max|delta rho| (TB1999 eqs. 12-13 for the update; their R_c, Sec. 3.1).
+        # change max|delta rho| (TM99 eqs. 12-13 for the update; their R_c, Sec. 3.1).
         rho_history: List[List[BaseRho]] = []  # last few iterates, for optional Ng acceleration
         measure_residuals: List[float] = []  # clean-decay residuals, for optional true-error estimation
         converged = False
@@ -703,7 +703,7 @@ class NLTEStratifiedAtmosphere:
         boundary), which destroys the spectral convergence of a single rule over [-1, 1] and biases
         the surface anisotropy (hence :math:`\rho^2_0/\rho^0_0`) low.  Splitting at :math:`\mu = 0`
         puts the kink on a subinterval boundary, so each half is smooth and converges spectrally --
-        this is the standard slab-RT choice (and TB1999's, whose ``n_mu`` counts points per hemisphere).
+        this is the standard slab-RT choice (and TM99's, whose ``n_mu`` counts points per hemisphere).
         """
         # n_mu_quadrature total points, split evenly between the two hemispheres.
         nodes_11, weights_11 = np.polynomial.legendre.leggauss(self.n_mu_quadrature // 2)

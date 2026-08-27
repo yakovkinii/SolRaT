@@ -26,16 +26,16 @@ def log_depth_grid(z_max_cm: float, n_depth: int, min_fraction: float = 1e-9) ->
 
 def build_atmosphere(model, stratification, mu_observer, ng_acceleration, max_iterations):
     r"""
-    A TB1999 self-consistent atmosphere with or without Ng acceleration (all other settings shared).
+    A TM99 self-consistent atmosphere with or without Ng acceleration (all other settings shared).
     """
-    n_mu_tb1999 = 5
+    n_mu_tm99 = 5
     return NLTEStratifiedAtmosphere(
         model=model,
         stratification=stratification,
         los_theta=float(np.arccos(mu_observer)),
         los_chi=0.0,
         los_gamma=0.0,
-        n_mu_quadrature=2 * n_mu_tb1999,
+        n_mu_quadrature=2 * n_mu_tm99,
         n_phi_quadrature=3,
         max_iterations=max_iterations,
         tolerance=1e-8,
@@ -49,7 +49,7 @@ def build_atmosphere(model, stratification, mu_observer, ng_acceleration, max_it
 
 def main():
     r"""
-    Convergence history of the TB1999 :math:`J=0 \to 1` resonance-line solve: the per-iteration
+    Convergence history of the TM99 :math:`J=0 \to 1` resonance-line solve: the per-iteration
     estimated true error of a plain :math:`\Lambda`-iteration against the Ng-accelerated one, both
     cold-started from the LTE guess. This is a solver diagnostic, not a physics benchmark; it is
     deliberately not used as a manuscript figure, and it must run cold, so it does not warm-start.
@@ -108,9 +108,9 @@ def main():
     ax.legend()
     fig.tight_layout()
 
-    logging.info("TB1999 convergence history: epsilon = %.0e", epsilon)
+    logging.info("TM99 convergence history: epsilon = %.0e", epsilon)
     print(
-        f"TB1999 convergence (epsilon={epsilon:.0e}): Ng iterations = {atmosphere_ng.iterations_used}, "
+        f"TM99 convergence (epsilon={epsilon:.0e}): Ng iterations = {atmosphere_ng.iterations_used}, "
         f"plain iterations = {atmosphere_plain.iterations_used}"
     )
     return fig

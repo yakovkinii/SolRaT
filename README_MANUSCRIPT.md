@@ -7,7 +7,7 @@ This file maps manuscript figures and reproducibility checks to the public demo 
 | Manuscript item | Demo source |
 | --- | --- |
 | Fig. 2: He I D3 Stokes profiles | `_demos/multi_term_atom/demo_constant_property_slab_HeI_D3.py` |
-| Fig. 3: TM99 alignment benchmark | `_demos/general/demo_nlte_TB1999_resonance_polarization.py` |
+| Fig. 3: TM99 alignment benchmark | `_demos/general/demo_nlte_TM99_resonance_polarization.py` |
 | Fig. 4: second-order Zeeman comparison | `_demos/general/demo_multi_term_vs_multi_level_divergence.py` |
 
 ## Appendix Figures

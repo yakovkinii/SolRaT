@@ -3,6 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 
+from _demos.general.state.warm_start import load_warm_state, save_warm_state
 from solrat.atom_model.model_registry import PreconfiguredModels
 from solrat.atom_model.multi_level_atom_model.object.collisions import ParametrizedCollisions
 from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
@@ -16,8 +17,6 @@ from solrat.atom_model.shared.utility.functions import (
     height_grid_refined_at_observer_surface,
 )
 from solrat.atom_model.shared.utility.log_setup import setup_logging
-
-from _demos.general.state.warm_start import load_warm_state, save_warm_state
 
 DOPPLER_LINE_CENTER_PROFILE = 1.0 / np.sqrt(np.pi)
 AH65_FIG2_EPSILON_1EM2_TAU = np.array(
