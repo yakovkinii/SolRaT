@@ -233,7 +233,7 @@ class MultiLevelAtomRTE(BaseRTE):
                 }
             )
         if not rows:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "No registered transitions contribute to the supplied frequency grid. "
                 "Check that the frequency grid contains an actual transition frequency."
             )

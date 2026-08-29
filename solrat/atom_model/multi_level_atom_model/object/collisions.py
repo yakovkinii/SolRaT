@@ -77,7 +77,7 @@ class ParametrizedCollisions:
         rate_sm1 = self._rate_from_epsilon(transition, epsilon, temperature_K)
         is_multi_term = hasattr(transition, "term_upper")
         if is_multi_term and (J_upper is None or J_lower is None):
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "For a multi-term (term-to-term) transition, pass J_upper and J_lower to set one "
                 "fine-structure component, or call fill_deexcitation_from_epsilon to spread a single "
                 "multiplet epsilon over all components."

@@ -62,7 +62,7 @@ class Model(Generic[SEET, RTET, RadiationTensorT, AtmosphereParametersT, ConfigT
     @property
     def config(self) -> ConfigT:
         if self._config is None:
-            raise RuntimeError("config has not been initialized")
+            raise RuntimeError("config has not been initialized")  # pragma: no cover
         return self._config
 
     @log_method

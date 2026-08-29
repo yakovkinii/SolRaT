@@ -20,7 +20,7 @@ Physical model
 Atmospheres and synthesis
 -------------------------
 *   **Constant-property slabs**, optionally stacked into a multi-slab stratification under anisotropic illumination (ATL08, HAZEL2).
-*   **Height-stratified atmosphere** in which temperature, absorber number density, the magnetic-field vector, microturbulence, Voigt damping, and the vector macroscopic velocity vary continuously with geometric height; the scattering :math:`J^K_Q` is solved self-consistently by :math:`\Lambda`-iteration on a depth grid, with the Stokes transfer solved by the DELO method.
+*   **Height-stratified atmospheres** in which temperature, absorber number density, the magnetic-field vector, microturbulence, Voigt damping, and the vector macroscopic velocity vary continuously with geometric height; the radiation tensor :math:`J^K_Q` can be prescribed on the depth grid or solved self-consistently by :math:`\Lambda`-iteration, with the Stokes transfer solved by the DELO method.
 *   Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
 
 Design

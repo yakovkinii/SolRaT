@@ -27,7 +27,7 @@ class CompiledOperator:
     ) -> "CompiledOperator":
         keys = [tuple(values) for values in zip(*[columns[col] for col in ordered_multiplicand_keys])]
         if len(keys) == 0:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "Cannot build a CompiledOperator from a frame with no rows: there is nothing to "
                 "contract against. This usually means no transition falls in the frequency range "
                 "(check the frequency grid / transition cutoff)."

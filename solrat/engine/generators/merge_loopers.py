@@ -94,7 +94,7 @@ class DummyOrAlreadyMerged(Looper):
         return cols
 
     def fill_frame(self, frame: pd.DataFrame, explode=True) -> pd.DataFrame:
-        raise ValueError()
+        raise ValueError("DummyOrAlreadyMerged cannot fill the frame")  # pragma: no cover
 
 
 class Value(Looper):
@@ -127,7 +127,7 @@ def wrap_in_value_if_needed(x: Union[Looper, int, float]) -> Looper:
         return x
     if isinstance(x, (int, float)):
         return Value(x)
-    raise ValueError(f"Cannot wrap type {type(x)} in Value looper.")
+    raise ValueError(f"Cannot wrap type {type(x)} in Value looper.")  # pragma: no cover
 
 
 class FromTo(Looper):

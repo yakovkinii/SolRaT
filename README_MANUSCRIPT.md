@@ -20,7 +20,7 @@ This file maps manuscript figures and reproducibility checks to the public demo 
 | Fig. F.3: LTE and non-LTE multi-term/multi-level comparison | `_demos/general/demo_multi_term_vs_multi_level_divergence.py` |
 | Fig. F.4: AH65 sqrt-epsilon thermalization benchmark | `_demos/general/demo_nlte_thermalization_sqrt_epsilon.py` |
 | Fig. G.1: Hanle depolarization benchmark | `_demos/multi_term_atom/demo_hanle_effect.py` |
-| Fig. G.2: Unno-Rachkovsky benchmark | `_demos/general/demo_unno_rachkovsky_ME.py` |
+| Fig. G.2: stratified prescribed-JKQ vs Unno-Rachkovsky benchmark | `_demos/general/demo_unno_rachkovsky_ME.py` |
 | Fig. G.3: S=0 multi-term vs multi-level cross-check | `_demos/general/demo_multi_term_vs_multi_level_S0.py` |
 
 ## Additional Reproducibility Checks

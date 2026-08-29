@@ -166,7 +166,7 @@ class RhoMatrixBuilder:
 
         index0 = self.coherence_id_to_index[self.selected_coherence]
         if coherence_id not in self.coherence_id_to_index.keys():
-            raise ValueError(f"Trying to add coefficient to non-existing coherence {coherence_id}")
+            raise ValueError(f"Trying to add coefficient to non-existing coherence {coherence_id}")  # pragma: no cover
         index1 = self.coherence_id_to_index[coherence_id]
         self.rho_matrix[index0, index1] += coefficient
 

@@ -6,7 +6,10 @@ from solrat.atom_model.model_registry import Models
 from solrat.atom_model.multi_term_atom_model.object.level_registry import LevelRegistry
 from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config import MultiTermAtomConfig
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
-from solrat.atom_model.shared.common_api.milne_eddington_slab import MilneEddingtonSlabAtmosphere
+from solrat.atom_model.shared.common_api.stratified_nlte_atmosphere import (
+    PrescribedRadiationStratifiedAtmosphere,
+    StratifiedAtmosphere,
+)
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.atom_model.shared.utility.constants import c_cm_sm1
@@ -152,11 +155,30 @@ def build_normal_triplet_lte_model():
     return Models.multi_term_atom_lte().configure(config=config), nu0, reference_lambda_A_air
 
 
+def line_center_opacity_per_atom(model, nu, atmosphere_parameters, angles):
+    r"""
+    Maximum line opacity for ``N = 1`` along the validation ray.
+    """
+    see = model.StatisticalEquilibriumEquations.from_model_config(model.config)
+    see.fill_all_equations(
+        atmosphere_parameters=atmosphere_parameters,
+        radiation_tensor_in_magnetic_frame=model.RadiationTensor(),
+    )
+    rte = model.RadiativeTransferEquations.from_model_config(model.config, nu=nu)
+    rte.N = 1.0
+    rtc = rte.calculate_all_coefficients(
+        atmosphere_parameters=atmosphere_parameters,
+        angles=angles,
+        rho=see.get_solution(),
+    )
+    return float(np.max(np.abs(rtc.get_eta_I())))
+
+
 def main():
     r"""
-    Benchmark SolRaT against the analytic Unno-Rachkovsky (Milne-Eddington) solution for a normal
-    Zeeman triplet (LL04 eq. 9.109) at several field strengths. The Stokes-V sign follows LL04
-    eq. 5.36.
+    Benchmark fully numerical stratified prescribed-JKQ transfer against the analytic
+    Unno-Rachkovsky (Milne-Eddington) solution for a normal Zeeman triplet (LL04 eq. 9.109) at
+    several field strengths. The Stokes-V sign follows LL04 eq. 5.36.
 
     :return: matplotlib Figure.
     """
@@ -169,6 +191,7 @@ def main():
     chi_B = np.deg2rad(0.0)
     eta_0 = 10.0
     source_0, source_1 = 1.0, 3.0
+    tau_c_total = 30.0
 
     model, nu0, reference_lambda_A_air = build_normal_triplet_lte_model()
     nu = get_frequencies_from_air_wavelength_range(
@@ -182,7 +205,6 @@ def main():
     axis_labels = ["$I$", "$Q/I$", "$U/I$", "$V/I$"]
     field_values_gauss = [500.0, 1500.0, 3000.0]
     colors = ["k", "#d62728", "#2ca02c"]
-    ratio_residuals = []
     stokes_residuals = []
 
     for magnetic_field_gauss, color in zip(field_values_gauss, colors):
@@ -193,16 +215,40 @@ def main():
             delta_v_turbulent_cm_sm1=delta_v_turbulent_cm_sm1,
             voigt_a=voigt_a,
         )
-        slab = MilneEddingtonSlabAtmosphere(
+        line_center_opacity = line_center_opacity_per_atom(model, nu, atmosphere_parameters, angles)
+        continuum_opacity = line_center_opacity / eta_0
+        height = tau_c_total / continuum_opacity
+        z = np.linspace(0.0, height, 220)
+        stratification = StratifiedAtmosphere(
+            model=model,
+            height_cm=z,
+            temperature_K=temperature_K,
+            number_density_cm3=1.0,
+            magnetic_field_gauss=magnetic_field_gauss,
+            theta_B=theta_B,
+            chi_B=chi_B,
+            delta_v_turbulent_cm_sm1=delta_v_turbulent_cm_sm1,
+            voigt_a=voigt_a,
+            continuum_opacity_cm_m1=continuum_opacity,
+        )
+        initial_stokes = Stokes(
+            nu=nu,
+            I=np.full_like(nu, source_0 + source_1 * tau_c_total),
+            Q=np.zeros_like(nu),
+            U=np.zeros_like(nu),
+            V=np.zeros_like(nu),
+        )
+        atmosphere = PrescribedRadiationStratifiedAtmosphere(
             model=model,
             radiation_tensor=model.RadiationTensor(),
-            atmosphere_parameters=atmosphere_parameters,
-            angles=angles,
-            line_to_continuum_ratio=eta_0,
-            source_gradient=source_1,
-            source_surface=source_0,
+            stratification=stratification,
+            los_theta=0.0,
+            los_chi=0.0,
+            los_gamma=0.0,
+            source_function_I=lambda _z, tau_c: source_0 + source_1 * tau_c,
+            transfer_scheme="delo_linear",
         )
-        solrat_stokes = slab.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
+        solrat_stokes = atmosphere.forward(initial_stokes=initial_stokes)
 
         delta_nu_D = nu0 * atmosphere_parameters.delta_v_thermal_cm_sm1 / c_cm_sm1
         v = (nu - nu0) / delta_nu_D
@@ -218,24 +264,6 @@ def main():
             source_0=source_0,
             source_1=source_1,
             normalization="max",
-        )
-
-        rtc = slab.rtc
-        eta_I = rtc.get_eta_I()
-        core = np.abs(eta_I) > 0.05 * np.max(np.abs(eta_I))
-        eta_I_line_a, eta_Q_a, _, eta_V_a, _, _, rho_V_a = zeeman_triplet_line_coefficients(
-            v, voigt_a, v_B, theta_B, chi_B
-        )
-        ratio_residual = lambda solrat_num, analytic_num: np.sqrt(  # noqa: E731
-            np.mean((solrat_num[core] / eta_I[core] - analytic_num[core] / eta_I_line_a[core]) ** 2)
-        )
-
-        ratio_residuals.extend(
-            [
-                ratio_residual(rtc.get_eta_Q(), eta_Q_a),
-                ratio_residual(rtc.get_eta_V(), eta_V_a),
-                ratio_residual(rtc.get_rho_V(), rho_V_a),
-            ]
         )
         solrat_i_norm = solrat_stokes.I / np.max(solrat_stokes.I)
         analytic_i_norm = stokes_I_a / np.max(stokes_I_a)
@@ -270,8 +298,7 @@ def main():
     fig.align_ylabels(axes.ravel())
     fig.tight_layout()
     print(
-        f"Unno-Rachkovsky (ME) vs analytic: RMS coefficient ratio residual = "
-        f"{float(np.sqrt(np.mean(np.array(ratio_residuals) ** 2))):.2e}, "
+        f"Stratified prescribed-JKQ numerical RTE vs analytic Unno-Rachkovsky: "
         f"RMS Delta Stokes = {float(np.sqrt(np.mean(stokes_residuals))):.2e} "
         f"(over B = {[int(b) for b in field_values_gauss]} G)"
     )

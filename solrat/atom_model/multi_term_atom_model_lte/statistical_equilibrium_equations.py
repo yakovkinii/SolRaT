@@ -38,7 +38,7 @@ class MultiTermAtomSEELTE(BaseSEE):
     @property
     def atmosphere_parameters(self) -> AtmosphereParameters:
         if self._atmosphere_parameters is None:
-            raise RuntimeError("atmosphere_parameters has not been initialized")
+            raise RuntimeError("atmosphere_parameters has not been initialized")  # pragma: no cover
         return self._atmosphere_parameters
 
     @classmethod

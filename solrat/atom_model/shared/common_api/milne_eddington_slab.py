@@ -95,13 +95,13 @@ class MilneEddingtonSlabAtmosphere:
     @property
     def rte(self) -> BaseRTE:
         if self._rte is None:
-            raise RuntimeError("rte has not been initialized")
+            raise RuntimeError("rte has not been initialized")  # pragma: no cover
         return self._rte
 
     @property
     def rtc(self) -> RadiativeTransferCoefficients:
         if self._rtc is None:
-            raise RuntimeError("rtc has not been initialized")
+            raise RuntimeError("rtc has not been initialized")  # pragma: no cover
         return self._rtc
 
     @log_method

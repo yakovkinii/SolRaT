@@ -7,6 +7,7 @@ from solrat.atom_model.multi_term_atom_model.object.multi_term_atom_config impor
 from solrat.atom_model.multi_term_atom_model.object.radiation_tensor import RadiationTensor
 from solrat.atom_model.multi_term_atom_model.object.transition_registry import TransitionRegistry
 from solrat.atom_model.shared.object.angles import Angles
+from solrat.atom_model.shared.utility.constants import c_cm_sm1, h_erg_s
 from solrat.atom_model.shared.utility.log_setup import setup_logging
 
 
@@ -51,6 +52,17 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
         self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
         self.assertNotAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
         self.assertGreater(len(tensor.df), 0)
+
+    def test_fill_nlte_n_w_explicit(self):
+        n, w = 0.3, 0.1
+        tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w(n=n, w=w)
+        transition = next(iter(self.config.transition_registry.transitions.values()))
+        nu_ul = transition.get_mean_transition_frequency_sm1()
+        j00_expected = n * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
+        j00 = np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0))
+        j20 = np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0))
+        self.assertAlmostEqual(j00 / j00_expected, 1.0, places=6)
+        self.assertAlmostEqual(j20 / j00, w / np.sqrt(2.0), places=6)
 
     def test_parametrized_stokes_I(self):
         tensor = RadiationTensor.from_model_config(self.config)

@@ -24,6 +24,12 @@ from solrat.engine.generators.nested_loops import nested_loops
 # Each profile may be supplied as a scalar (constant with height), an array sampled on the
 # height grid, or a callable f(z_cm) -> value.
 Profile = Union[float, Sequence[float], np.ndarray, Callable[[float], float]]
+RadiationTensorProfile = Union[
+    BaseRadiationTensor,
+    Sequence[BaseRadiationTensor],
+    Callable[[int, float, float], BaseRadiationTensor],
+]
+SourceFunctionProfile = Union[float, Sequence[float], np.ndarray, Callable[[float, float], float]]
 
 # Static assert message for the per-ray transfer (hot path): no per-call string building.
 _ERR_TANGENTIAL_MU = "Quadrature mu is too close to tangential (|mu| < 1e-6)."
@@ -58,7 +64,7 @@ def _sample_profile(value: Profile, z_cm: np.ndarray, name: str) -> np.ndarray:
 
 class StratifiedAtmosphere:
     r"""
-    Container for the height-resolved physical state fed to :class:`NLTEStratifiedAtmosphere`.
+    Container for the height-resolved physical state fed to the stratified atmosphere classes.
 
     This is the user-input / conversion layer: every quantity may be given as a scalar, an
     array on the height grid, or a callable ``f(z_cm)``, and is sampled onto the supplied
@@ -801,6 +807,7 @@ class NLTEStratifiedAtmosphere:
         bp_per_z: List[np.ndarray],
         bottom_bc: Stokes,
         top_bc: Stokes,
+        source_function_I_per_z: Optional[List[Union[float, np.ndarray]]] = None,
     ):
         r"""
         DELO-propagate Stokes through the ``z`` grid along one ray, returning
@@ -830,6 +837,12 @@ class NLTEStratifiedAtmosphere:
             for k in range(4):
                 K[:, k, k] += k_c_per_z[i]
             eps[:, 0] += k_c_per_z[i] * bp_per_z[i]
+            if source_function_I_per_z is not None:
+                source_I = np.asarray(source_function_I_per_z[i], dtype=np.float64)
+                if source_I.ndim == 0:
+                    source_I = np.full(n_nu, float(source_I))
+                assert source_I.shape == (n_nu,), "source_function_I_per_z entries must be scalars or nu-sized arrays."
+                eps = K[:, :, 0] * source_I[:, np.newaxis]
             K_per_z.append(K)
             eps_per_z.append(eps)
 
@@ -867,6 +880,7 @@ class NLTEStratifiedAtmosphere:
         number_density: np.ndarray,
         k_c_per_z: np.ndarray,
         bp_per_z: List[np.ndarray],
+        source_function_I_per_z: Optional[List[Union[float, np.ndarray]]] = None,
     ) -> np.ndarray:
         r"""
         Emergent Stokes ``[4, n_nu]`` for a tangential line of sight (:math:`\mu \to 0`), the
@@ -884,6 +898,13 @@ class NLTEStratifiedAtmosphere:
         for k in range(4):
             K[:, k, k] += k_c_per_z[i_surface]
         eps[:, 0] += k_c_per_z[i_surface] * bp_per_z[i_surface]
+        if source_function_I_per_z is not None:
+            n_nu = len(bp_per_z[i_surface])
+            source_I = np.asarray(source_function_I_per_z[i_surface], dtype=np.float64)
+            if source_I.ndim == 0:
+                source_I = np.full(n_nu, float(source_I))
+            assert source_I.shape == (n_nu,), "source_function_I_per_z entries must be scalars or nu-sized arrays."
+            eps = K[:, :, 0] * source_I[:, np.newaxis]
         return self._delo_source_function(K, eps).T  # [4, n_nu]
 
     @staticmethod
@@ -1180,3 +1201,238 @@ class NLTEStratifiedAtmosphere:
                 merged.data[key] = sum(c * grid[depth].data[key] for c, grid in zip(coefficients, grids))
             combined.append(merged)
         return combined
+
+
+class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
+    r"""
+    Height-stratified synthesis with prescribed radiation-field tensors :math:`J^K_Q`.
+
+    This atmosphere keeps the stratified formal transfer from :class:`NLTEStratifiedAtmosphere`,
+    but removes the Lambda-iteration: at each height the SEE is solved once with the supplied
+    radiation-field tensor and the resulting density matrices are propagated along the observer ray.
+
+    ``radiation_tensor`` may be a single tensor used at all heights, a sequence with one tensor per
+    height point, or a callable ``f(i, z_cm, tau)``. For callables, ``tau`` is the vertical line optical
+    depth estimated from an initial pass with ``tau = 0`` and then reused for the final prescribed-J
+    solve.
+
+    :param model:  configured :class:`Model`.
+    :param stratification:  :class:`StratifiedAtmosphere` height-resolved state.
+    :param radiation_tensor:  prescribed :math:`J^K_Q`; either one tensor, one tensor per height,
+        or a callable ``f(i, z_cm, tau)``.
+    :param los_theta:  observer line-of-sight polar angle [rad].
+    :param los_chi:  observer line-of-sight azimuth [rad].
+    :param los_gamma:  observer polarization reference angle [rad].
+    :param top_incident_stokes:  Stokes incident from the observer-side boundary.
+    :param transfer_scheme:  ``"delo_constant"`` or ``"delo_linear"``.
+    :param source_function_I:  optional imposed unpolarized scalar source function. It may be a
+        scalar, one value per height, an ``(n_z, n_nu)`` array, or a callable
+        ``f(z_cm, tau_c)`` where ``tau_c`` is continuum optical depth measured downward from the
+        observer-side surface. When supplied, transfer uses
+        :math:`\bm\varepsilon=\mathbf K(S_I,0,0,0)^T`.
+    """
+
+    def __init__(
+        self,
+        model: Model,
+        stratification: StratifiedAtmosphere,
+        radiation_tensor: RadiationTensorProfile,
+        los_theta: float,
+        los_chi: float = 0.0,
+        los_gamma: float = 0.0,
+        top_incident_stokes: Optional[Stokes] = None,
+        transfer_scheme: str = "delo_linear",
+        source_function_I: Optional[SourceFunctionProfile] = None,
+    ):
+        super().__init__(
+            model=model,
+            stratification=stratification,
+            los_theta=los_theta,
+            los_chi=los_chi,
+            los_gamma=los_gamma,
+            n_mu_quadrature=4,
+            n_phi_quadrature=4,
+            max_iterations=1,
+            tolerance=0.0,
+            top_incident_stokes=top_incident_stokes,
+            transfer_scheme=transfer_scheme,
+        )
+        self.prescribed_radiation_tensor = radiation_tensor
+        self.source_function_I = source_function_I
+        self.continuum_tau_grid: Optional[np.ndarray] = None
+
+    @log_method
+    def forward(self, initial_stokes: Stokes) -> Stokes:
+        r"""
+        Solve the SEE with prescribed :math:`J^K_Q` at every depth and formally integrate the
+        observer ray.
+        """
+        nu = initial_stokes.nu
+        strat = self.stratification
+        n_z = strat.n_depth
+        z = strat.height_cm
+        mu_obs = float(np.cos(self.los_theta))
+
+        self.iterations_used = 1
+        self.final_residual = 0.0
+        self.residual_history = []
+        self.final_true_error = None
+        self.lambda_estimate = None
+
+        see: BaseSEE = self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
+        rte: BaseRTE = self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
+        rte.N = 1.0
+        if hasattr(rte, "use_operator_cache"):
+            rte.use_operator_cache = True
+
+        N = strat.number_density_cm3
+        bp_per_z = [get_planck_BP(nu_sm1=nu, temperature_K=strat.temperature_K[i]) for i in range(n_z)]
+        b_angles = [strat.magnetic_frame_angles(i) for i in range(n_z)]
+        v_vectors = [strat.velocity_vector(i) for i in range(n_z)]
+        see_params = [strat.atmosphere_parameters(i, 0.0) for i in range(n_z)]
+        omega_obs = self._ray_direction(self.los_theta, self.los_chi)
+        obs_angles = [
+            Angles(
+                chi=self.los_chi,
+                theta=self.los_theta,
+                gamma=self.los_gamma,
+                chi_B=strat.chi_B[i],
+                theta_B=strat.theta_B[i],
+            )
+            for i in range(n_z)
+        ]
+        obs_params = [strat.atmosphere_parameters(i, self._project(v_vectors[i], omega_obs)) for i in range(n_z)]
+
+        tau_for_prescription = np.zeros(n_z, dtype=np.float64)
+        if callable(self.prescribed_radiation_tensor):
+            trial_radiation_tensor_grid = self._radiation_tensor_grid(z, tau_for_prescription)
+            trial_rho_grid = self._rho_grid_from_radiation_tensors(
+                see, see_params, b_angles, trial_radiation_tensor_grid
+            )
+            trial_eta_peak = self._line_core_opacity_grid(rte, trial_rho_grid, obs_params, obs_angles, N)
+            tau_for_prescription = self._integrated_depth_grid(trial_eta_peak, z)
+
+        radiation_tensor_grid = self._radiation_tensor_grid(z, tau_for_prescription)
+        rho_grid = self._rho_grid_from_radiation_tensors(see, see_params, b_angles, radiation_tensor_grid)
+        eta_peak = self._line_core_opacity_grid(rte, rho_grid, obs_params, obs_angles, N)
+        if strat.continuum_opacity_cm_m1 is not None:
+            k_c_per_z = np.asarray(strat.continuum_opacity_cm_m1, dtype=np.float64)
+        else:
+            k_c_per_z = strat.continuum_to_line_ratio * eta_peak
+
+        self.tau_grid = self._integrated_depth_grid(eta_peak, z)
+        self.continuum_tau_grid = self._surface_depth_grid(k_c_per_z, z)
+        source_function_I_per_z = self._source_function_grid(z, self.continuum_tau_grid, nu)
+
+        bottom_bc = initial_stokes
+        top_bc = self.top_incident_stokes if self.top_incident_stokes is not None else Stokes.from_zeros(nu_sm1=nu)
+        if abs(mu_obs) < _MU_TANGENTIAL_THRESHOLD:
+            e = self._tangential_emergent(
+                i_surface=n_z - 1,
+                rte=rte,
+                rho_grid=rho_grid,
+                params_per_z=obs_params,
+                angles_per_z=obs_angles,
+                number_density=N,
+                k_c_per_z=k_c_per_z,
+                bp_per_z=bp_per_z,
+                source_function_I_per_z=source_function_I_per_z,
+            )
+        else:
+            stokes_z = self._propagate_ray(
+                rho_grid=rho_grid,
+                z=z,
+                mu_n=mu_obs,
+                rte=rte,
+                params_per_z=obs_params,
+                angles_per_z=obs_angles,
+                number_density=N,
+                k_c_per_z=k_c_per_z,
+                bp_per_z=bp_per_z,
+                bottom_bc=bottom_bc,
+                top_bc=top_bc,
+                source_function_I_per_z=source_function_I_per_z,
+            )
+            e = stokes_z[-1] if mu_obs > 0 else stokes_z[0]
+
+        self.rho_grid = rho_grid
+        self.radiation_tensor_grid = radiation_tensor_grid
+        if hasattr(rte, "clear_operator_cache"):
+            rte.clear_operator_cache()
+        return Stokes(nu=nu, I=real(e[0]), Q=real(e[1]), U=real(e[2]), V=real(e[3]))
+
+    def _radiation_tensor_grid(self, z: np.ndarray, tau: np.ndarray) -> List[BaseRadiationTensor]:
+        if callable(self.prescribed_radiation_tensor):
+            return [self.prescribed_radiation_tensor(i, float(z[i]), float(tau[i])) for i in range(len(z))]
+        if isinstance(self.prescribed_radiation_tensor, BaseRadiationTensor):
+            return [self.prescribed_radiation_tensor for _ in range(len(z))]
+        tensors = list(self.prescribed_radiation_tensor)
+        assert len(tensors) == len(z), "radiation_tensor sequence must have one entry per height point."
+        return tensors
+
+    @staticmethod
+    def _rho_grid_from_radiation_tensors(
+        see: BaseSEE,
+        see_params: List,
+        b_angles: List[Angles],
+        radiation_tensor_grid: List[BaseRadiationTensor],
+    ) -> List[BaseRho]:
+        rho_grid: List[BaseRho] = []
+        for i, radiation_tensor in enumerate(radiation_tensor_grid):
+            see.fill_all_equations(
+                atmosphere_parameters=see_params[i],
+                radiation_tensor_in_magnetic_frame=radiation_tensor.rotate_to_magnetic_frame(angles=b_angles[i]),
+            )
+            rho_grid.append(see.get_solution())
+        return rho_grid
+
+    @staticmethod
+    def _line_core_opacity_grid(
+        rte: BaseRTE,
+        rho_grid: List[BaseRho],
+        params_per_z: List,
+        angles_per_z: List[Angles],
+        number_density: np.ndarray,
+    ) -> np.ndarray:
+        eta_peak = np.zeros(len(rho_grid), dtype=np.float64)
+        for i, rho in enumerate(rho_grid):
+            rte.N = float(number_density[i])
+            rtc = rte.calculate_all_coefficients(
+                atmosphere_parameters=params_per_z[i],
+                angles=angles_per_z[i],
+                rho=rho,
+            )
+            eta_peak[i] = float(np.max(np.abs(np.real(rtc.get_eta_I()))))
+        assert float(np.max(eta_peak)) > 0, (
+            "Line opacity along the observer ray is zero. Check that the frequency grid covers the "
+            "transition and N(z) > 0."
+        )
+        return eta_peak
+
+    @staticmethod
+    def _integrated_depth_grid(opacity: np.ndarray, z: np.ndarray) -> np.ndarray:
+        d_tau = 0.5 * (opacity[1:] + opacity[:-1]) * np.diff(z)
+        return np.concatenate([[0.0], np.cumsum(d_tau)])
+
+    @staticmethod
+    def _surface_depth_grid(opacity: np.ndarray, z: np.ndarray) -> np.ndarray:
+        tau_from_bottom = PrescribedRadiationStratifiedAtmosphere._integrated_depth_grid(opacity, z)
+        return tau_from_bottom[-1] - tau_from_bottom
+
+    def _source_function_grid(
+        self,
+        z: np.ndarray,
+        tau_from_surface: np.ndarray,
+        nu: np.ndarray,
+    ) -> Optional[List[Union[float, np.ndarray]]]:
+        if self.source_function_I is None:
+            return None
+        if callable(self.source_function_I):
+            return [self.source_function_I(float(z[i]), float(tau_from_surface[i])) for i in range(len(z))]
+        arr = np.asarray(self.source_function_I, dtype=np.float64)
+        if arr.ndim == 0:
+            return [float(arr) for _ in range(len(z))]
+        if arr.shape == (len(z),):
+            return [float(arr[i]) for i in range(len(z))]
+        assert arr.shape == (len(z), len(nu)), "source_function_I must be scalar, n_z, n_z x n_nu, or callable."
+        return [arr[i] for i in range(len(z))]

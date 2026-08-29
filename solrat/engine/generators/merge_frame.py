@@ -459,14 +459,14 @@ class Frame(Generic[SumLimitsT]):
         if len(args) == 0 or (len(args) == 1 and args[0] is Ellipsis):
             result = self._reduce([col for col in self._table.names[::-1] if col not in factor_columns])
             if result is None:
-                raise ValueError("Trying to return a partially reduced result")
+                raise ValueError("Trying to return a partially reduced result")  # pragma: no cover
             return result
 
         if Ellipsis not in args:
             return self._reduce([col.get_name() if isinstance(col, Looper) else col for col in args])
 
         if args.count(Ellipsis) > 1:
-            raise ValueError("Only one Ellipsis (...) is allowed in reduce() arguments.")
+            raise ValueError("Only one Ellipsis (...) is allowed in reduce() arguments.")  # pragma: no cover
 
         ellipsis_index = args.index(Ellipsis)
         columns_before = [col.get_name() if isinstance(col, Looper) else col for col in args[:ellipsis_index]]
