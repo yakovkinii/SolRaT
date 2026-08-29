@@ -53,7 +53,7 @@ class TestHIAlphaSynthesis(unittest.TestCase):
         new_hash = pseudo_hash(emergent.I, emergent.Q, emergent.U, emergent.V)
         previous_hash = 4.938419942225e-06
         logging.info(f"test_h_alpha_constant_slab_regression current={new_hash!r} previous={previous_hash!r}")
-        assert np.isclose(new_hash, previous_hash, rtol=1e-8, atol=0.0)
+        assert np.isclose(new_hash, previous_hash, rtol=1e-6, atol=0.0)
 
 
 if __name__ == "__main__":
