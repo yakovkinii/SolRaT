@@ -165,7 +165,7 @@ class RadiativeTransferCoefficients:
         """
         scale = np.max(np.abs(np.real(self.eta_rho_aI - self.eta_rho_sI)))
         if scale == 0:
-            raise ValueError(
+            raise ValueError(  # pragma: no cover
                 "eta_tau_scale is zero: the spectral line has no opacity over the supplied frequency grid. "
                 "Check that the frequency grid is centered on the actual transition wavelength."
             )

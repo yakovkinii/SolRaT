@@ -21,7 +21,7 @@ class BaseRadiationTensor(Generic[ConfigT]):
         r"""
         Constructor from the model config.
         """
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     def rotate_to_magnetic_frame(self, angles: Angles) -> "BaseRadiationTensor":

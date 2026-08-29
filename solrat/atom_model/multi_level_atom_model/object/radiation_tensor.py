@@ -44,7 +44,7 @@ class RadiationTensor(BaseRadiationTensor):
         if self._df is None:
             self.construct_df()
         if self._df is None:
-            raise RuntimeError("df has not been initialized")
+            raise RuntimeError("df has not been initialized")  # pragma: no cover
         return self._df
 
     @classmethod

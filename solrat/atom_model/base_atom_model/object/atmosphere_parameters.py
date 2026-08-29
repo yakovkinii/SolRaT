@@ -12,7 +12,7 @@ class BaseAtmosphereParameters:
 
     def _key(self) -> tuple:
         r"""Value tuple identifying this parameter set; subclasses list their fields."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __hash__(self) -> int:
         return hash(self._key())

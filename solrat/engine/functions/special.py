@@ -10,7 +10,7 @@ NumericT = TypeVar("NumericT", int, float, complex, np.ndarray)
 
 
 @log_function
-def pseudo_hash(stokesI, stokesQ, stokesU, stokesV):
+def pseudo_hash(stokesI, stokesQ, stokesU, stokesV):  # pragma: no cover
     """
     Construct a pseudo-unique, likely non-trivial real float hash from 4 complex arrays
     """

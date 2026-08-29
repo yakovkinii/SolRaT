@@ -5,7 +5,7 @@ from solrat.engine.functions.decorators import log_function
 
 
 @log_function
-def get_H_I_alpha_config() -> MultiTermAtomConfig:  # pragma: no cover
+def get_H_I_alpha_config() -> MultiTermAtomConfig:
     r"""
     H alpha line (:math:`3\to 2`)
     Reference: NIST
