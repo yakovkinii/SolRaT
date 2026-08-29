@@ -104,8 +104,9 @@ class TestPrescribedRadiationStratifiedAtmosphere(unittest.TestCase):
             source_function_I=1.0,
             transfer_scheme="delo_linear",
         )
-        self._run_and_lock("test_callable_tensor_scalar_source_delo_linear", atmosphere, nu,
-                           previous_hash=3.3519554389221464)
+        self._run_and_lock(
+            "test_callable_tensor_scalar_source_delo_linear", atmosphere, nu, previous_hash=3.3519554389221464
+        )
 
     def test_sequence_tensor_array_source(self):
         setup_logging()
