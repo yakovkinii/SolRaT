@@ -165,29 +165,28 @@ def main():
     reduced_frequency = (nu - nu0) / (nu0 * delta_v_thermal_cm_sm1 / c_cm_sm1)
 
     panels = [
-        ("$I\\,/\\,I_{\\max}$", stokes_mt.I / np.max(stokes_mt.I), stokes_ml.I / np.max(stokes_ml.I)),
-        ("$Q/I$", stokes_mt.Q / stokes_mt.I, stokes_ml.Q / stokes_ml.I),
-        ("$U/I$", stokes_mt.U / stokes_mt.I, stokes_ml.U / stokes_ml.I),
-        ("$V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
+        (r"Stokes $I\,/\,I_{\max}$", stokes_mt.I / np.max(stokes_mt.I), stokes_ml.I / np.max(stokes_ml.I)),
+        (r"Stokes $Q/I$", stokes_mt.Q / stokes_mt.I, stokes_ml.Q / stokes_ml.I),
+        (r"Stokes $U/I$", stokes_mt.U / stokes_mt.I, stokes_ml.U / stokes_ml.I),
+        (r"Stokes $V/I$", stokes_mt.V / stokes_mt.I, stokes_ml.V / stokes_ml.I),
     ]
 
     stokes_rms = float(np.sqrt(np.mean([np.mean((mt_curve - ml_curve) ** 2) for _, mt_curve, ml_curve in panels])))
 
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
-    for ax, (label, mt_curve, ml_curve) in zip(axes.ravel(), panels):
+    fig, axes = plt.subplots(4, 1, figsize=(8.0, 8.8), sharex=True)
+    for ax, (label, mt_curve, ml_curve) in zip(axes, panels):
         ax.plot(reduced_frequency, mt_curve, lw=0.9, color="k")
-        ax.plot(reduced_frequency, ml_curve, lw=2.4, ls=(0, (3, 2)), color="#d62728")
+        ax.plot(reduced_frequency, ml_curve, lw=2.4, ls="--", color="r")
         ax.set_ylabel(label)
         ax.axhline(0.0, color="0.7", lw=0.6)
         ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
-    for ax in axes[1]:
-        ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
+    axes[-1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     style_key = [
-        Line2D([], [], color="k", lw=0.9, label="Multi-term"),
-        Line2D([], [], color="#d62728", lw=2.4, ls=(0, (3, 2)), label="Multi-level"),
+        Line2D([], [], color="k", lw=0.9, label="Multi-term description"),
+        Line2D([], [], color="r", lw=2.4, ls="--", label="Multi-level description"),
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
-    fig.align_ylabels(axes.ravel())
+    axes[0].legend(handles=style_key, fontsize=12, loc="best")
+    fig.align_ylabels(axes)
     fig.tight_layout()
     print(
         f"Multi-term vs multi-level (S=0 line, B = {magnetic_field_gauss:.0f} G): "

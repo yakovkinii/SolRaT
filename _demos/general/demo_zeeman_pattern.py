@@ -87,7 +87,7 @@ def main():
 
     position_rms = float(np.sqrt(np.mean((displacements - analytic_positions) ** 2)))
 
-    colors = {(-1): "#d62728", 0: "#1f77b4", 1: "#2ca02c"}
+    colors = {(-1): "r", 0: "b", 1: "g"}
     labels = {(-1): r"$\sigma_-$ ($\Delta M = -1$)", 0: r"$\pi$ ($\Delta M = 0$)", 1: r"$\sigma_+$ ($\Delta M = +1$)"}
     fig, ax = plt.subplots(figsize=(8, 4))
     seen = set()

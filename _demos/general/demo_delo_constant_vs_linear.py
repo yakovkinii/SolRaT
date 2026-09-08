@@ -82,7 +82,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.loglog(node_counts, errors["delo_constant"], marker="o", color="k", label="DELO-constant (1st order)")
-    ax.loglog(node_counts, errors["delo_linear"], marker="s", color="#d62728", label="DELO-linear (2nd order)")
+    ax.loglog(node_counts, errors["delo_linear"], marker="s", color="r", label="DELO-linear (2nd order)")
     ax.set_xlabel("surface depth points $N$")
     ax.set_ylabel(r"$|100\,Q/I - \mathrm{TM99}|$ at line center")
     ax.legend()

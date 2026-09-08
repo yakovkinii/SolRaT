@@ -154,7 +154,7 @@ def main(warm_start=True):
     )
     ax_qi.plot(reduced_nu, qi_profile_percent, "k-", label="SolRaT")
     ax_qi.set_xlabel(r"$(\nu - \nu_0)\,/\,\Delta\nu_D$")
-    ax_qi.set_ylabel(r"$100\,Q/I$")
+    ax_qi.set_ylabel(r"Stokes $Q/I$ (%)")
     ax_qi.legend()
     fig_qi.tight_layout()
     print(

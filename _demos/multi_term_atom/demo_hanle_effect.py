@@ -75,15 +75,14 @@ def main():
     hanle_H = 2.0 * np.pi * nu_larmor(B_values) * g_upper / transition.einstein_a_ul
     analytic_hanle = 1.0 / np.sqrt(1.0 + (2.0 * hanle_H) ** 2)
 
-    fig, ax = plt.subplots(figsize=(9, 6), num="Hanle Effect")
+    fig, ax = plt.subplots(figsize=(7, 5), num="Hanle Effect")
     ax.plot(B_values, alignments_norm, lw=0.9, color="k", label=r"SolRaT")
     ax.plot(
         B_values,
         analytic_hanle,
-        lw=3,
-        ls=(0, (1.5, 3)),
-        dash_capstyle="round",
-        color="k",
+        lw=3.0,
+        ls=":",
+        color="r",
         label=r"LL04 eq. (10.30)",
     )
     ax.set_xlabel(r"$B$ (G)")

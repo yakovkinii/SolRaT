@@ -182,7 +182,7 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     angles = Angles(chi=0.0, theta=np.pi / 6, gamma=0.0, chi_B=0.0, theta_B=np.deg2rad(30.0))
     model_mt_constrained = build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=True)
     model_mt_full = build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=False)
-    model_ml = build_multi_level_branch(reference_lambda_A_air)
+    model_ml = build_multi_level_branch(reference_lambda_A_air, lte=True)
     reduced_frequency = (nu - nu0) / delta_nu_D
 
     field_values_gauss = [500.0, 1000.0, 2000.0]
@@ -200,8 +200,8 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         ax_intensity_zoom, ax_v_zoom = axes[0, column], axes[1, column]
         for stokes, lw, color, linestyle in (
             (stokes_mt_full, 0.9, "k", "-"),
-            (stokes_mt_constrained, 2.6, "#d62728", (0, (1, 1))),
-            (stokes_ml, 1.6, "#2ca02c", (0, (3, 2))),
+            (stokes_mt_constrained, 2.6, "r", ":"),
+            (stokes_ml, 1.6, "g", "--"),
         ):
             intensity = stokes.I / np.max(stokes.I)
             v_over_imax = stokes.V / np.max(stokes.I)
@@ -214,14 +214,14 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
         for ax in (ax_intensity_zoom, ax_v_zoom):
             ax.axhline(0.0, color="0.7", lw=0.6)
             ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
-    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
-    axes[1, 0].set_ylabel(r"$V\,/\,I_{\max}$")
+    axes[0, 0].set_ylabel(r"Stokes $I\,/\,I_{\max}$")
+    axes[1, 0].set_ylabel(r"Stokes $V\,/\,I_{\max}$")
     style_key = [
-        Line2D([], [], color="k", lw=0.9, label="Multi-term, all branches"),
-        Line2D([], [], color="#d62728", lw=2.6, ls=(0, (1, 1)), label="Multi-term, $J$-constrained"),
-        Line2D([], [], color="#2ca02c", lw=1.6, ls=(0, (3, 2)), label="Multi-level"),
+        Line2D([], [], color="k", lw=0.9, label="Unconstrained multi-term"),
+        Line2D([], [], color="r", lw=2.6, ls=":", label="$J$-constrained multi-term"),
+        Line2D([], [], color="g", lw=1.6, ls="--", label="Multi-level"),
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=8, loc="best")
+    axes[1, 0].legend(handles=style_key, fontsize=10, loc="upper right")
     fig.align_ylabels(axes.ravel())
     fig.tight_layout()
     print(
@@ -234,11 +234,11 @@ def second_order_zeeman_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
 def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     r"""
-    Part (b): isolate NLTE scattering, for both atomic models at once. At weak field and under an
-    anisotropic radiation field the non-LTE atoms build upper-level alignment and hence a
+    Part (b): isolate NLTE scattering, for both atomic models at once. At weak field and under the
+    prescribed Allen radiation tensor the non-LTE atoms build upper-level alignment and hence a
     scattering-polarization Q/I, while their LTE counterparts (thermal populations, no alignment) sit
-    at Q/I = 0. The all-branches multi-term curves show the effect of leaving the RTE branch
-    unconstrained in each population treatment.
+    at Q/I = 0. The unconstrained multi-term curves show the effect of including every allowed
+    fine-structure branch in each population treatment.
 
     :return: the matplotlib Figure.
     """
@@ -248,33 +248,33 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
 
     nlte_curves = (
         (
-            "MT all branches",
+            "Unconstrained MT",
             build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=False),
             "k",
             "-",
         ),
         (
-            r"MT $J$-constrained",
+            r"$J$-constrained MT",
             build_multi_term_doublet(reference_lambda_A_air, lte=False, j_constrained=True),
-            "#d62728",
-            (0, (1, 1)),
+            "r",
+            ":",
         ),
-        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=False), "#2ca02c", (0, (3, 2))),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=False), "g", "--"),
     )
     lte_curves = (
         (
-            "MT all branches",
+            "Unconstrained MT",
             build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=False),
             "k",
             "-",
         ),
         (
-            r"MT $J$-constrained",
+            r"$J$-constrained MT",
             build_multi_term_doublet(reference_lambda_A_air, lte=True, j_constrained=True),
-            "#d62728",
-            (0, (1, 1)),
+            "r",
+            ":",
         ),
-        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=True), "#2ca02c", (0, (3, 2))),
+        ("ML", build_multi_level_branch(reference_lambda_A_air, lte=True), "g", "--"),
     )
 
     fig, axes = plt.subplots(
@@ -296,12 +296,13 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
             linewidth = 0.9 if linestyle == "-" else 2.2
             ax.plot(reduced_frequency, qi, lw=linewidth, color=color, ls=linestyle, label=label)
         ax.axhline(0.0, color="0.7", lw=0.6)
-        ax.set_ylabel("$100\\,Q/I$")
+        ax.set_ylabel(r"Stokes $Q/I$ (%)")
         ax.set_ylim(*ylim)
         ax.set_title(panel_label)
         ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
         if panel_label == "non-LTE":
-            ax.legend(loc="best", fontsize=9)
+            ax.legend(loc="best", fontsize=10)
+    axes[0].set_ylabel(r"$Q/I$ (%)")
     axes[1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     fig.align_ylabels(axes)
     fig.tight_layout()
@@ -311,23 +312,23 @@ def nlte_scattering_figure(nu, nu0, reference_lambda_A_air, delta_nu_D):
     nlte_rms = [
         float(np.sqrt(np.mean((qi_by_label[("non-LTE", label)] - nlte_reference) ** 2)))
         for label in (
-            r"MT $J$-constrained",
-            "MT all branches",
+            r"$J$-constrained MT",
+            "Unconstrained MT",
         )
     ]
     lte_rms = [
         float(np.sqrt(np.mean((qi_by_label[("LTE", label)] - lte_reference) ** 2)))
         for label in (
-            r"MT $J$-constrained",
-            "MT all branches",
+            r"$J$-constrained MT",
+            "Unconstrained MT",
         )
     ]
     print(
         "Weak-field scattering RMS 100 Q/I differences: "
-        f"MT constrained NLTE - ML NLTE = {nlte_rms[0]:.3e}, "
-        f"MT all-branches NLTE - ML NLTE = {nlte_rms[1]:.3e}, "
-        f"MT constrained LTE - ML LTE = {lte_rms[0]:.3e}, "
-        f"MT all-branches LTE - ML LTE = {lte_rms[1]:.3e}"
+        f"J-constrained MT NLTE - ML NLTE = {nlte_rms[0]:.3e}, "
+        f"unconstrained MT NLTE - ML NLTE = {nlte_rms[1]:.3e}, "
+        f"J-constrained MT LTE - ML LTE = {lte_rms[0]:.3e}, "
+        f"unconstrained MT LTE - ML LTE = {lte_rms[1]:.3e}"
     )
     return fig
 
@@ -344,10 +345,11 @@ def main():
     isotropic field the two Stokes V/I profiles agree at low field and diverge as the field enters the
     incomplete-Paschen-Back regime.
 
-    Part (b) isolates NLTE scattering, for both atomic models at once: at weak field and anisotropic
-    illumination the non-LTE multi-term and multi-level atoms each build a self-consistent upper-level
-    alignment and hence a scattering Q/I, while their LTE counterparts (thermal populations) sit at
-    Q/I = 0. The effect is a property of the population treatment, not of the atomic model.
+    Part (b) isolates NLTE scattering, for both atomic models at once: at weak field and under the
+    prescribed Allen radiation tensor the non-LTE multi-term and multi-level atoms each solve for
+    upper-level alignment and hence a scattering Q/I, while their LTE counterparts (thermal
+    populations) sit at Q/I = 0. The effect is a property of the population treatment, not of the
+    atomic model.
 
     :return: a tuple ``(second_order_zeeman_figure, nlte_scattering_figure)`` (neither shown; the
         caller decides whether to display or save them; they are separate manuscript figures).

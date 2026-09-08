@@ -20,8 +20,9 @@ def main():
 
     setup_logging()
 
-    model = PreconfiguredModels.multi_term_atom_HeID3()
-    reference_lambda_A_air = model.config.reference_lambda_A_air
+    model_mt = PreconfiguredModels.multi_term_atom_HeID3()
+    model_ml = PreconfiguredModels.multi_level_atom_HeID3()
+    reference_lambda_A_air = model_mt.config.reference_lambda_A_air
     nu = get_frequencies_from_air_wavelength_range(
         lower_wavelength_A=reference_lambda_A_air - 0.5,
         upper_wavelength_A=reference_lambda_A_air + 0.8,
@@ -40,36 +41,42 @@ def main():
         "He I D3 transition for different magnetic field values", reference_lambda_A_air=reference_lambda_A_air
     )
 
-    for Bz, color in zip([0, 3000, 5000], ["k", "#d62728", "#2ca02c"]):
-        atmosphere_parameters = model.AtmosphereParameters(
-            model_config=model.config,
-            magnetic_field_gauss=Bz,
-            temperature_K=5000,
-        )
-
-        radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
-            h_arcsec=30,
-        )
-
-        initial_stokes = Stokes.from_zeros(nu_sm1=nu)
-        atmosphere = MultiSlabAtmosphere(
-            ConstantPropertySlabAtmosphere(
-                model=model,
-                radiation_tensor=radiation_tensor,
-                line_delta_tau=0.1,
-                continuum_delta_tau=0.01,
-                angles=angles,
-                atmosphere_parameters=atmosphere_parameters,
+    for Bz, color in zip([500, 4000], ["k", "r"]):
+        for model, label_prefix, style, linewidth in (
+            (model_mt, "Multi-term", "-", 1.5),
+            (model_ml, "Multi-level", "--", 1.2),
+        ):
+            atmosphere_parameters = model.AtmosphereParameters(
+                model_config=model.config,
+                magnetic_field_gauss=Bz,
+                temperature_K=5000,
             )
-        )
 
-        plotter.add_stokes(
-            nu=nu,
-            stokes=atmosphere.forward(initial_stokes=initial_stokes),
-            norm=StokesPlotter.Norm.MAX_I,
-            label=f"B = {Bz} G",
-            color=color,
-        )
+            radiation_tensor = model.RadiationTensor.from_model_config(model.config).fill_NLTE_n_w_allen(
+                h_arcsec=30,
+            )
+
+            initial_stokes = Stokes.from_zeros(nu_sm1=nu)
+            atmosphere = MultiSlabAtmosphere(
+                ConstantPropertySlabAtmosphere(
+                    model=model,
+                    radiation_tensor=radiation_tensor,
+                    line_delta_tau=0.1,
+                    continuum_delta_tau=0.01,
+                    angles=angles,
+                    atmosphere_parameters=atmosphere_parameters,
+                )
+            )
+
+            plotter.add_stokes(
+                nu=nu,
+                stokes=atmosphere.forward(initial_stokes=initial_stokes),
+                norm=StokesPlotter.Norm.MAX_I,
+                label=f"{label_prefix}, B = {Bz} G",
+                color=color,
+                style=style,
+                linewidth=linewidth,
+            )
 
     return plotter
 
