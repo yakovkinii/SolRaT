@@ -201,10 +201,15 @@ def main():
     )
     angles = Angles(chi=0.0, theta=0.0, gamma=0.0, chi_B=chi_B, theta_B=theta_B)
 
-    fig, axes = plt.subplots(2, 2, figsize=(11, 7), sharex=True)
-    axis_labels = ["$I$", "$Q/I$", "$U/I$", "$V/I$"]
+    fig, axes = plt.subplots(4, 1, figsize=(8.0, 8.8), sharex=True)
+    axis_labels = [
+        r"Stokes $I\,/\,I_{\max}$",
+        r"Stokes $Q/I$",
+        r"Stokes $U/I$",
+        r"Stokes $V/I$",
+    ]
     field_values_gauss = [500.0, 1500.0, 3000.0]
-    colors = ["k", "#d62728", "#2ca02c"]
+    colors = ["k", "r", "g"]
     stokes_residuals = []
 
     for magnetic_field_gauss, color in zip(field_values_gauss, colors):
@@ -275,27 +280,25 @@ def main():
         ]
         for solrat_curve, analytic_curve in panels:
             stokes_residuals.append(float(np.mean((solrat_curve - analytic_curve) ** 2)))
-        for ax, (solrat_curve, analytic_curve) in zip(axes.ravel(), panels):
+        for ax, (solrat_curve, analytic_curve) in zip(axes, panels):
             ax.plot(v, solrat_curve, lw=0.9, color=color)
-            ax.plot(v, analytic_curve, lw=2.4, ls=(0, (1, 1)), color=color)
+            ax.plot(v, analytic_curve, lw=2.4, ls=":", color=color)
 
-    for ax, label in zip(axes.ravel(), axis_labels):
+    for ax, label in zip(axes, axis_labels):
         ax.set_ylabel(label)
         ax.axhline(0.0, color="0.7", lw=0.6)
         ax.grid(color="0.88", linewidth=0.5, alpha=0.7)
-    for ax in axes[1]:
-        ax.set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
-    axes[0, 0].set_ylabel(r"$I\,/\,I_{\max}$")
+    axes[-1].set_xlabel(r"$(\nu - \nu_0)/\Delta\nu_D$")
     style_key = [
         Line2D([], [], color="k", lw=0.9, label="SolRaT"),
-        Line2D([], [], color="k", lw=2.4, ls=(0, (1, 1)), label="Unno-Rachkovsky"),
+        Line2D([], [], color="k", lw=2.4, ls=":", label="Unno-Rachkovsky"),
     ]
     field_key = [
         Line2D([], [], color=color, lw=2.4, label=f"B = {b:.0f} G") for b, color in zip(field_values_gauss, colors)
     ]
-    axes[0, 0].legend(handles=style_key, fontsize=11, loc="best")
-    axes[0, 1].legend(handles=field_key, fontsize=11, loc="best")
-    fig.align_ylabels(axes.ravel())
+    axes[0].legend(handles=style_key, fontsize=12, loc="best")
+    axes[1].legend(handles=field_key, fontsize=12, loc="best")
+    fig.align_ylabels(axes)
     fig.tight_layout()
     print(
         f"Stratified prescribed-JKQ numerical RTE vs analytic Unno-Rachkovsky: "

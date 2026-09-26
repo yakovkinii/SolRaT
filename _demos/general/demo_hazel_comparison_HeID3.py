@@ -141,11 +141,16 @@ def main():
     setup_logging()
 
     profiles = load_hazel_profiles()
-    stokes_labels = ["$I / I_{\\mathrm{c}}$", "$Q/I$", "$U/I$", "$V/I$"]
+    stokes_labels = [
+        "$\\mathrm{Stokes}\\ I / I_{\\mathrm{c}}$",
+        "$\\mathrm{Stokes}\\ Q/I$",
+        "$\\mathrm{Stokes}\\ U/I$",
+        "$\\mathrm{Stokes}\\ V/I$",
+    ]
 
     fig, axes = plt.subplots(4, 1, figsize=(8.0, 8.8), sharex=True)
     agreement = []
-    colors = ["k", "#d62728", "#2ca02c"]
+    colors = ["k", "r", "g"]
     for index, profile in enumerate(profiles):
         delta_lambda_a, solrat = synthesize_solrat(
             profile["field_gauss"],
@@ -156,9 +161,7 @@ def main():
             profile["optical_depth"],
         )
         color = colors[index % len(colors)]
-        label = (
-            f"profile {profile['id']}: " f"$|B|$={profile['field_gauss']:.0f} G, LOS={profile['los_deg']:.0f}$^\\circ$"
-        )
+        label = f"profile {profile['id']}: $|B|$={profile['field_gauss']:.0f} G, LOS={profile['los_deg']:.0f}$^\\circ$"
         solrat_curves = [solrat.I / solrat.I[0], solrat.Q / solrat.I, solrat.U / solrat.I, solrat.V / solrat.I]
         hazel_curves = [
             profile["I"] / profile["I"][0],
@@ -168,14 +171,14 @@ def main():
         ]
         for row in range(4):
             axis = axes[row]
-            axis.plot(delta_lambda_a, solrat_curves[row], lw=0.9, color=color, label=f"{label} SolRaT")
+            axis.plot(delta_lambda_a, solrat_curves[row], lw=0.9, color=color, label=f"SolRaT, {label}")
             axis.plot(
                 profile["delta_lambda_A"],
                 hazel_curves[row],
                 lw=2.4,
-                ls=(0, (1, 1)),
+                ls=":",
                 color=color,
-                label=f"{label} Hazel",
+                label=f"Hazel2, {label}",
             )
             axis.axhline(0.0, color="0.7", lw=0.6)
             axis.grid(color="0.88", linewidth=0.5, alpha=0.7)
@@ -186,8 +189,11 @@ def main():
             rms = float(np.sqrt(np.mean((solrat_fraction - hazel_on_solrat) ** 2)))
             agreement.append(f"profile {profile['id']} {name}: RMS={rms:.2e}")
 
-    axes[0].legend(fontsize=8, ncol=2, loc="best")
-    axes[-1].set_xlabel(r"$\lambda - %.1f$ ($\AA$)" % LINE_CENTER_A)
+    handles, labels = axes[0].get_legend_handles_labels()
+    ordered_handles = handles[0::2] + handles[1::2]
+    ordered_labels = labels[0::2] + labels[1::2]
+    axes[0].legend(ordered_handles, ordered_labels, fontsize=9, ncol=2, loc="best")
+    axes[-1].set_xlabel(r"$\Delta\lambda$ ($\AA$)")
     fig.align_ylabels(axes)
     fig.tight_layout()
     print("SolRaT vs Hazel (He I D3):")

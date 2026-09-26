@@ -165,7 +165,7 @@ def main():
             "0.45",
             (0, (4, 1)),
         ),
-        ("Multi-level (non-LTE)", build_multi_level_s0(reference_lambda_A_air, lte=False), "#d62728", "--"),
+        ("Multi-level (non-LTE)", build_multi_level_s0(reference_lambda_A_air, lte=False), "r", "--"),
         (
             "Multi-term, $J$-constrained (LTE)",
             build_multi_term_s0(reference_lambda_A_air, lte=True, j_constrained=True),
@@ -176,9 +176,9 @@ def main():
             "Multi-term, all branches (LTE)",
             build_multi_term_s0(reference_lambda_A_air, lte=True, j_constrained=False),
             "0.45",
-            (0, (3, 2)),
+            "--",
         ),
-        ("Multi-level (LTE)", build_multi_level_s0(reference_lambda_A_air, lte=True), "#2ca02c", (0, (1, 1))),
+        ("Multi-level (LTE)", build_multi_level_s0(reference_lambda_A_air, lte=True), "g", ":"),
     )
 
     fig, ax = plt.subplots(figsize=(7, 5))

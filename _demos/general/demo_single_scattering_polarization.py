@@ -101,14 +101,14 @@ def main():
         np.abs(qi_line_center) / normalization,
         lw=1.2,
         marker="o",
-        color="#1f77b4",
+        color="b",
         label=r"SolRaT $|\eta_Q/\eta_I|$ (normalized)",
     )
     ax.plot(
         np.rad2deg(scattering_angles),
         rayleigh / np.max(rayleigh),
         lw=2.8,
-        ls=(0, (1, 1)),
+        ls=":",
         color="k",
         label=r"Rayleigh $\sin^2\theta$ (normalized)",
     )

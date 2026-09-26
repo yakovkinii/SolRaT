@@ -11,6 +11,7 @@ from solrat.atom_model.base_atom_model.object.config import ConfigT
 from solrat.atom_model.base_atom_model.object.radiation_tensor import RadiationTensorT
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import RTET
 from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import SEET
+from solrat.atom_model.multi_level_atom_model.data.HeI import get_He_I_D3_config as get_multi_level_He_I_D3_config
 from solrat.atom_model.multi_level_atom_model.data.mock import get_mock_atom_config as get_mock_multi_level_atom_config
 from solrat.atom_model.multi_level_atom_model.object.atmosphere_parameters import (
     AtmosphereParameters as MultiLevelAtmosphereParameters,
@@ -164,6 +165,10 @@ class PreconfiguredModels:
     @staticmethod
     def multi_term_atom_HeID3():
         return Models.multi_term_atom().configure(config=get_He_I_D3_config())
+
+    @staticmethod
+    def multi_level_atom_HeID3():
+        return Models.multi_level_atom().configure(config=get_multi_level_He_I_D3_config())
 
     @staticmethod
     def multi_term_atom_mock():

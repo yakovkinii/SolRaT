@@ -109,8 +109,8 @@ def main(warm_start=True):
         depolarizing_ratios,
         analytic_factor,
         lw=2.4,
-        ls=(0, (1, 1)),
-        color="#d62728",
+        ls=":",
+        color="r",
         label=r"$1/(1 + D^{(2)}/A_{ul})$",
     )
     ax.set_xscale("symlog", linthresh=0.1)

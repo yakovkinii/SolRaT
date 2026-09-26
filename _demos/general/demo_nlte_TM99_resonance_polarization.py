@@ -405,7 +405,7 @@ def main(warm_start=True):
     }
     colors_by_delta2 = {
         1.0: "k",
-        0.1: "#d62728",
+        0.1: "r",
     }
     solrat_by_delta2 = {
         delta2: calculate_alignment_for_delta2(delta2=delta2, warm_start=warm_start) for delta2 in benchmark_by_delta2
