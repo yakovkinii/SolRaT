@@ -69,7 +69,7 @@ def main():
     # Linear-Zeeman sublevel energies: the diagonal of the same Hamiltonian, with the
     # off-diagonal J-coupling dropped.
     B = np.asarray(magnetic_fields, dtype=float)
-    B = B[B<=7000]
+    B = B[B <= 7000]
     mu0b_cm = mu0_erg_gaussm1 * B / h_erg_s / c_cm_sm1  # mu_0 * B in cm-1
     linear_zeeman = []
     for level in term_2p.levels:
@@ -87,7 +87,7 @@ def main():
                 boundary,
                 color=REGIME_COLOR,
                 lw=REGIME_LINE_WIDTH,
-                ls='-',
+                ls="-",
                 alpha=0.8,
                 zorder=1,
             )

@@ -244,9 +244,7 @@ def main():
     fig, (ax_align, ax_qi) = plt.subplots(1, 2, figsize=(11, 5))
     ax_align.axhline(tm99_surface_alignment, color="k", ls="--", label=f"TM99 surface = {tm99_surface_alignment}")
     ax_align.plot(optical_depth_from_surface[:-1], alignment_mt[:-1], lw=1.4, color="b", label="multi-term")
-    ax_align.plot(
-        optical_depth_from_surface[:-1], alignment_ml[:-1], lw=3.0, ls=":", color="r", label="multi-level"
-    )
+    ax_align.plot(optical_depth_from_surface[:-1], alignment_ml[:-1], lw=3.0, ls=":", color="r", label="multi-level")
     ax_align.set_xscale("log")
     ax_align.set_xlabel(r"optical depth from surface  $\tau$")
     ax_align.set_ylabel(r"upper-level alignment  $\rho^2_0 / \rho^0_0$")

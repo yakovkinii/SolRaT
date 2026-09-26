@@ -80,7 +80,6 @@ AH65_FIG2_EPSILON_1EM2_SOURCE = np.array(
         0.1075,
         0.1085,
         0.11,
-
         0.111,
         0.1135,
         0.116,
@@ -91,7 +90,6 @@ AH65_FIG2_EPSILON_1EM2_SOURCE = np.array(
         0.142,
         0.151,
         0.162,
-
         0.175,
         0.189,
         0.205,
@@ -116,7 +114,7 @@ AH65_FIG2_EPSILON_1EM2_SOURCE = np.array(
         0.91,
         0.935,
         0.953,
-        0.965
+        0.965,
     ]
 )
 
@@ -255,7 +253,7 @@ def main(warm_start=True):
         source_over_b[order],
         color="k",
         lw=1.4,
-        label=rf"SolRaT",
+        label=r"SolRaT",
     )
     rms = benchmark_rms(tau_from_surface, source_over_b, AH65_FIG2_EPSILON_1EM2_TAU, AH65_FIG2_EPSILON_1EM2_SOURCE)
     ax.semilogx(
@@ -266,7 +264,7 @@ def main(warm_start=True):
         markersize=5.5,
         markeredgewidth=1.3,
         color="k",
-        label=rf"AH65",
+        label=r"AH65",
     )
     # sqrt(epsilon) surface asymptote (the law's profile-independent content); the Doppler line
     # thermalizes to B over tau ~ 1/epsilon, not the monochromatic Eddington 1/sqrt(3 epsilon).
