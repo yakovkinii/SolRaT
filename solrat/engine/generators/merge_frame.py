@@ -343,6 +343,18 @@ class Frame(Generic[SumLimitsT]):
 
         return self
 
+    @log_method
+    def merge_all_factors(self) -> Self:
+        """
+        Evaluate every registered factor and combine them into one merged factor, without reducing any loop column.
+        Use this to precompute the part of a frame whose factors never change, then ``copy()`` it for each use.
+        """
+        for factor_name in list(self.factors.keys()):
+            if not self.factors[factor_name].merged:
+                self.merge_factor(factor_name)
+        self.combine_all_merged_factors()
+        return self
+
     def get_dependent_factors(self, column: str) -> List[str]:
         return [name for name, factor in self.factors.items() if column in factor.dependencies]
 
