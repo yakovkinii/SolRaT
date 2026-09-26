@@ -26,8 +26,10 @@ class AtmosphereParameters(BaseAtmosphereParameters):
         macroscopic_velocity_cm_sm1=0,
         voigt_a=0,
     ):
+        self.model_config = model_config  # for reference only; not part of the cache key
         self.magnetic_field_gauss = magnetic_field_gauss
         self.temperature_K = temperature_K
+        self.delta_v_turbulent_cm_sm1 = delta_v_turbulent_cm_sm1  # for reference only; not part of the cache key
         self.delta_v_thermal_cm_sm1 = np.sqrt(
             delta_v_turbulent_cm_sm1**2
             + 2 * kB_erg_Km1 * temperature_K / model_config.atomic_mass_amu / atomic_mass_unit_g

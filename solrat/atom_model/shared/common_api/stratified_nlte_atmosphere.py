@@ -278,6 +278,12 @@ class NLTEStratifiedAtmosphere:
         (residual divided by :math:`1-\lambda`, with :math:`\lambda` the measured contraction rate)
         rather than on the raw residual; grid-robust. With Ng it needs ``ng_period`` large enough for
         a clean measurement window per period.
+    :param see: optional SEE object reused by the caller. This preserves atom-level caches. It is
+        tied to one atomic model/configuration and is not invalidated by this atmosphere.
+    :param rte: optional RTE object on the same frequency grid as ``initial_stokes``. This preserves
+        atom-level caches. During the self-consistent iteration this atmosphere enables the
+        RTE operator cache and clears it before returning, because that cache is valid only for an
+        unchanged atmosphere/geometry.
     """
 
     def __init__(
@@ -297,6 +303,8 @@ class NLTEStratifiedAtmosphere:
         ng_damping: float = 1.0,
         transfer_scheme: str = "delo_constant",
         estimate_true_error: bool = False,
+        see: Optional[BaseSEE] = None,
+        rte: Optional[BaseRTE] = None,
     ):
         # A tangential observer (mu -> 0) is allowed: it is handled by the surface-source-function
         # (Eddington-Barbier) branch in forward(), so no |mu| lower bound is required here.
@@ -340,6 +348,8 @@ class NLTEStratifiedAtmosphere:
         self.ng_damping = ng_damping
         self.transfer_scheme = transfer_scheme
         self.estimate_true_error = estimate_true_error
+        self._reusable_see = see
+        self._reusable_rte = rte
 
         # Diagnostics populated by forward()
         self.rho_grid: Optional[List[BaseRho]] = None
@@ -355,6 +365,37 @@ class NLTEStratifiedAtmosphere:
         # forward()); the profiles themselves are built per (ray, depth).
         self._recon_transition_ids: List[str] = []
         self._recon_centers: Optional[np.ndarray] = None
+
+    def _get_see(self) -> BaseSEE:
+        if self._reusable_see is not None:
+            return self._reusable_see
+        return self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
+
+    def _get_rte(self, nu: np.ndarray) -> BaseRTE:
+        if self._reusable_rte is not None:
+            assert np.array_equal(
+                self._reusable_rte.nu, nu
+            ), "Supplied RTE frequency grid does not match initial_stokes.nu."
+            return self._reusable_rte
+        return self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
+
+    @staticmethod
+    def _set_operator_cache_enabled(rte: BaseRTE, enabled: bool) -> Optional[bool]:
+        if not hasattr(rte, "use_operator_cache"):
+            return None
+        previous = rte.use_operator_cache
+        rte.use_operator_cache = enabled
+        return previous
+
+    @staticmethod
+    def _restore_operator_cache_enabled(rte: BaseRTE, previous: Optional[bool]) -> None:
+        if previous is not None:
+            rte.use_operator_cache = previous
+
+    @staticmethod
+    def _clear_operator_cache(rte: BaseRTE) -> None:
+        if hasattr(rte, "clear_operator_cache"):
+            rte.clear_operator_cache()
 
     @property
     def model_signature(self) -> str:
@@ -401,15 +442,15 @@ class NLTEStratifiedAtmosphere:
         self.final_true_error = None
         self.lambda_estimate = None
 
-        see: BaseSEE = self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
-        rte: BaseRTE = self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
+        see = self._get_see()
+        rte = self._get_rte(nu)
         # Opacity is carried by the per-depth number density: the line transfer coefficients are
         # proportional to the lower-level number density N (LL04 Ch. 7), so set rte.N = N(z_i)
         # per call. N is the final factor applied after the cached operator, so the operator cache
         # stays valid.
         rte.N = 1.0
-        if hasattr(rte, "use_operator_cache"):
-            rte.use_operator_cache = True
+        self._clear_operator_cache(rte)
+        previous_operator_cache_enabled = self._set_operator_cache_enabled(rte, True)
 
         # Per-depth precomputed quantities.
         N = strat.number_density_cm3
@@ -662,8 +703,8 @@ class NLTEStratifiedAtmosphere:
         self.rho_grid = rho_grid
         emergent = emergent_stokes_for(rho_grid)
 
-        if hasattr(rte, "clear_operator_cache"):
-            rte.clear_operator_cache()
+        self._clear_operator_cache(rte)
+        self._restore_operator_cache_enabled(rte, previous_operator_cache_enabled)
 
         return emergent
 
@@ -1230,6 +1271,9 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
         ``f(z_cm, tau_c)`` where ``tau_c`` is continuum optical depth measured downward from the
         observer-side surface. When supplied, transfer uses
         :math:`\bm\varepsilon=\mathbf K(S_I,0,0,0)^T`.
+    :param see: optional SEE object reused by the caller. This preserves atom-level caches.
+    :param rte: optional RTE object on the same frequency grid as ``initial_stokes``. This preserves
+        atom-level caches. The prescribed-radiation atmosphere keeps operator caching disabled.
     """
 
     def __init__(
@@ -1243,6 +1287,8 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
         top_incident_stokes: Optional[Stokes] = None,
         transfer_scheme: str = "delo_linear",
         source_function_I: Optional[SourceFunctionProfile] = None,
+        see: Optional[BaseSEE] = None,
+        rte: Optional[BaseRTE] = None,
     ):
         super().__init__(
             model=model,
@@ -1256,6 +1302,8 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
             tolerance=0.0,
             top_incident_stokes=top_incident_stokes,
             transfer_scheme=transfer_scheme,
+            see=see,
+            rte=rte,
         )
         self.prescribed_radiation_tensor = radiation_tensor
         self.source_function_I = source_function_I
@@ -1279,11 +1327,10 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
         self.final_true_error = None
         self.lambda_estimate = None
 
-        see: BaseSEE = self.model.StatisticalEquilibriumEquations.from_model_config(self.model.config)
-        rte: BaseRTE = self.model.RadiativeTransferEquations.from_model_config(self.model.config, nu=nu)
+        see = self._get_see()
+        rte = self._get_rte(nu)
         rte.N = 1.0
-        if hasattr(rte, "use_operator_cache"):
-            rte.use_operator_cache = True
+        self._set_operator_cache_enabled(rte, False)
 
         N = strat.number_density_cm3
         bp_per_z = [get_planck_BP(nu_sm1=nu, temperature_K=strat.temperature_K[i]) for i in range(n_z)]
@@ -1357,8 +1404,6 @@ class PrescribedRadiationStratifiedAtmosphere(NLTEStratifiedAtmosphere):
 
         self.rho_grid = rho_grid
         self.radiation_tensor_grid = radiation_tensor_grid
-        if hasattr(rte, "clear_operator_cache"):
-            rte.clear_operator_cache()
         return Stokes(nu=nu, I=real(e[0]), Q=real(e[1]), U=real(e[2]), V=real(e[3]))
 
     def _radiation_tensor_grid(self, z: np.ndarray, tau: np.ndarray) -> List[BaseRadiationTensor]:
