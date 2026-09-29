@@ -14,6 +14,10 @@ from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import T_K_Q
 from solrat.atom_model.shared.object.stokes import Stokes
+from solrat.atom_model.shared.utility.evolution_operator import (
+    evolution_and_interpolation_operators,
+    evolution_operator,
+)
 from solrat.atom_model.shared.utility.constants import c_cm_sm1
 from solrat.atom_model.shared.utility.functions import get_planck_BP
 from solrat.atom_model.shared.utility.voigt_profile import voigt
@@ -990,10 +994,9 @@ class NLTEStratifiedAtmosphere:
         # (LandiLandi1985 eq. 1).
         S = NLTEStratifiedAtmosphere._delo_source_function(K, epsilon)
 
-        # Evolution operator e^{-K ds} by diagonalization O = X diag(e^{-k_i ds}) X^{-1}
-        # (LandiLandi1985 eq. 5 and p. 241; LL04 Sec. 8.4).
-        lam, V = np.linalg.eig(-K * ds)  # lam [n_nu, 4], V [n_nu, 4, 4]
-        expM = np.real(V @ (np.exp(lam)[:, :, np.newaxis] * np.linalg.inv(V)))  # [n_nu, 4, 4]
+        # Evolution operator e^{-K ds} in closed form (LandiLandi1985 eq. 5 and p. 241; LL04
+        # Sec. 8.4), built from the eigenvalue scales of the propagation matrix.
+        expM = evolution_operator(K, ds)  # [n_nu, 4, 4]
 
         current = current_stokes.T[:, :, np.newaxis]  # [n_nu, 4, 1]
         new = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, current - S[:, :, np.newaxis])
@@ -1024,14 +1027,8 @@ class NLTEStratifiedAtmosphere:
         S_down = NLTEStratifiedAtmosphere._delo_source_function(K_down, eps_down)  # [n_nu, 4]
 
         K_bar = 0.5 * (K_up + K_down)
-        lam, V = np.linalg.eig(-K_bar * ds)  # eigenvalues of -K_bar ds
-        V_inv = np.linalg.inv(V)
-        # E = e^{-K_bar ds} and P = (K_bar ds)^{-1}(I - E), each per eigenvalue: e^{lam} and
-        # g(lam) = (e^{lam} - 1)/lam (-> 1 as lam -> 0; small-|lam| Taylor avoids cancellation).
-        small = np.abs(lam) < 1e-6
-        g = np.where(small, 1.0 + lam * (0.5 + lam / 6.0), (np.exp(lam) - 1.0) / np.where(small, 1.0, lam))
-        E = np.real(V @ (np.exp(lam)[:, :, np.newaxis] * V_inv))  # [n_nu, 4, 4]
-        P = np.real(V @ (g[:, :, np.newaxis] * V_inv))  # [n_nu, 4, 4]
+        # E = e^{-K_bar ds} and P = (K_bar ds)^{-1}(I - E), both in closed form.
+        E, P = evolution_and_interpolation_operators(K_bar, ds)  # [n_nu, 4, 4]
 
         psi_up = P - E
         psi_down = np.eye(4)[np.newaxis] - P

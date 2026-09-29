@@ -32,7 +32,13 @@ class CompiledOperator:
                 "contract against. This usually means no transition falls in the frequency range "
                 "(check the frequency grid / transition cutoff)."
             )
-        coefficients = np.stack([np.asarray(value, dtype=np.complex128) for value in columns[coefficient_col]], axis=-1)
+        coefficient_column = columns[coefficient_col]
+        if coefficient_column.dtype != object:  # dense block from the engine: rows are the leading axis
+            coefficients = np.moveaxis(np.asarray(coefficient_column, dtype=np.complex128), 0, -1)
+        else:
+            coefficients = np.stack(
+                [np.asarray(value, dtype=np.complex128) for value in coefficient_column], axis=-1
+            )
         return cls(keys=keys, coefficients=coefficients)
 
     def multiply(self, value: Callable) -> np.ndarray:
