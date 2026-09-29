@@ -56,17 +56,17 @@ class TestStatisticalEquilibriumEquationsLTE(unittest.TestCase):
 
         # The isotropic-Planck NLTE solution equals the LTE solution coherence by coherence.
         for coherence_id, value_lte in rho_lte.data.items():
-            self.assertLess(np.abs(rho.data[coherence_id] - value_lte), 1e-10 + 1e-8 * np.abs(value_lte))
+            assert np.abs(rho.data[coherence_id] - value_lte) < 1e-10 + 1e-8 * np.abs(value_lte)
 
         # Both reproduce the analytic Boltzmann populations.
-        self.assertLess(np.abs(rho_lte(0, 0, lower_id) - rho00_lower_analytic), 1e-12)
-        self.assertLess(np.abs(rho_lte(0, 0, upper_id) - rho00_upper_analytic), 1e-12)
-        self.assertLess(np.abs(rho(0, 0, lower_id) - rho00_lower_analytic), 1e-9)
-        self.assertLess(np.abs(rho(0, 0, upper_id) - rho00_upper_analytic), 1e-9)
+        assert np.abs(rho_lte(0, 0, lower_id) - rho00_lower_analytic) < 1e-12
+        assert np.abs(rho_lte(0, 0, upper_id) - rho00_upper_analytic) < 1e-12
+        assert np.abs(rho(0, 0, lower_id) - rho00_lower_analytic) < 1e-9
+        assert np.abs(rho(0, 0, upper_id) - rho00_upper_analytic) < 1e-9
 
         # An isotropic field creates no upper-level alignment in either solution.
-        self.assertLess(np.abs(rho_lte(2, 0, upper_id)), 1e-14)
-        self.assertLess(np.abs(rho(2, 0, upper_id)), 1e-9)
+        assert np.abs(rho_lte(2, 0, upper_id)) < 1e-14
+        assert np.abs(rho(2, 0, upper_id)) < 1e-9
 
 
 if __name__ == "__main__":

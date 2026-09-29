@@ -68,13 +68,13 @@ class TestEstimateTrueError(unittest.TestCase):
         )
         atmosphere.forward(initial_stokes=Stokes.from_zeros(nu_sm1=nu))
 
-        self.assertIsNotNone(atmosphere.iterations_used)
-        self.assertGreaterEqual(atmosphere.iterations_used, 1)
-        self.assertTrue(np.isfinite(atmosphere.final_residual))
+        assert atmosphere.iterations_used is not None
+        assert atmosphere.iterations_used >= 1
+        assert np.isfinite(atmosphere.final_residual)
         # the estimate branch ran: these fields are populated (None until enough clean-decay residuals
         # accrue, finite thereafter -- either way the branch executed).
-        self.assertTrue(atmosphere.final_true_error is None or np.isfinite(atmosphere.final_true_error))
-        self.assertTrue(atmosphere.lambda_estimate is None or np.isfinite(atmosphere.lambda_estimate))
+        assert atmosphere.final_true_error is None or np.isfinite(atmosphere.final_true_error)
+        assert atmosphere.lambda_estimate is None or np.isfinite(atmosphere.lambda_estimate)
 
 
 if __name__ == "__main__":

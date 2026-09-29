@@ -5,8 +5,7 @@ from solrat.engine.functions.decorators import log_method
 
 
 class ForwardAtmosphere(Protocol):
-    def forward(self, initial_stokes: Stokes) -> Stokes:
-        ...
+    def forward(self, initial_stokes: Stokes) -> Stokes: ...
 
 
 class MultiSlabAtmosphere:

@@ -1,7 +1,7 @@
 SolRaT: Introduction
 ====================
 
-SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, non-LTE transfer of spectral-line radiation in magnetized stellar atmospheres. It solves the statistical-equilibrium and radiative-transfer equations in the density-matrix formalism of Landi Degl'Innocenti & Landolfi (2004, LL04), for magnetic fields of arbitrary strength, from the Zeeman through the Hanle and Paschen-Back regimes.
+SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, non-LTE transfer of spectral-line radiation in magnetized stellar atmospheres. It solves the statistical-equilibrium and radiative-transfer equations in the density-matrix formalism of Landi Degl'Innocenti & Landolfi (2004, LL04), including Hanle physics at weak fields, linear Zeeman splitting, and Paschen-Back splitting in the multi-term atom.
 
 .. image:: https://www.yakovkinii.com/solrat/media/solrat7.png
    :width: 600
@@ -14,7 +14,7 @@ Physical model
 --------------
 *   **Density-matrix formalism** in the irreducible spherical statistical tensors :math:`\rho^K_Q`, with atomic level polarization fully included (LL04).
 *   **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and LTE variants of both descriptions, selectable without rewriting the surrounding code.
-*   **Magnetic fields of arbitrary strength**: Zeeman, Hanle, and the Paschen-Back regime by exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Hanle for the multi-level atom).
+*   **Magnetic fields across regimes**: Hanle physics at weak fields, linear Zeeman splitting in the multi-level atom, and linear Zeeman through incomplete and complete Paschen-Back splitting in the multi-term atom by exact diagonalization of the atomic Hamiltonian.
 *   **Radiation field** :math:`J^K_Q` either prescribed (LTE Planck, or Allen/ATL08-style anisotropic :math:`\{n, w\}` values for coronal/chromospheric lines) or solved self-consistently for the non-LTE scattering problem (TM99): collisionless by default, with optional parametrized collisional rates in the statistical equilibrium of both the multi-level and the multi-term atom (inelastic transfer with Einstein-Milne detailed balance, and elastic depolarization) that bridge the scattering limit to LTE.
 
 Atmospheres and synthesis
@@ -22,6 +22,8 @@ Atmospheres and synthesis
 *   **Constant-property slabs**, optionally stacked into a multi-slab stratification under anisotropic illumination (ATL08, HAZEL2).
 *   **Height-stratified atmospheres** in which temperature, absorber number density, the magnetic-field vector, microturbulence, Voigt damping, and the vector macroscopic velocity vary continuously with geometric height; the radiation tensor :math:`J^K_Q` can be prescribed on the depth grid or solved self-consistently by :math:`\Lambda`-iteration, with the Stokes transfer solved by the DELO method.
 *   Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
+
+Pre-configured atomic data include He I D3 in multi-term and direct multi-level form, and LTE-oriented multi-term models for Mn I 5432.5 |Angstrom|, Ni I 5435.9 |Angstrom|, and Fe I 5434.523 |Angstrom|.
 
 Design
 ------
@@ -31,12 +33,23 @@ SolRaT is organized in three layers:
 *   **Modeling API** extends an existing model or builds a new one by analogy with the shipped ones.
 *   **SolRaT engine** is a vectorized meta-language in which the angular algebra and rate expressions are written close to their mathematical form; the bookkeeping and optimization are handled underneath, so the user can focus on the physics rather than on code optimization.
 
+.. figure:: _static/flow.png
+   :width: 100%
+   :alt: Data flow of a SolRaT synthesis
+   :align: center
+
+   Data flow of a SolRaT synthesis. The atmosphere, atomic description, radiation-field treatment, and RTE integration are separate choices. For self-consistent non-LTE calculations, the formal solution updates the radiation tensor used by the SEE.
+
+   Figure from Yakovkin (2026), arXiv:2609.32850, licensed under CC BY 4.0.
+
 Scope and limitations
 ---------------------
 SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default, so scattering-polarization amplitudes are then upper limits; an optional parametrized-collision extension (for both the multi-level and the multi-term atom) adds inelastic (transfer) and elastic (depolarizing) rates that bridge the scattering limit to LTE via detailed balance. Line formation assumes complete frequency redistribution (CRD). Physical collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out of scope for the current version.
 
 References
 ----------
+[SolRaT article] Yakovkin, I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, arXiv:2609.32850, https://arxiv.org/abs/2609.32850
+
 [LL04] Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)
 
 [ATL08] Asensio Ramos, A., Trujillo Bueno, J., & Landi Degl’Innocenti, E. (2008). Advanced Forward Modeling and Inversion of Stokes Profiles Resulting from the Joint Action of the Hanle and Zeeman Effects. The Astrophysical Journal, 683(1), 542–565.
@@ -47,9 +60,9 @@ References
 
 How to Cite
 -----------
-A journal article is in preparation. In the meantime, if SolRaT contributes to your research, please cite it as:
+If SolRaT contributes to your research, please cite the arXiv article:
 
-    Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yakovkinii.com/solrat/
+    Yakovkin I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, arXiv:2609.32850
 
 Installation
 ------------
@@ -70,3 +83,5 @@ For the development version, clone the repository and install in editable mode:
 Next
 ----
 Check out the :doc:`quickstart` guide for basic usage examples.
+
+.. |Angstrom| unicode:: U+00C5

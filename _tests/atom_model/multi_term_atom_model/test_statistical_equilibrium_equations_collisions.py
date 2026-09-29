@@ -83,7 +83,7 @@ class TestMultiTermMultiJCollisions(unittest.TestCase):
         transition = next(iter(model.config.transition_registry.transitions.values()))
         collisions.fill_deexcitation_from_epsilon(transition, 0.99, TEMPERATURE_K)  # C_ul >> A_ul
         alignment = fractional_alignment(solve(model, "iso"), transition.term_upper.term_id)
-        self.assertLess(abs(alignment), 1e-8)  # isotropic illumination cannot align the level
+        assert abs(alignment) < 1e-8  # isotropic illumination cannot align the level
 
     def test_strong_collisions_depolarize(self):
         collisions = ParametrizedCollisions()
@@ -93,14 +93,14 @@ class TestMultiTermMultiJCollisions(unittest.TestCase):
 
         # No rates set: add_collisions runs but every component rate is zero (pure scattering).
         scattering = fractional_alignment(solve(model, "aniso"), term_id)
-        self.assertTrue(np.isfinite(scattering))
-        self.assertGreater(abs(scattering), 0.0)
+        assert np.isfinite(scattering)
+        assert abs(scattering) > 0.0
 
         # Strong inelastic collisions reduce the fractional alignment.
         collisions.fill_deexcitation_from_epsilon(transition, 0.99, TEMPERATURE_K)
         collisional = fractional_alignment(solve(model, "aniso"), term_id)
-        self.assertTrue(np.isfinite(collisional))
-        self.assertLess(abs(collisional), abs(scattering))
+        assert np.isfinite(collisional)
+        assert abs(collisional) < abs(scattering)
 
 
 if __name__ == "__main__":

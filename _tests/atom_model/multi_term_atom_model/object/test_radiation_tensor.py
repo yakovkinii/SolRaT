@@ -43,15 +43,15 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
 
     def test_planck_is_isotropic(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_planck(temperature_K=6000.0)
-        self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
-        self.assertAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
-        self.assertGreater(len(tensor.df), 0)  # triggers construct_df
+        assert np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)) > 0.0
+        assert np.isclose(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
+        assert len(tensor.df) > 0  # triggers construct_df
 
     def test_anisotropic_has_alignment(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_allen(h_arcsec=30)
-        self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
-        self.assertNotAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
-        self.assertGreater(len(tensor.df), 0)
+        assert np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)) > 0.0
+        assert not np.isclose(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
+        assert len(tensor.df) > 0
 
     def test_fill_nlte_n_w_explicit(self):
         n, w = 0.3, 0.1
@@ -61,8 +61,8 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
         j00_expected = n * 2 * h_erg_s * nu_ul**3 / c_cm_sm1**2
         j00 = np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0))
         j20 = np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0))
-        self.assertAlmostEqual(j00 / j00_expected, 1.0, places=6)
-        self.assertAlmostEqual(j20 / j00, w / np.sqrt(2.0), places=6)
+        assert np.isclose(j00 / j00_expected, 1.0, rtol=0.0, atol=1e-6)
+        assert np.isclose(j20 / j00, w / np.sqrt(2.0), rtol=0.0, atol=1e-6)
 
     def test_parametrized_stokes_I(self):
         tensor = RadiationTensor.from_model_config(self.config)
@@ -70,15 +70,15 @@ class TestMultiTermRadiationTensor(unittest.TestCase):
         nu0 = transition.get_mean_transition_frequency_sm1()
         nu = np.linspace(0.999 * nu0, 1.001 * nu0, 4)
         stokes_I = tensor.get_NLTE_n_w_allen_stokes_I(h_arcsec=30, theta=0.5, nu=nu)
-        self.assertEqual(stokes_I.shape, nu.shape)
-        self.assertTrue(np.all(np.isfinite(stokes_I)))
+        assert stokes_I.shape == nu.shape
+        assert np.all(np.isfinite(stokes_I))
 
     def test_isotropic_rotation_is_identity(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_planck(temperature_K=6000.0)
         rotated = tensor.rotate_to_magnetic_frame(angles=Angles())
         before = np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0))
         after = np.real(rotated.get_from_transition_id(self.transition_id, K=0, Q=0))
-        self.assertAlmostEqual(before, after)
+        assert np.isclose(before, after)
 
 
 if __name__ == "__main__":

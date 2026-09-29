@@ -94,8 +94,8 @@ class MilneEddingtonSlabAtmosphere:
         self.line_to_continuum_ratio = line_to_continuum_ratio
         self.source_gradient = source_gradient
         self.source_surface = source_surface
-        self.see = see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(
-            config=model.config
+        self.see = (
+            see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
         )
         self._reusable_rte = rte
         self._rte: Union[BaseRTE, None] = rte

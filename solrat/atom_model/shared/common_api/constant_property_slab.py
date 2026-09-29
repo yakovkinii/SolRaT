@@ -62,8 +62,8 @@ class ConstantPropertySlabAtmosphere:
         self.continuum_delta_tau = continuum_delta_tau
         self.angles = angles
         self.atmosphere_parameters = atmosphere_parameters
-        self.see = see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(
-            config=model.config
+        self.see = (
+            see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
         )
         self._reusable_rte = rte
         self._rte: Union[BaseRTE, None] = rte
