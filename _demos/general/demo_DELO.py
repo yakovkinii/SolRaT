@@ -129,8 +129,8 @@ def main():
         f"DELO vs {n_steps}-step finite difference: max|FD - DELO| / max|DELO| = "
         f"{float(np.max(np.abs(fd_final - delo_array)) / np.max(np.abs(delo_array))):.2e}"
     )
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()

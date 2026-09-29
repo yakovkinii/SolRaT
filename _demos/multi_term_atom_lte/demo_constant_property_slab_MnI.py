@@ -60,8 +60,12 @@ def demo_constant_property_slab_MnI():
         label="RTE with LTE SEE",
     )
 
-    plotter.show()
+    return plotter
+
+
+def main():
+    return demo_constant_property_slab_MnI()
 
 
 if __name__ == "__main__":
-    demo_constant_property_slab_MnI()
+    main().show()

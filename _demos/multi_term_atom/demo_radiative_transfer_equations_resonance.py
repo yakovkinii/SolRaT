@@ -99,8 +99,8 @@ def main():
         linewidth=2,
     )
     plotter.axs[3].set_ylim(-1, 1)
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()

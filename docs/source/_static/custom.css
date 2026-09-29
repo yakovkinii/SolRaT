@@ -1,0 +1,58 @@
+.solrat-link-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.25rem 0 1.75rem;
+}
+
+.solrat-link-bar a {
+  border: 1px solid var(--color-background-border);
+  border-radius: 6px;
+  padding: 0.35rem 0.7rem;
+  text-decoration: none;
+}
+
+.solrat-card-section {
+  margin: 2rem 0;
+}
+
+.solrat-card-section h2 {
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 1rem;
+}
+
+.solrat-card-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.solrat-card {
+  display: block;
+  min-height: 7rem;
+  border: 1px solid var(--color-background-border);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  text-decoration: none;
+  background: var(--color-background-secondary);
+}
+
+.solrat-card:hover {
+  border-color: var(--color-brand-primary);
+  text-decoration: none;
+}
+
+.solrat-card-title {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-weight: 700;
+}
+
+.solrat-card-text {
+  display: block;
+  color: var(--color-foreground-muted);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}

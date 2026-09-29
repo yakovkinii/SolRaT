@@ -26,7 +26,7 @@ with atomic level polarization fully included [[LL04](#References)].
 variants of both descriptions, selectable without rewriting the surrounding code.
 - **Magnetic fields across regimes**: linear Zeeman splitting in
 the multi-level atom, and linear Zeeman through incomplete and complete Paschen-Back splitting
-in the multi-term atom by exact diagonalization of the atomic Hamiltonian. Both descriptions capture the Hanle effect at weak fields, 
+in the multi-term atom by exact diagonalization of the atomic Hamiltonian. Both descriptions capture the Hanle effect at weak fields.
 - **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or Allen/[[ATL08](#References)]-style anisotropic
 $\{n, w\}$ values for coronal/chromospheric lines) or solved self-consistently for the
 non-LTE scattering problem [[TM99](#References)].
@@ -58,26 +58,26 @@ Pre-configured atomic data include He I D3 in multi-term and multi-level forms, 
 LTE-oriented multi-term models for Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, and Fe I 5434.523 &Aring;.
 
 #### Scope and limitations
-SolRaT a forward model. Line formation assumes complete frequency redistribution (CRD). Physical
+SolRaT is a forward model. Line formation assumes complete frequency redistribution (CRD). Physical
 collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out
-of scope for the current version. Please refer to [[SolRaT preprint](#References)] for more details on limitations.
+of scope for the current version. Please refer to [[SolRaT article](#References)] for more details on limitations.
 
 #### Installation
 Install SolRaT directly from PyPI by running ```pip install solrat```.
 
 #### Documentation
 Detailed documentation is available at [https://solrat.readthedocs.io/](https://solrat.readthedocs.io/latest/). 
-A quick-start example is available at [https://solrat.readthedocs.io/latest/quickstart.html](https://solrat.readthedocs.io/latest/quickstart.html).
+A getting-started guide is available at [https://solrat.readthedocs.io/latest/getting_started.html](https://solrat.readthedocs.io/latest/getting_started.html).
 Additional demos and validation against [[LL04](#References)] and [[HAZEL2](#References)] are available in [demos](https://github.com/yakovkinii/SolRaT/tree/master/_demos). 
 
 #### Citing
-If SolRaT has found use in your research, please cite the [arXiv preprint](https://arxiv.org/abs/2609.32850):
+If SolRaT has found use in your research, please cite the [arXiv article](https://arxiv.org/abs/2609.32850):
 ```
 Yakovkin I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, arXiv:2609.32850
 ```
 
 #### References
-[SolRaT preprint] Yakovkin, I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, [arXiv:2609.32850](https://arxiv.org/abs/2609.32850)
+[SolRaT article] Yakovkin, I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, [arXiv:2609.32850](https://arxiv.org/abs/2609.32850)
 
 [LL04] Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)
 

@@ -77,8 +77,9 @@ def main():
     plt.title(
         "FeI 5434: $J=1$ Lower term Zeeman splitting: \nPure LS (black) and LS with S scaled to mimic g=-0.014 (red)"
     )
-    plt.show()
+    return plt.gcf()
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

@@ -57,8 +57,8 @@ def main():
             label=f"B = {B} G",
         )
 
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()
