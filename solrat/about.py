@@ -1,1 +1,1 @@
-version = "1.4.3"  # pragma: no cover
+version = "1.4.4"  # pragma: no cover
