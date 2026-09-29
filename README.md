@@ -15,17 +15,19 @@ and radiative-transfer expression reads close to the equation it implements. The
 model that is transparent enough to inspect and verify, and flexible enough to adapt to a
 specific line or context rather than used as a black box.
 
-Manuscript figure and benchmark demos are mapped in [README_MANUSCRIPT.md](README_MANUSCRIPT.md).
+### Manuscript figures and benchmarks
+
+Scripts for reproducing the [[SolRaT manuscript](#References)] figures and benchmark comparisons are mapped in [README_MANUSCRIPT.md](README_MANUSCRIPT.md).
 
 #### Physical model
 - **Density-matrix formalism** in the irreducible spherical statistical tensors $\rho^K_Q$,
 with atomic level polarization fully included [[LL04](#References)].
 - **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and LTE
 variants of both descriptions, selectable without rewriting the surrounding code.
-- **Magnetic fields across regimes**: Hanle physics at weak fields, linear Zeeman splitting in
+- **Magnetic fields across regimes**: linear Zeeman splitting in
 the multi-level atom, and linear Zeeman through incomplete and complete Paschen-Back splitting
-in the multi-term atom by exact diagonalization of the atomic Hamiltonian.
-- **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or Allen/ATL08-style anisotropic
+in the multi-term atom by exact diagonalization of the atomic Hamiltonian. Both descriptions capture the Hanle effect at weak fields, 
+- **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or Allen/[[ATL08](#References)]-style anisotropic
 $\{n, w\}$ values for coronal/chromospheric lines) or solved self-consistently for the
 non-LTE scattering problem [[TM99](#References)].
 
@@ -39,6 +41,11 @@ the depth grid or solved self-consistently by $\Lambda$-iteration, with the Stok
 solved by the DELO method.
 - Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
 
+<p align="center">
+  <img src="media/flow.png" alt="Data flow of a SolRaT synthesis" width="900">
+</p>
+<p align="center"><small>The synthesis flow separates the atmosphere choice, the atomic description, the radiation-field treatment, and the final RTE integration; in self-consistent non-LTE runs the formal solution feeds back into the radiation tensor used by the SEE. Figure from Yakovkin (2026), <a href="https://arxiv.org/abs/2609.32850">arXiv:2609.32850</a>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small></p>
+
 #### Design
 SolRaT is organized in three layers:
 - a **public API** to run the built-in models;
@@ -47,23 +54,13 @@ SolRaT is organized in three layers:
 expressions are written close to their mathematical form, with the bookkeeping and
 optimization handled underneath.
 
-<p align="center">
-  <img src="media/flow.png" alt="Data flow of a SolRaT synthesis" width="900">
-</p>
-<p align="center"><small>The synthesis flow separates the atmosphere choice, the atomic description, the radiation-field treatment, and the final RTE integration; in self-consistent non-LTE runs the formal solution feeds back into the radiation tensor used by the SEE.</small></p>
-<p align="center"><small>Figure from Yakovkin (2026), <a href="https://arxiv.org/abs/2609.32850">arXiv:2609.32850</a>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small></p>
-
 Pre-configured atomic data include He I D3 in multi-term and multi-level forms, and
 LTE-oriented multi-term models for Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, and Fe I 5434.523 &Aring;.
 
 #### Scope and limitations
-SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default,
-so scattering-polarization amplitudes are then upper limits; an optional
-parametrized-collision extension (for both the multi-level and the multi-term atom) adds inelastic
-(transfer) and elastic (depolarizing) rates that bridge the scattering limit to LTE. Line formation assumes complete
-frequency redistribution (CRD). Physical
+SolRaT a forward model. Line formation assumes complete frequency redistribution (CRD). Physical
 collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out
-of scope for the current version.
+of scope for the current version. Please refer to [[SolRaT preprint](#References)] for more details on limitations.
 
 #### Installation
 Install SolRaT directly from PyPI by running ```pip install solrat```.
