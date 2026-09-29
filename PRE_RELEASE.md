@@ -1,14 +1,15 @@
 > Manual pre-release checklist. Automated quality control (formatting, linting, tests, coverage) is enforced by CI on all PRs and merges.
 
-1. Bump version.
-2. Run formatters:
+1. Bump version. 
+2. Check that all demos are listed in `_tests/test_demos.py`.
+3. Run formatters:
     ```bash 
     isort .
     ```
     ```bash 
     black .
     ```
-3. Run pre-release checks: 
+4. Run pre-release checks: 
     ```bash 
     isort --check-only .
     ```
@@ -27,7 +28,7 @@
     ```bash 
     python -m build
     ```
-4. Check and update docs:
+5. Check and update docs:
     ```bash
     pip install -e .
     ```
@@ -57,7 +58,7 @@
     ```bash
     rm -r solrat.egg-info
     ```
-5. Clean up:
+6. Clean up:
     ```bash
     rm -r build/*
     ```

@@ -72,8 +72,8 @@ def main():
             label=rf"$B_z = {Bz/1000:.0f}$ kG",
         )
 
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()

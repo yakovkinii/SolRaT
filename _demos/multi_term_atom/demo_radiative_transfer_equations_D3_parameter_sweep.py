@@ -74,8 +74,8 @@ def main():
             linewidth=2,
         )
 
-    plotter.show()
+    return plotter
 
 
 if __name__ == "__main__":
-    main()
+    main().show()

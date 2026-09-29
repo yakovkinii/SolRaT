@@ -50,8 +50,9 @@ def main():
     profile_residual = np.real(voigt(nu=v_grid, a=a)) - np.real(wofz(v_grid + 1j * a))
     profile_rms = float(np.sqrt(np.mean(profile_residual**2)))
     print(f"Voigt profile H(a, v) vs scipy.special.wofz: RMS SolRaT - reference = {profile_rms:.2e} (a = {a:.3f})")
-    plt.show()
+    return plt.gcf()
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

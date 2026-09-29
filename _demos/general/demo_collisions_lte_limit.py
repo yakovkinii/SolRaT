@@ -89,8 +89,9 @@ def main():
         f"Collisionless-to-LTE limit: strong-collision n_u/n_l vs Boltzmann relative error = "
         f"{abs(ratios[-1] / boltzmann_ratio - 1.0):.2e} (C_ul = {c_ul_sweep[-1]:.0e})"
     )
-    plt.show()
+    return plt.gcf()
 
 
 if __name__ == "__main__":
     main()
+    plt.show()

@@ -72,8 +72,9 @@ def main():
     plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
     plt.grid()
     plt.tight_layout()
-    plt.show()
+    return plt.gcf()
 
 
 if __name__ == "__main__":
     main()
+    plt.show()
