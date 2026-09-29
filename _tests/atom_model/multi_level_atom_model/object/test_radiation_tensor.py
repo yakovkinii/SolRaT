@@ -45,22 +45,22 @@ class TestMultiLevelRadiationTensor(unittest.TestCase):
 
     def test_planck_is_isotropic(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_planck(temperature_K=6000.0)
-        self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
-        self.assertAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
-        self.assertGreater(len(tensor.df), 0)  # triggers construct_df
+        assert np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)) > 0.0
+        assert np.isclose(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
+        assert len(tensor.df) > 0  # triggers construct_df
 
     def test_anisotropic_has_alignment(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_NLTE_n_w_allen(h_arcsec=30)
-        self.assertGreater(np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)), 0.0)
-        self.assertNotAlmostEqual(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
-        self.assertGreater(len(tensor.df), 0)
+        assert np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0)) > 0.0
+        assert not np.isclose(np.real(tensor.get_from_transition_id(self.transition_id, K=2, Q=0)), 0.0)
+        assert len(tensor.df) > 0
 
     def test_isotropic_rotation_is_identity(self):
         tensor = RadiationTensor.from_model_config(self.config).fill_planck(temperature_K=6000.0)
         rotated = tensor.rotate_to_magnetic_frame(angles=Angles())
         before = np.real(tensor.get_from_transition_id(self.transition_id, K=0, Q=0))
         after = np.real(rotated.get_from_transition_id(self.transition_id, K=0, Q=0))
-        self.assertAlmostEqual(before, after)
+        assert np.isclose(before, after)
 
 
 if __name__ == "__main__":

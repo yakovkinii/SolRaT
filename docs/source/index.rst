@@ -1,7 +1,7 @@
 SolRaT Documentation
 ====================
 
-SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, non-LTE transfer of spectral-line radiation in magnetized stellar atmospheres. It solves the statistical-equilibrium and radiative-transfer equations in the density-matrix formalism of Landi Degl'Innocenti & Landolfi (2004), with interchangeable multi-term and multi-level atoms, for magnetic fields of arbitrary strength from the Zeeman through the Hanle and Paschen-Back regimes.
+SolRaT (Solar Radiative Transfer) is a forward-modeling code for the polarized, non-LTE transfer of spectral-line radiation in magnetized stellar atmospheres. It solves the statistical-equilibrium and radiative-transfer equations in the density-matrix formalism of Landi Degl'Innocenti & Landolfi (2004), with interchangeable multi-term and multi-level atoms. The multi-term atom follows magnetic splitting from the linear Zeeman regime through incomplete and complete Paschen-Back splitting, while both descriptions retain the weak-field Hanle physics supported by the density-matrix formalism.
 
 `GitHub Repository Link <https://github.com/yakovkinii/SolRaT/>`_
 

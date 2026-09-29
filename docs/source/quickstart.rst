@@ -131,9 +131,10 @@ For customizing the models, please install SolRaT in the development mode:
    pip install -e .
 
 Then the models can be modified by following the examples of :any:`multi_term_atom`,
-:any:`multi_term_atom_legacy`, and :any:`multi_term_atom_lte` models. The models can be independent
-like :any:`multi_term_atom`, or introduce slight modifications while reusing most of the other model's features
-like :any:`multi_term_atom_lte`.
+:any:`multi_level_atom`, :any:`multi_term_atom_lte`, and :any:`multi_level_atom_lte`.
+The models can define an independent atomic description, as in :any:`multi_term_atom` and
+:any:`multi_level_atom`, or specialize an existing description while reusing the same transfer
+machinery, as in the LTE variants.
 
 Next
 ----

@@ -3,7 +3,7 @@
 [![Documentation](https://img.shields.io/badge/read-TheDocs-eee?logoColor=black)](https://solrat.readthedocs.io/latest/)
 [![Homepage](https://img.shields.io/badge/homepage-solrat-000000?logoColor=white)](https://www.yakovkinii.com/solrat/)
 ![License](https://img.shields.io/badge/license-MIT-00ff00)
-[![PyPi Version](https://img.shields.io/pypi/v/solrat)](https://pypi.org/project/solrat)
+[![PyPI Version](https://img.shields.io/pypi/v/solrat)](https://pypi.org/project/solrat)
 ![Language](https://img.shields.io/badge/language-Python-3776AB?logoColor=white)
 ![Supported Platforms](https://img.shields.io/badge/platform-any-ffffff?logoColor=black)
 [![Coverage Status](https://coveralls.io/repos/github/yakovkinii/SolRaT/badge.svg?branch=master)](https://coveralls.io/github/yakovkinii/SolRaT?branch=master)
@@ -15,17 +15,19 @@ and radiative-transfer expression reads close to the equation it implements. The
 model that is transparent enough to inspect and verify, and flexible enough to adapt to a
 specific line or context rather than used as a black box.
 
-Manuscript figure and benchmark demos are mapped in [README_MANUSCRIPT.md](README_MANUSCRIPT.md).
+### Manuscript figures and benchmarks
+
+Scripts for reproducing the [[SolRaT manuscript](#References)] figures and benchmark comparisons are mapped in [README_MANUSCRIPT.md](README_MANUSCRIPT.md).
 
 #### Physical model
 - **Density-matrix formalism** in the irreducible spherical statistical tensors $\rho^K_Q$,
 with atomic level polarization fully included [[LL04](#References)].
 - **Interchangeable atomic models** in a single pipeline: multi-term, multi-level, and LTE
 variants of both descriptions, selectable without rewriting the surrounding code.
-- **Magnetic fields of arbitrary strength**: Zeeman, Hanle, and the Paschen-Back regime by
-exact diagonalization of the atomic Hamiltonian (multi-term atom; Zeeman and Hanle for the
-multi-level atom).
-- **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or Allen/ATL08-style anisotropic
+- **Magnetic fields across regimes**: linear Zeeman splitting in
+the multi-level atom, and linear Zeeman through incomplete and complete Paschen-Back splitting
+in the multi-term atom by exact diagonalization of the atomic Hamiltonian. Both descriptions capture the Hanle effect at weak fields, 
+- **Radiation field** $J^K_Q$ either prescribed (LTE Planck, or Allen/[[ATL08](#References)]-style anisotropic
 $\{n, w\}$ values for coronal/chromospheric lines) or solved self-consistently for the
 non-LTE scattering problem [[TM99](#References)].
 
@@ -39,6 +41,11 @@ the depth grid or solved self-consistently by $\Lambda$-iteration, with the Stok
 solved by the DELO method.
 - Emergent Stokes profiles for a chosen line of sight at arbitrary spectral resolution.
 
+<p align="center">
+  <img src="media/flow.png" alt="Data flow of a SolRaT synthesis" width="900">
+</p>
+<p align="center"><small>The synthesis flow separates the atmosphere choice, the atomic description, the radiation-field treatment, and the final RTE integration; in self-consistent non-LTE runs the formal solution feeds back into the radiation tensor used by the SEE. Figure from Yakovkin (2026), <a href="https://arxiv.org/abs/2609.32850">arXiv:2609.32850</a>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</small></p>
+
 #### Design
 SolRaT is organized in three layers:
 - a **public API** to run the built-in models;
@@ -47,19 +54,16 @@ SolRaT is organized in three layers:
 expressions are written close to their mathematical form, with the bookkeeping and
 optimization handled underneath.
 
-Pre-configured lines: He I D3, Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, Fe I 5434.523 &Aring;.
+Pre-configured atomic data include He I D3 in multi-term and multi-level forms, and
+LTE-oriented multi-term models for Mn I 5432.5 &Aring;, Ni I 5435.9 &Aring;, and Fe I 5434.523 &Aring;.
 
 #### Scope and limitations
-SolRaT is a forward model. Its non-LTE solution is collisionless (pure scattering) by default,
-so scattering-polarization amplitudes are then upper limits; an optional
-parametrized-collision extension (for both the multi-level and the multi-term atom) adds inelastic
-(transfer) and elastic (depolarizing) rates that bridge the scattering limit to LTE. Line formation assumes complete
-frequency redistribution (CRD). Physical
+SolRaT a forward model. Line formation assumes complete frequency redistribution (CRD). Physical
 collisional rates from cross-sections, partial frequency redistribution, and 3D geometry are out
-of scope for the current version.
+of scope for the current version. Please refer to [[SolRaT preprint](#References)] for more details on limitations.
 
 #### Installation
-Install SolRaT directly from PyPi by running ```pip install solrat```.
+Install SolRaT directly from PyPI by running ```pip install solrat```.
 
 #### Documentation
 Detailed documentation is available at [https://solrat.readthedocs.io/](https://solrat.readthedocs.io/latest/). 
@@ -67,12 +71,14 @@ A quick-start example is available at [https://solrat.readthedocs.io/latest/quic
 Additional demos and validation against [[LL04](#References)] and [[HAZEL2](#References)] are available in [demos](https://github.com/yakovkinii/SolRaT/tree/master/_demos). 
 
 #### Citing
-A journal article is in preparation. In the meantime, if SolRaT has found use in your research, please cite it as 
+If SolRaT has found use in your research, please cite the [arXiv preprint](https://arxiv.org/abs/2609.32850):
 ```
-Yakovkin I. I. SolRaT (2023) [computer software]. Retrieved from https://www.yakovkinii.com/solrat/
+Yakovkin I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, arXiv:2609.32850
 ```
 
 #### References
+[SolRaT preprint] Yakovkin, I. I. 2026, SolRaT: polarized spectral line modeling with multi-term and multi-level atoms, [arXiv:2609.32850](https://arxiv.org/abs/2609.32850)
+
 [LL04] Landi Degl’Innocenti, E., & Landolfi, M. 2004, Polarization in Spectral Lines (Dordrecht: Kluwer)
 
 [ATL08] Asensio Ramos, A., Trujillo Bueno, J., & Landi Degl’Innocenti, E. (2008). Advanced Forward Modeling and Inversion of Stokes Profiles Resulting from the Joint Action of the Hanle and Zeeman Effects. The Astrophysical Journal, 683(1), 542–565.

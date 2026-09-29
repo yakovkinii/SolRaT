@@ -1,14 +1,23 @@
-from solrat.atom_model.shared.common_api.constant_property_slab import ConstantPropertySlabAtmosphere
+from typing import Protocol
+
 from solrat.atom_model.shared.object.stokes import Stokes
 from solrat.engine.functions.decorators import log_method
 
 
+class ForwardAtmosphere(Protocol):
+    def forward(self, initial_stokes: Stokes) -> Stokes: ...
+
+
 class MultiSlabAtmosphere:
     r"""
-    Container that consecutively combines multiple slabs to create a stratified atmosphere.
+    Container that propagates Stokes vectors through several atmosphere pieces in sequence.
+
+    Each piece only needs to expose ``forward(initial_stokes)``. This allows, for example,
+    constant-property slabs with different atomic descriptions, or a mixture of slab and
+    stratified atmosphere pieces.
     """
 
-    def __init__(self, *slabs: ConstantPropertySlabAtmosphere):
+    def __init__(self, *slabs: ForwardAtmosphere):
         if not slabs:
             raise ValueError("MultiSlabAtmosphere requires at least one slab.")  # pragma: no cover
         self.slabs = slabs

@@ -1,5 +1,5 @@
 import logging
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from numpy import real
@@ -8,6 +8,7 @@ from scipy.linalg import expm
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
+from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.model_registry import Model
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
@@ -35,6 +36,9 @@ class ConstantPropertySlabAtmosphere:
     :param continuum_delta_tau:  Optical thickness of continuum. Avoid tiny/huge values for stability.
     :param angles:  Angles instance
     :param atmosphere_parameters:  AtmosphereParameters instance
+    :param see: optional SEE object reused by the caller. This preserves atom-level caches.
+    :param rte: optional RTE object on the same frequency grid as ``initial_stokes``. This
+        preserves atom-level caches. The slab keeps operator caching disabled.
 
     Reference: modified (9.35-9.37)
     """
@@ -47,6 +51,8 @@ class ConstantPropertySlabAtmosphere:
         angles: Angles,
         line_delta_tau: float,
         continuum_delta_tau: float,
+        see: Optional[BaseSEE] = None,
+        rte: Optional[BaseRTE] = None,
     ):
         assert line_delta_tau > 0, "Zero line_delta_tau is not supported within this formulation"
         assert continuum_delta_tau > 0, "Zero continuum_delta_tau is not supported within this formulation"
@@ -56,8 +62,11 @@ class ConstantPropertySlabAtmosphere:
         self.continuum_delta_tau = continuum_delta_tau
         self.angles = angles
         self.atmosphere_parameters = atmosphere_parameters
-        self.see = model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
-        self._rte: Union[BaseRTE, None] = None
+        self.see = (
+            see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
+        )
+        self._reusable_rte = rte
+        self._rte: Union[BaseRTE, None] = rte
         self._rtc: Union[RadiativeTransferCoefficients, None] = None  # Solved RTC are saved here
 
     @property
@@ -71,6 +80,18 @@ class ConstantPropertySlabAtmosphere:
         if self._rtc is None:
             raise RuntimeError("rtc has not been initialized")  # pragma: no cover
         return self._rtc
+
+    def _get_rte(self, nu: np.ndarray) -> BaseRTE:
+        if self._reusable_rte is None:
+            rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
+        else:
+            assert np.array_equal(
+                self._reusable_rte.nu, nu
+            ), "Supplied RTE frequency grid does not match initial_stokes.nu."
+            rte = self._reusable_rte
+        if hasattr(rte, "use_operator_cache"):
+            rte.use_operator_cache = False
+        return rte
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -107,7 +128,7 @@ class ConstantPropertySlabAtmosphere:
         stokes[:, 2, 0] = initial_stokes.U
         stokes[:, 3, 0] = initial_stokes.V
 
-        self._rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
+        self._rte = self._get_rte(nu)
 
         # Compute radiative transfer coefficients
         self._rtc = self.rte.calculate_all_coefficients(

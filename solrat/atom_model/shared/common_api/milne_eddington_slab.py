@@ -7,6 +7,7 @@ from numpy import real
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
 from solrat.atom_model.base_atom_model.radiative_transfer_equations import BaseRTE
+from solrat.atom_model.base_atom_model.statistical_equilibrium_equations import BaseSEE
 from solrat.atom_model.model_registry import Model
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
@@ -65,6 +66,9 @@ class MilneEddingtonSlabAtmosphere:
     :param source_surface: surface source :math:`S_0` in the same specific-intensity units; if
         ``None``, defaults to the Planck function at the atmosphere temperature, averaged over the
         frequency grid (Milne-Eddington treats the source as constant across the narrow line window).
+    :param see: optional SEE object reused by the caller. This preserves atom-level caches.
+    :param rte: optional RTE object on the same frequency grid as ``initial_stokes``. This
+        preserves atom-level caches. The Milne-Eddington helper keeps operator caching disabled.
 
     Reference: Unno (1956); Rachkovsky (1962); LL04 Sec. 9.8 (eqs. 9.105, 9.109);
     del Toro Iniesta (2003), Ch. 9.
@@ -79,6 +83,8 @@ class MilneEddingtonSlabAtmosphere:
         line_to_continuum_ratio: float,
         source_gradient: float,
         source_surface: Optional[float] = None,
+        see: Optional[BaseSEE] = None,
+        rte: Optional[BaseRTE] = None,
     ):
         assert line_to_continuum_ratio > 0, "line_to_continuum_ratio must be positive."
         self.model = model
@@ -88,8 +94,11 @@ class MilneEddingtonSlabAtmosphere:
         self.line_to_continuum_ratio = line_to_continuum_ratio
         self.source_gradient = source_gradient
         self.source_surface = source_surface
-        self.see = model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
-        self._rte: Union[BaseRTE, None] = None
+        self.see = (
+            see if see is not None else model.StatisticalEquilibriumEquations.from_model_config(config=model.config)
+        )
+        self._reusable_rte = rte
+        self._rte: Union[BaseRTE, None] = rte
         self._rtc: Union[RadiativeTransferCoefficients, None] = None
 
     @property
@@ -103,6 +112,18 @@ class MilneEddingtonSlabAtmosphere:
         if self._rtc is None:
             raise RuntimeError("rtc has not been initialized")  # pragma: no cover
         return self._rtc
+
+    def _get_rte(self, nu: np.ndarray) -> BaseRTE:
+        if self._reusable_rte is None:
+            rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
+        else:
+            assert np.array_equal(
+                self._reusable_rte.nu, nu
+            ), "Supplied RTE frequency grid does not match initial_stokes.nu."
+            rte = self._reusable_rte
+        if hasattr(rte, "use_operator_cache"):
+            rte.use_operator_cache = False
+        return rte
 
     @log_method
     def forward(self, initial_stokes: Stokes) -> Stokes:
@@ -122,7 +143,7 @@ class MilneEddingtonSlabAtmosphere:
         )
         rho = self.see.get_solution()
 
-        self._rte = self.model.RadiativeTransferEquations.from_model_config(config=self.model.config, nu=nu)
+        self._rte = self._get_rte(nu)
         self._rtc = self.rte.calculate_all_coefficients(
             atmosphere_parameters=self.atmosphere_parameters,
             angles=self.angles,

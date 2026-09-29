@@ -159,12 +159,10 @@ class TestMultiTermVsMultiLevelSelfConsistent(unittest.TestCase):
             ]
         )
 
-        self.assertTrue(np.all(np.isfinite(alignment_mt)))
-        self.assertTrue(np.allclose(alignment_mt, alignment_ml, rtol=1e-6, atol=1e-10))
+        assert np.all(np.isfinite(alignment_mt))
+        assert np.allclose(alignment_mt, alignment_ml, rtol=1e-6, atol=1e-10)
         for stokes in ("I", "Q", "U", "V"):
-            self.assertTrue(
-                np.allclose(getattr(emergent_mt, stokes), getattr(emergent_ml, stokes), rtol=1e-6, atol=1e-12)
-            )
+            assert np.allclose(getattr(emergent_mt, stokes), getattr(emergent_ml, stokes), rtol=1e-6, atol=1e-12)
 
 
 if __name__ == "__main__":

@@ -85,26 +85,26 @@ class TestNLTEState(unittest.TestCase):
         self.state = self.atmosphere.get_state()
 
     def test_capture_shapes(self):
-        self.assertEqual(self.state.n_depth, 6)
-        self.assertEqual(self.state.values.shape, (6, len(self.state.coherence_keys)))
-        self.assertEqual(len(self.state.to_dicts()), 6)
+        assert self.state.n_depth == 6
+        assert self.state.values.shape == (6, len(self.state.coherence_keys))
+        assert len(self.state.to_dicts()) == 6
 
     def test_save_load_round_trip(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "state.npz")
             self.state.save(path)
             loaded = NLTEState.load(path)
-        self.assertEqual(loaded.coherence_keys, self.state.coherence_keys)
-        self.assertTrue(np.allclose(loaded.height_cm, self.state.height_cm))
-        self.assertTrue(np.allclose(loaded.values, self.state.values))
-        self.assertEqual(loaded.model_signature, self.state.model_signature)
+        assert loaded.coherence_keys == self.state.coherence_keys
+        assert np.allclose(loaded.height_cm, self.state.height_cm)
+        assert np.allclose(loaded.values, self.state.values)
+        assert loaded.model_signature == self.state.model_signature
 
     def test_interpolate_identity_and_resample(self):
         same = self.state.interpolate_to(self.state.height_cm)
-        self.assertIs(same, self.state)  # identical grid returns self
+        assert same is self.state  # identical grid returns self
         finer = self.state.interpolate_to(log_depth_grid(1000e5, 9))
-        self.assertEqual(finer.n_depth, 9)
-        self.assertEqual(finer.coherence_keys, self.state.coherence_keys)
+        assert finer.n_depth == 9
+        assert finer.coherence_keys == self.state.coherence_keys
 
     def test_check_compatible(self):
         self.state.check_compatible(self.state.model_signature, coherence_keys=self.state.coherence_keys)  # ok
@@ -115,8 +115,8 @@ class TestNLTEState(unittest.TestCase):
         warm = build_atmosphere(self.model, n_depth=8)  # different grid -> interpolate_to + apply_to_templates
         emergent = warm.forward(initial_stokes=Stokes.from_zeros(nu_sm1=self.nu), initial_state=self.state)
         for stokes in ("I", "Q", "U", "V"):
-            self.assertTrue(np.all(np.isfinite(getattr(emergent, stokes))))
-        self.assertEqual(warm.get_state().n_depth, 8)
+            assert np.all(np.isfinite(getattr(emergent, stokes)))
+        assert warm.get_state().n_depth == 8
 
 
 if __name__ == "__main__":

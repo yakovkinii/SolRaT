@@ -11,23 +11,32 @@ from solrat.engine.functions.looping import PROJECTION, fromto
 from solrat.engine.generators.nested_loops import nested_loops
 
 
+@lru_cache(maxsize=None)
+def _wigner_d_matrices(alpha: float, beta: float, gamma: float, K_max: int):
+    r"""
+    Numerical Wigner D matrices for K = 0..K_max, evaluated once per set of Euler angles.
+    """
+    # Note: sympy uses a different convention for angles, so I perform under-the-hood conversion here.
+    return {
+        K: np.array(sympy.N(wigner_d(J=int(K), alpha=-alpha, beta=-beta, gamma=-gamma))).astype(np.complex128)
+        for K in fromto(0, K_max)
+    }
+
+
 class WignerD:
     r"""
     Wigner D function.
     alpha, beta, gamma are Euler angles in radians.
     Typically, we have alpha = chi, beta = theta, gamma = gamma (see Fig. 5.14).
+
+    The matrices are shared between instances with the same angles, so constructing one is cheap after the first.
     """
 
     def __init__(self, alpha, beta, gamma, K_max):
-        self.d = {}
-        for K in fromto(0, K_max):
-            # Note: sympy uses a different convention for angles, so I perform under-the-hood conversion here.
-            self.d[K] = wigner_d(J=int(K), alpha=-alpha, beta=-beta, gamma=-gamma)
+        self.d = _wigner_d_matrices(float(alpha), float(beta), float(gamma), int(K_max))
 
-    @lru_cache(maxsize=None)
     def __call__(self, K, P, Q):
-        result = np.array(sympy.N(self.d[K][int(K - P), int(K - Q)])).astype(np.complex128)
-        return result
+        return self.d[K][int(K - P), int(K - Q)]
 
 
 def t_K_P(K, P, stokes_component_index):
