@@ -14,11 +14,11 @@ from solrat.atom_model.shared.common_api.nlte_state import NLTEState
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.rotations import T_K_Q
 from solrat.atom_model.shared.object.stokes import Stokes
+from solrat.atom_model.shared.utility.constants import c_cm_sm1
 from solrat.atom_model.shared.utility.evolution_operator import (
     evolution_and_interpolation_operators,
     evolution_operator,
 )
-from solrat.atom_model.shared.utility.constants import c_cm_sm1
 from solrat.atom_model.shared.utility.functions import get_planck_BP
 from solrat.atom_model.shared.utility.voigt_profile import voigt
 from solrat.engine.functions.decorators import log_method

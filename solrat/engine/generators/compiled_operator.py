@@ -36,9 +36,7 @@ class CompiledOperator:
         if coefficient_column.dtype != object:  # dense block from the engine: rows are the leading axis
             coefficients = np.moveaxis(np.asarray(coefficient_column, dtype=np.complex128), 0, -1)
         else:
-            coefficients = np.stack(
-                [np.asarray(value, dtype=np.complex128) for value in coefficient_column], axis=-1
-            )
+            coefficients = np.stack([np.asarray(value, dtype=np.complex128) for value in coefficient_column], axis=-1)
         return cls(keys=keys, coefficients=coefficients)
 
     def multiply(self, value: Callable) -> np.ndarray:
