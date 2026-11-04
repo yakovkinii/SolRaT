@@ -33,10 +33,17 @@ class WignerD:
     """
 
     def __init__(self, alpha, beta, gamma, K_max):
-        self.d = _wigner_d_matrices(float(alpha), float(beta), float(gamma), int(K_max))
+        self.angles = (float(alpha), float(beta), float(gamma), int(K_max))
+        self.d = _wigner_d_matrices(*self.angles)
 
     def __call__(self, K, P, Q):
         return self.d[K][int(K - P), int(K - Q)]
+
+    def __hash__(self):
+        return hash(self.angles)
+
+    def __eq__(self, other):
+        return isinstance(other, WignerD) and self.angles == other.angles
 
 
 def t_K_P(K, P, stokes_component_index):
@@ -74,10 +81,15 @@ def T_K_Q_double_rotation(K, Q, stokes_component_index, D_inverse_omega: WignerD
     return result
 
 
+@lru_cache(maxsize=None)
 def T_K_Q_double_rotation_all_stokes(K, Q, D_inverse_omega: WignerD, D_magnetic: WignerD):
     r"""
     (5.159), (2.74), (5.122)
     Two consecutive D rotations within T tensor.
+
+    Cached on the multipole and the two rotations, which depend on the geometry alone: a scan over
+    field strength or temperature at fixed angles reuses these. The returned array is shared between
+    callers and is marked read-only, so a caller that needs to modify it must copy it first.
     """
     result = np.array([[0], [0], [0], [0]], dtype=np.complex128)
     for stokes_component_index in range(4):
@@ -88,6 +100,7 @@ def T_K_Q_double_rotation_all_stokes(K, Q, D_inverse_omega: WignerD, D_magnetic:
                 stokes_component_index=stokes_component_index,
             ) * D_inverse_omega(K=K, P=P, Q=Qʹ) * D_magnetic(K=K, P=Qʹ, Q=Q)
 
+    result.flags.writeable = False
     return result
 
 

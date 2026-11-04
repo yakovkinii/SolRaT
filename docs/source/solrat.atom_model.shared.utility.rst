@@ -14,6 +14,7 @@ Submodules
 
    solrat.atom_model.shared.utility.allen
    solrat.atom_model.shared.utility.constants
+   solrat.atom_model.shared.utility.evolution_operator
    solrat.atom_model.shared.utility.functions
    solrat.atom_model.shared.utility.log_setup
    solrat.atom_model.shared.utility.plot_stokes_profiles

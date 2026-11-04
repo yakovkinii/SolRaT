@@ -3,7 +3,6 @@ from typing import Optional, Union
 
 import numpy as np
 from numpy import real
-from scipy.linalg import expm
 
 from solrat.atom_model.base_atom_model.object.atmosphere_parameters import BaseAtmosphereParameters
 from solrat.atom_model.base_atom_model.object.radiation_tensor import BaseRadiationTensor
@@ -13,6 +12,7 @@ from solrat.atom_model.model_registry import Model
 from solrat.atom_model.shared.object.angles import Angles
 from solrat.atom_model.shared.object.radiative_transfer_coefficients import RadiativeTransferCoefficients
 from solrat.atom_model.shared.object.stokes import Stokes
+from solrat.atom_model.shared.utility.evolution_operator import evolution_operator
 from solrat.atom_model.shared.utility.functions import get_planck_BP
 from solrat.engine.functions.decorators import log_method
 
@@ -165,7 +165,7 @@ class ConstantPropertySlabAtmosphere:
             ]
         )
 
-        expM = np.stack([expm(-K * self.line_delta_tau) for K in K_tau_line])
+        expM = evolution_operator(K_tau_line, self.line_delta_tau)
         stokes = S[:, :, np.newaxis] + np.einsum("nij,njk->nik", expM, stokes - S[:, :, np.newaxis])
 
         logging.info("Completed processing a single slab")
